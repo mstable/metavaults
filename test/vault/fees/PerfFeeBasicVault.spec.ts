@@ -259,18 +259,18 @@ describe("Performance Fees", async () => {
                 await vault.connect(user.signer).deposit(depositAmt, user.address)
             })
             it("should fail if callee is not governor", async () => {
-                const tx = vault.setPerformanceFee(1000)
+                const tx = vault.connect(sa.dummy1.signer).setPerformanceFee(1000)
                 await expect(tx).to.be.revertedWith("Only governor can execute")
             })
             it("should fail if invalid performance fee", async () => {
-                const tx = vault.connect(sa.governor.signer).setPerformanceFee(10000000)
+                const tx = vault.connect(sa.governor.signer).setPerformanceFee(feeScale.add(1))
                 await expect(tx).to.be.revertedWith("Invalid fee")
             })
-            it("should charge performance fees first", async () => {
+            it("should charge performance fees using the current value then update performance fees correctly", async () => {
                 const transferAmt = depositAmt.div(10)
                 const totalAssets = depositAmt.add(transferAmt)
 
-                // send 10% more assets to vault directly
+                // send 10% more assets to vault directly to increase assetsPerShare
                 await asset.transfer(vault.address, transferAmt)
 
                 const data = {
@@ -282,13 +282,11 @@ describe("Performance Fees", async () => {
                 const feeShares = calculateFeeShares(data, calculateAssetsPerShare(data))
 
                 const newPerfFee = 100
+
+                expect(await vault.performanceFee(), "PerformaceFees").to.not.eq(newPerfFee)
                 const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
                 await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares)
-            })
-            it("should emit PerformanceFeeUpdated event and correctly update", async () => {
-                const newPerfFee = 100
-                const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
-                await expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
+                expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
                 expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
             })
         })
@@ -297,7 +295,7 @@ describe("Performance Fees", async () => {
                 vault = await deployFeeVault()
             })
             it("should fail if callee is not governor", async () => {
-                const tx = vault.setFeeReceiver(Wallet.createRandom().address)
+                const tx = vault.connect(sa.dummy1.signer).setFeeReceiver(Wallet.createRandom().address)
                 await expect(tx).to.be.revertedWith("Only governor can execute")
             })
             it("should emit FeeReceiverUpdated event and correctly update address", async () => {
