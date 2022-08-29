@@ -1,0 +1,75 @@
+import { ethers } from "hardhat"
+import { MAX_UINT128 } from "@utils/constants"
+import { simpleToExactAmount } from "@utils/math"
+import { MockERC20, MockERC20__factory, MockTimeWeightedRewardsToken, MockTimeWeightedRewardsToken__factory } from "types/generated"
+import { StandardAccounts } from "@utils/machines"
+import shouldBehaveLikeToken, { TokenContext } from "test/shared/Token.behaviour"
+
+describe("Basic Time-Weighted Rewards Token", async () => {
+    let sa: StandardAccounts
+    let token: MockTimeWeightedRewardsToken
+    let rewards: MockERC20
+    const ctx: Partial<TokenContext> = {
+        maxAmount: MAX_UINT128,
+    }
+
+    const deployDependencies = async () => {
+        rewards = await new MockERC20__factory(sa.default.signer).deploy(
+            "Rewards Token",
+            "RWD",
+            18,
+            sa.default.address,
+            simpleToExactAmount(100000000),
+        )
+    }
+
+    const deployToken = async (decimals = 18): Promise<MockTimeWeightedRewardsToken> => {
+        await deployDependencies()
+
+        token = await new MockTimeWeightedRewardsToken__factory(sa.default.signer).deploy(rewards.address)
+
+        await token.initialize("TimeWeightedRewardsToken", "TWR", decimals, sa.default.address, 10000)
+
+        return token
+    }
+
+    before("init contract", async () => {
+        const accounts = await ethers.getSigners()
+        sa = await new StandardAccounts().initAccounts(accounts)
+        ctx.sender = sa.dummy1
+        ctx.spender = sa.dummy2
+        ctx.recipient = sa.dummy3
+    })
+    describe("should behave like a token", () => {
+        // Test with different amounts of decimals
+        ;[18, 2, 0].forEach((decimals) => {
+            describe(`with ${decimals} decimals`, () => {
+                const tokenBalance = decimals > 0 ? simpleToExactAmount(1000, decimals) : 1000
+                beforeEach(async () => {
+                    ctx.token = await deployToken(decimals)
+                })
+                describe("with the sender having 1,000 tokens", async () => {
+                    beforeEach(async () => {
+                        await token.connect(sa.default.signer).transfer(ctx.sender.address, tokenBalance)
+                    })
+                    shouldBehaveLikeToken(ctx as TokenContext)
+                })
+                describe("with the sender and recipient having 1,000 tokens", () => {
+                    beforeEach(async () => {
+                        await token.connect(sa.default.signer).transfer(ctx.sender.address, tokenBalance)
+                        await token.connect(sa.default.signer).transfer(ctx.recipient.address, tokenBalance)
+                    })
+                    shouldBehaveLikeToken(ctx as TokenContext)
+                })
+                describe("with the sender, spender and recipient having 1,000 tokens", () => {
+                    beforeEach(async () => {
+                        await token.connect(sa.default.signer).transfer(ctx.sender.address, tokenBalance)
+                        await token.connect(sa.default.signer).transfer(ctx.spender.address, tokenBalance)
+                        await token.connect(sa.default.signer).transfer(ctx.recipient.address, tokenBalance)
+                    })
+                    shouldBehaveLikeToken(ctx as TokenContext)
+                })
+            })
+        })
+    })
+})

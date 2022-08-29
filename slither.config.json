@@ -1,0 +1,8 @@
+{
+    "exclude_informational": true,
+    "exclude_low": true,
+    "exclude_medium": true,
+    "exclude_high": false,
+    "solc_disable_warnings": true,
+    "filter_paths": "node_modules|openzeppelin|console.sol|Migrations.sol|governance|interfaces|integrations|oracles|peripheral|upgradability|z_mocks"
+}
