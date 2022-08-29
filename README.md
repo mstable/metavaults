@@ -2,7 +2,7 @@
 <img src="https://mstable.org/assets/img/email/mstable_logo_horizontal_black.png" width="420" >
 
 ![CI](https://github.com/mstable/metavaults/workflows/Test-Vaults/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/mstable/metavaults/badge.svg?branch=master&t=51eu5t)](https://coveralls.io/github/mstable/metavaults?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/mstable/metavaults/badge.svg?branch=main&t=51eu5t)](https://coveralls.io/github/mstable/metavaults?branch=main)
 [![Discord](https://img.shields.io/discord/525087739801239552?color=7289DA&label=discord%20)](https://discordapp.com/channels/525087739801239552/)
 [![slither](https://github.com/mstable/metavaults/actions/workflows/slither.yaml/badge.svg)](https://github.com/mstable/metavaults/actions/workflows/slither.yaml)
 
