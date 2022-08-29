@@ -1,6 +1,8 @@
-# Convex Meta Vaults
+# 3Crv Convex Vaults
 
-The first set of EIP-4626 vaults for staking 3Pool-based (3Crv) Curve Metapools in Convex.
+The first set of mStable meta vaults are for staking 3Pool-based (3Crv) [Curve](https://curve.fi/) Metapool liquidity provider (LP) tokens in [Convex](https://www.convexfinance.com/). For example, staking Curve's [mUSD3Crv LP token](https://etherscan.io/address/0x1AEf73d49Dedc4b1778d0706583995958Dc862e6) from the [mUSD+Crv pool](https://curve.fi/musd) in Convex's [mUSD pool](https://www.convexfinance.com/stake).
+
+# Contracts
 
 ![savePlusDeployment](./docs/savePlusDeployment.png)
 
