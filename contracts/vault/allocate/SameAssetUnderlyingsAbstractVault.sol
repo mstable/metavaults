@@ -41,7 +41,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      */
     function _initialize(address[] memory _underlyingVaults) internal virtual {
         uint256 vaultsLen = _underlyingVaults.length;
-        require(vaultsLen > 0, "No vaults");
+        require(vaultsLen > 0, "No underlying vaults");
 
         // For each underlying vault
         for (uint256 i = 0; i < vaultsLen; ) {
