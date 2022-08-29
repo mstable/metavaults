@@ -37,7 +37,7 @@
         "task:fork:polly": "yarn hardhat --config tasks-fork-polygon.config.ts",
         "test": "yarn hardhat test",
         "test:fork": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/**/*.spec.ts",
-        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/ci/*.spec.ts",
+        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/vault/savePlus.spec.ts",
         "test:file:fork": "yarn hardhat --config hardhat-fork.config.ts test",
         "test:file": "yarn hardhat test",
         "slither": "slither .",
