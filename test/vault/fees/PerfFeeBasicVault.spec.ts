@@ -8,7 +8,7 @@ import { ethers } from "hardhat"
 import { MockERC20ForceBurnable__factory, MockNexus__factory, PerfFeeBasicVault__factory } from "types/generated"
 
 import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
-import type { BigNumberish } from "ethers"
+import { BigNumberish, Wallet } from "ethers"
 import type { Account } from "types"
 import type { AbstractVault, MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault, VaultManagerRole } from "types/generated"
 
@@ -272,46 +272,63 @@ describe("Performance Fees", async () => {
             })
         })
     })
-    describe("set Performance fees", async () => {
-        const depositAmt = simpleToExactAmount(1000000)
-        beforeEach(async () => {
-            vault = await setup()
-            await asset.transfer(user.address, simpleToExactAmount(20000000))
-            await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
-            await vault.connect(user.signer).deposit(depositAmt, user.address)
-        })
-        it("should fail if callee is not governor", async () => {
-            const tx = vault.setPerformanceFee(1000)
-            await expect(tx).to.be.revertedWith("Only governor can execute")
-        })
-        it("should fail if invalid performance fee", async () => {
-            const tx = vault.connect(sa.governor.signer).setPerformanceFee(10000000)
-            await expect(tx).to.be.revertedWith("Invalid fee")
-        })
-        it("should charge performance fees first", async () => {
-            const transferAmt = depositAmt.div(10)
-            const totalAssets = depositAmt.add(transferAmt)
+    context("admin", async () => {
+        describe("set Performance fees", async () => {
+            const depositAmt = simpleToExactAmount(1000000)
+            beforeEach(async () => {
+                vault = await setup()
+                await asset.transfer(user.address, simpleToExactAmount(20000000))
+                await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
+                await vault.connect(user.signer).deposit(depositAmt, user.address)
+            })
+            it("should fail if callee is not governor", async () => {
+                const tx = vault.setPerformanceFee(1000)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("should fail if invalid performance fee", async () => {
+                const tx = vault.connect(sa.governor.signer).setPerformanceFee(10000000)
+                await expect(tx).to.be.revertedWith("Invalid fee")
+            })
+            it("should charge performance fees first", async () => {
+                const transferAmt = depositAmt.div(10)
+                const totalAssets = depositAmt.add(transferAmt)
 
-            // send 10% more assets to vault directly
-            await asset.transfer(vault.address, transferAmt)
+                // send 10% more assets to vault directly
+                await asset.transfer(vault.address, transferAmt)
 
-            const data = {
-                investor: user.address,
-                investorShares: depositAmt,
-                totalShares: depositAmt,
-                totalAssets: totalAssets,
-            }
-            const feeShares = calculateFeeShares(data, calculateAssetsPerShare(data))
+                const data = {
+                    investor: user.address,
+                    investorShares: depositAmt,
+                    totalShares: depositAmt,
+                    totalAssets: totalAssets,
+                }
+                const feeShares = calculateFeeShares(data, calculateAssetsPerShare(data))
 
-            const newPerfFee = 100
-            const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
-            await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares)
+                const newPerfFee = 100
+                const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
+                await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares)
+            })
+            it("should emit PerformanceFeeUpdated event and correctly update", async () => {
+                const newPerfFee = 100
+                const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
+                await expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
+                expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
+            })
         })
-        it("should emit PerformanceFeeUpdated event and correctly update", async () => {
-            const newPerfFee = 100
-            const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
-            await expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
-            expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
+        describe("set fee receiver", async () => {
+            before(async () => {
+                vault = await setup()
+            })
+            it("should fail if callee is not governor", async () => {
+                const tx = vault.setFeeReceiver(Wallet.createRandom().address)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("should emit FeeReceiverUpdated event and correctly update address", async () => {
+                const newFeeReceiver = Wallet.createRandom().address
+                const tx = vault.connect(sa.governor.signer).setFeeReceiver(newFeeReceiver)
+                await expect(tx).to.emit(vault, "FeeReceiverUpdated").withArgs(newFeeReceiver)
+                expect(await vault.feeReceiver(), "FeeReceiver").to.eq(newFeeReceiver)
+            })
         })
     })
 })
