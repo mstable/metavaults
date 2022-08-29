@@ -1,5 +1,6 @@
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
+import { ZERO_ADDRESS } from "@utils/constants"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory } from "types/generated"
@@ -7,9 +8,9 @@ import { BasicVault__factory } from "types/generated"
 import { shouldBehaveLikeAbstractVault } from "../shared/AbstractVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
-import type { AbstractVault, BasicVault, MockERC20, MockNexus,VaultManagerRole } from "types/generated";
+import type { AbstractVault, BasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated";
 
-import type { AbstractVaultBehaviourContext} from "../shared/AbstractVault.behaviour";
+import type { AbstractVaultBehaviourContext } from "../shared/AbstractVault.behaviour";
 describe("BasicVault", () => {
     /* -- Declare shared variables -- */
     let sa: StandardAccounts
@@ -81,6 +82,10 @@ describe("BasicVault", () => {
         it("should properly store valid arguments", async () => {
             expect(await vault.nexus(), "nexus").to.eq(nexus.address)
             expect(await vault.asset(), "asset").to.eq(asset.address)
+        })
+        it("should fail if asset has zero address", async () => {
+            let tx = new BasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)
+            await expect(tx).to.be.revertedWith("Asset is zero")
         })
     })
 
