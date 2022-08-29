@@ -39,6 +39,10 @@ Separate Modules:
 
 Find the [official Announcement here](https://medium.com/mstable/erc-4626-meta-vaults-are-coming-to-mstable-9e7c5e182b04).
 
+# 3Crv Convex Vaults
+
+The first set of mStable meta vaults are for staking 3Pool-based (3Crv) Curve Metapool liquidity provider (LP) tokens in Convex. See [3Crv Convex Vaults](./3CrvConvexVaults.md) for more details.
+
 # Developer Notes
 
 ## Prerequisites
