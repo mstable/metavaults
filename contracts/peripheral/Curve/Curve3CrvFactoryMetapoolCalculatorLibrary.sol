@@ -397,13 +397,8 @@ library Curve3CrvFactoryMetapoolCalculatorLibrary {
      * @notice Gets the USD price of the base pool liquidity provider token scaled to `VIRTUAL_PRICE_SCALE`. eg 3Crv/USD.
      * Note the base pool virtual price is different to the metapool virtual price.
      * The base pool's virtual price is used to price 3Pool's 3Crv back to USD.
-     * @param metapool Curve metapool to get the virtual price from.
      */
-    function getBaseVirtualPrice(address metapool)
-        external
-        view
-        returns (uint256 baseVirtualPrice_)
-    {
+    function getBaseVirtualPrice() external view returns (uint256 baseVirtualPrice_) {
         baseVirtualPrice_ = _baseVirtualPrice();
     }
 

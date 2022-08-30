@@ -145,7 +145,7 @@ contract Curve3CrvFactoryMetapoolCalculator {
      * The base pool's virtual price is used to price 3Pool's 3Crv back to USD.
      */
     function getBaseVirtualPrice() external view returns (uint256 baseVirtualPrice_) {
-        baseVirtualPrice_ = Curve3CrvFactoryMetapoolCalculatorLibrary.getBaseVirtualPrice(metapool);
+        baseVirtualPrice_ = Curve3CrvFactoryMetapoolCalculatorLibrary.getBaseVirtualPrice();
     }
 
     /**

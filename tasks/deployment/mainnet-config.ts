@@ -241,7 +241,7 @@ export const config = {
         lusd: lusdPoolConstructor,
     },
 
-    PeriodicAllocationPerfFeeMetaVault: {
+    periodicAllocationPerfFeeMetaVault: {
         asset: curveThreeTokenAddress,
         name: "Convex 3CRV Meta Vault",
         symbol: "m3CRV-CX1",
