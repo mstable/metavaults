@@ -237,7 +237,7 @@ abstract contract PeriodicAllocationAbstractVault is
                 }
             }
 
-            /// Withdraw from all if shareRedeemed are above threshold or sourcing fron single vault failed
+            /// Withdraw from all if shareRedeemed are above threshold or sourcing fron single vault was not enough
             if (
                 sharesRatio > assetSourcingParams.singleVaultSharesThreshold ||
                 !sourceFromSingleVaultComplete

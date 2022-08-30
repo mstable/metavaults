@@ -28,7 +28,7 @@ export const assertBNClose = (actual: BN | string, expected: BN, variance: BN | 
 /**
  *  Convenience method to assert that two BN.js instances are within 100 units of each other.
  *  @param actual The BN.js instance you received
- *  @param expected The BN.js amount you expected to receive, allowing a varience of +/- 10 units
+ *  @param expected The BN.js amount you expected to receive, allowing a variance of +/- 10 units
  */
 export const assertBNClosePercent = (a: BN, b: BN, variance: string | number = "0.02", reason: string = null): void => {
     if (a.eq(b)) return

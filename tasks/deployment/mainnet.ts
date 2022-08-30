@@ -185,14 +185,14 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
     proxyAdmin: string,
     convex3CrvVaults: Convex3CrvVaultsDeployed,
 ) {
-    const { PeriodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVaultConf } = config
+    const { periodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVaultConf } = config
     const underlyingVaults = [
         convex3CrvVaults.musd.proxy.address,
         convex3CrvVaults.frax.proxy.address,
         convex3CrvVaults.lusd.proxy.address,
         convex3CrvVaults.busd.proxy.address,
     ]
-    const PeriodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+    const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
         nexus,
         asset: PeriodicAllocationPerfFeeMetaVaultConf.asset,
         name: PeriodicAllocationPerfFeeMetaVaultConf.name,
@@ -205,7 +205,7 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
         assetPerShareUpdateThreshold: PeriodicAllocationPerfFeeMetaVaultConf.assetPerShareUpdateThreshold,
         underlyingVaults,
     })
-    return PeriodicAllocationPerfFeeMetaVault
+    return periodicAllocationPerfFeeMetaVault
 }
 
 export async function deployCurve3CrvMetaVaults(
@@ -365,13 +365,13 @@ subtask("deploy-3crv-meta-vaults", "Deploys Convex / Curve 3Crv Meta Vaults plus
         // 1 - deployConvex3CrvLiquidatorVault
         const { convex3CrvVaults, curve3CrvMetapoolCalculatorLibrary } = await deployConvex3CrvVaults(
             hre,
-            speed,
+            signer,
             nexus,
             vaultManager,
             proxyAdmin,
         )
-        // 2 - deployCurve3CrvMetaVault
-        const PeriodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVaults(
+        // 2 - deployPeriodicAllocationPerfFeeMetaVaults
+        const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVaults(
             hre,
             signer,
             nexus,
@@ -382,17 +382,17 @@ subtask("deploy-3crv-meta-vaults", "Deploys Convex / Curve 3Crv Meta Vaults plus
         // 3 - deployCurve3CrvMetaVault
         const { curve3CrvMetaVaults, curve3PoolCalculatorLibrary } = await deployCurve3CrvMetaVaults(
             hre,
-            speed,
+            signer,
             nexus,
             vaultManager,
             proxyAdmin,
-            PeriodicAllocationPerfFeeMetaVault.proxy.address,
+            periodicAllocationPerfFeeMetaVault.proxy.address,
         )
 
         return {
             convex3CrvVaults,
             curve3CrvMetapoolCalculatorLibrary,
-            PeriodicAllocationPerfFeeMetaVault,
+            periodicAllocationPerfFeeMetaVault,
             curve3CrvMetaVaults,
             curve3PoolCalculatorLibrary,
         }
