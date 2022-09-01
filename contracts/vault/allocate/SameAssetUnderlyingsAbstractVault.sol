@@ -54,7 +54,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
 
     /**
      * @notice Includes all the assets in this vault plus all the underlying vaults.
-     * The amount of assets in each underlying vault is calculated using the vault's share of the 
+     * The amount of assets in each underlying vault is calculated using the vault's share of the
      * underlying vault's total assets. `totalAssets()` does not account for fees or slippage so
      * the actual asset value is likely to be less.
      *
@@ -71,25 +71,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     function _totalUnderlyingAssets() internal view returns (uint256 totalUnderlyingAssets) {
         // Get the assets held by this vault in each of in the underlying vaults
         uint256 len = underlyingVaults.length;
-        IERC4626Vault underlyingVault;
-        uint256 underlyingTotalSupply;
-        uint256 underlyingVaultShares;
 
         for (uint256 i = 0; i < len; ) {
-            underlyingVault = underlyingVaults[i];
-            underlyingTotalSupply = underlyingVault.totalSupply();
-
-            if (underlyingTotalSupply > 0) {
-                underlyingVaultShares = underlyingVault.balanceOf(address(this));
-
-                if (underlyingVaultShares > 0) {
-                    // vault's underlying assets = vault's underlying shares * total underlying assets / total underlying shares
-                    totalUnderlyingAssets +=
-                        (underlyingVaultShares * underlyingVault.totalAssets()) /
-                        underlyingTotalSupply;
-                }
-            }
-
+            totalUnderlyingAssets += underlyingVaults[i].maxWithdraw(address(this));
             unchecked {
                 ++i;
             }
