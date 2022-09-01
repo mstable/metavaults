@@ -6,6 +6,7 @@ import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
 import { Wallet } from "ethers"
+import { formatUnits } from "ethers/lib/utils"
 import { ethers } from "hardhat"
 
 import type { BigNumber, ContractTransaction } from "ethers"
@@ -288,13 +289,18 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const { amounts, owner, vault } = ctx()
 
             // Test previewRedeem is the same as redeem at the end of the old block using static calls
-            const staticPreviewAssets = await vault.previewRedeem(amounts.redeem)
+            const previewAssets = await vault.previewRedeem(amounts.redeem)
             const staticRedeemAssets = await vault.callStatic["redeem(uint256,address,address)"](
                 amounts.redeem,
                 owner.address,
                 owner.address,
             )
-            expect(staticRedeemAssets, "previewRedeem == static redeem assets").to.eq(staticPreviewAssets)
+            expect(staticRedeemAssets, "previewRedeem == static redeem assets").to.eq(previewAssets)
+
+            const previewShares = await vault.previewWithdraw(previewAssets)
+            const sharesDiff = amounts.redeem.sub(previewShares)
+            const sharesDiffBp = sharesDiff.mul(10000000000).div(amounts.redeem)
+            log(`Shares diff ${formatUnits(sharesDiff, 18)} ${formatUnits(sharesDiffBp, 6)} bps on ${usdFormatter(amounts.redeem)}`)
 
             // Is only used to get gas usage using gasReporter
             await owner.signer.sendTransaction(await vault.populateTransaction.previewRedeem(amounts.redeem))
@@ -303,9 +309,14 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const { amounts, owner, vault } = ctx()
 
             // Test previewWithdraw is the same as withdraw at the end of the old block using static calls
-            const staticPreviewShares = await vault.previewWithdraw(amounts.withdraw)
+            const previewShares = await vault.previewWithdraw(amounts.withdraw)
             const staticWithdrawShares = await vault.callStatic.withdraw(amounts.withdraw, owner.address, owner.address)
-            expect(staticWithdrawShares, "previewWithdraw == static withdraw shares").to.eq(staticPreviewShares)
+            expect(staticWithdrawShares, "previewWithdraw == static withdraw shares").to.eq(previewShares)
+
+            const previewAssets = await vault.previewRedeem(previewShares)
+            const assetsDiff = amounts.withdraw.sub(previewAssets)
+            const assetsDiffBp = assetsDiff.mul(10000000000).div(amounts.withdraw)
+            log(`Assets diff ${formatUnits(assetsDiff, 18)} ${formatUnits(assetsDiffBp, 6)} bps on ${usdFormatter(amounts.withdraw)}`)
 
             // Is only used to get gas usage using gasReporter
             await owner.signer.sendTransaction(await vault.populateTransaction.previewWithdraw(amounts.withdraw))
