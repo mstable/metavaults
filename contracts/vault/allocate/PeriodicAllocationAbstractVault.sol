@@ -315,21 +315,6 @@ abstract contract PeriodicAllocationAbstractVault is
         }
     }
 
-    /// @dev Updates assetPerShare of this vault to be expanted by the child contract to charge perf fees every assetPerShare update.
-    function _updateAssetPerShare() internal virtual {
-        uint256 totalShares = totalSupply();
-        // Update current assets per share
-        assetsPerShare = totalShares > 0
-            ? (totalAssets() * ASSETS_PER_SHARE_SCALE) / totalShares
-            : assetsPerShare;
-    }
-
-    /// @notice VaultManager can update the `assetPerShare`.
-    /// @dev to be called by watcher
-    function updateAssetPerShare() external onlyVaultManager {
-        _updateAssetPerShare();
-    }
-
     /***************************************
                 Vault Properties setters
     ****************************************/
