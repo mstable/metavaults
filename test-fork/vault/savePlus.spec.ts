@@ -36,18 +36,10 @@ import type {
     Curve3CrvPool,
     DataEmitter,
     Liquidator,
-    MockGPv2VaultRelayer,
     Nexus,
 } from "types"
 import type { Account, AnyVault } from "types/common"
-import type {
-    Curve3CrvMetapoolCalculatorLibrary,
-    Curve3PoolCalculatorLibrary,
-    ERC20,
-    IERC20Metadata,
-    InstantProxyAdmin,
-    PeriodicAllocationPerfFeeMetaVault,
-} from "types/generated"
+import type { ERC20, IERC20Metadata, InstantProxyAdmin, PeriodicAllocationPerfFeeMetaVault } from "types/generated"
 
 const log = logger("test:savePlus")
 
@@ -736,8 +728,11 @@ describe("Save+ Basic and Meta Vaults", async () => {
     }
     before("reset block number", async () => {
         await resetNetwork(14960000)
-        // await setup()
-        await loadFixture(setup)
+        if (network.name === "Hardhat") {
+            await loadFixture(setup)
+        } else {
+            await setup()
+        }
     })
     context("deployment check", async () => {
         describe("proxy instant admin", async () => {
@@ -991,8 +986,11 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         before("reset block number", async () => {
             // await resetNetwork(14960000)
-            // await setup()
-            await loadFixture(setup)
+            if (network.name === "Hardhat") {
+                await loadFixture(setup)
+            } else {
+                await setup()
+            }
         })
         beforeEach("snap data", async () => {
             vaultsDataBefore = await snapshotVaults(
