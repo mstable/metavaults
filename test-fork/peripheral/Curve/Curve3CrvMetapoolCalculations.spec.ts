@@ -276,6 +276,27 @@ describe("Curve 3Crv metapool calculations", async () => {
         after(async () => {
             await outputMetapoolBalances("after")
         })
+        it("Remove liquidity symmetry", async () => {
+            const mus3CrvTokens = simpleToExactAmount(1000000)
+            console.log(`Redeem ${usdFormatter(mus3CrvTokens, 18, 14, 18)} Metapool LP tokens (musd3Crv)`)
+            // Redeem Metapool LP tokens
+            const threeCrvActual = await musdMetapool
+                .connect(musd3CrvWhale.signer)
+                .callStatic.remove_liquidity_one_coin(mus3CrvTokens, 1, 0)
+            console.log(`${usdFormatter(threeCrvActual, 18, 14, 18)} 3Crv withdrawn`)
+
+            // Redeem assets (3Crv) from Metapool
+            console.log(`Withdraw ${usdFormatter(threeCrvActual, 18, 14, 18)} 3Crv`)
+            const mus3CrvActual = await musdMetapool
+                .connect(musd3CrvWhale.signer)
+                .callStatic.remove_liquidity_imbalance([0, threeCrvActual], mus3CrvTokens)
+            console.log(`${usdFormatter(mus3CrvActual, 18, 14, 18)} Metapool LP tokens (musd3Crv) were burned`)
+            const mus3CrvDiff = mus3CrvTokens.sub(mus3CrvActual)
+            const mus3CrvDiffBp = mus3CrvDiff.mul(10000000000).div(mus3CrvTokens)
+            console.log(`Diff ${formatUnits(mus3CrvDiff, 18)} ${formatUnits(mus3CrvDiffBp, 6)} bps`)
+
+            // expect(mus3CrvActual, "mus3Crv").to.eq(mus3CrvTokens)
+        })
         it("Deposit 40m 3Crv to musd3Crv", async () => {
             await depositMetapool(musd3CrvToken, threeCrvWhale1, 40000000)
         })
