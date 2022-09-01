@@ -193,7 +193,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         })
         it("fails if initialize is called with no underlying vaults", async () => {
             // Deploy test contract.
-            let vaultTemp = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+            const vaultTemp = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
             // Initialize test contract.
             await expect(
                 vaultTemp.initialize(`saub${await asset.name()}`, `saub${await asset.symbol()}`, sa.vaultManager.address, [])

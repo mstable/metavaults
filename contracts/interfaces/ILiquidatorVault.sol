@@ -14,7 +14,7 @@ interface ILiquidatorVault {
      * The liquidator will transfer the collected rewards from the vault to the liquidator separately
      * to the `collectRewards` call.
      *
-     * @param rewardTokens Lost of reward tokens that were collected.
+     * @param rewardTokens Array of reward tokens that were collected.
      * @param rewards The amount of reward tokens that were collected.
      * @param purchaseTokens The token to purchase for each of the rewards.
      */
