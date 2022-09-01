@@ -142,8 +142,11 @@ contract Convex3CrvLiquidatorVault is
     }
 
     /**
-     * @dev The base implementation assumes the donated token is the vault's asset token.
-     * This can be overridden in implementing contracts.
+     * @dev Converts donated tokens (DAI, USDC or USDT) to vault assets (3Crv) and shares.
+     * Transfers token from donor to vault.
+     * Adds the token to the Curve 3Pool to receive the vault asset (3Crv) in exchange.
+     * The resulting asset (3Crv) is added to the Curve Metapool.
+     * The Curve Metapool LP token, eg mUSD3Crv, is added to the Convex pool and staked.
      */
     function _convertTokens(address token, uint256 amount)
         internal
@@ -151,7 +154,7 @@ contract Convex3CrvLiquidatorVault is
         override
         returns (uint256 shares_, uint256 assets_)
     {
-        // validate token is in 3Pool and scale all amounts up to 18 decimals
+        // Validate token is in 3Pool and scale all amounts up to 18 decimals
         uint256[3] memory basePoolAmounts;
         uint256 scaledUsdAmount;
         if (token == DAI) {
@@ -178,6 +181,7 @@ contract Convex3CrvLiquidatorVault is
 
         // Slippage and flash loan protection
         // Convert DAI, USDC or USDT to Metapool LP tokens, eg musd3CRV.
+        // This method uses the Metapool's virtual price which can not be manipulated with a flash loan.
         uint256 minMetapoolTokens = Curve3CrvMetapoolCalculatorLibrary.convertUsdToMetaLp(
             metapool,
             scaledUsdAmount
@@ -185,6 +189,7 @@ contract Convex3CrvLiquidatorVault is
         // Then reduce the metapol LP tokens amount by the slippage. eg 10 basis points = 0.1%
         minMetapoolTokens = (minMetapoolTokens * (BASIS_SCALE - depositSlippage)) / BASIS_SCALE;
 
+        // Get vault's asset (3Crv) balance after adding token to Curve's 3Pool.
         assets_ = _asset.balanceOf(address(this));
         // Add asset (3Crv) to metapool with slippage protection.
         ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);

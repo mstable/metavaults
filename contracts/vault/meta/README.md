@@ -52,17 +52,37 @@ The amount of assets in each underlying vault is calculated using the share perc
 
 ![total assets](../../../docs/metaVaultTotalAssets.png)
 
+## Preview Deposit
+
+Uses the stored assets per share to convert deposited assets to minted vault shares.
+
+![redeem](../../../docs/metaVaultPreviewDeposit.png)
+
 ## Deposit
 
 ![deposit](../../../docs/metaVaultDeposit.png)
+
+## Preview Mint
+
+Uses the stored assets per share to convert the requested minted shares to the required assets to be deposited.
+
+![redeem](../../../docs/metaVaultPreviewMint.png)
 
 ## Mint
 
 ![mint](../../../docs/metaVaultMint.png)
 
+## Preview Withdraw
+
+![redeem](../../../docs/metaVaultPreviewWithdraw.png)
+
 ## Withdraw
 
 ![withdraw](../../../docs/metaVaultWithdraw.png)
+
+## Preview Redeem
+
+![redeem](../../../docs/metaVaultPreviewRedeem.png)
 
 ## Redeem
 
@@ -70,8 +90,17 @@ The amount of assets in each underlying vault is calculated using the share perc
 
 ## Settle
 
+The Vault Manager specifies the amounts of assets to be deposited into the underlying vaults. Not all the assets in the Meta Vault need to be deposited into the underlying vault. Some can be left as a cache for future withdrawals.
+Not all the underlying vaults need to receive deposits. The Vault Manager may deposit to just one underlying vault. Or they may deposit to all the underlying vaults.
+The amounts to each underlying vault can be different. It's at the discretion of the Vault Manager.
+
+Note the Vault Manager may be an externally owned account that is controlled by an automated off-chain process. It could also be an on-chain contract. Or it could be a multi-signature wallet.
+
+![settle](../../../docs/metaVaultSettle.png)
+
 ## Update Assets Per Share
 
+![Update Assets Per Share](../../../docs/metaVaultUpdateAssetsPerShare.png)
 
 ## Rebalance
 
@@ -83,6 +112,6 @@ Fork tests
 
 ```
 export NODE_URL=your provider url
-yarn test:file:fork ./test-fork/vault/Convex3CrvMetavault.spec.ts
+export DEBUG=mstable:*
 yarn test:file:fork ./test-fork/vault/savePlus.spec.ts
 ```

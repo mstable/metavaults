@@ -1,4 +1,5 @@
 import { resolveAddress } from "@tasks/utils"
+import { logger } from "@tasks/utils/logger"
 import { DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
 import { impersonateAccount } from "@utils/fork"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
@@ -12,10 +13,10 @@ import type { BigNumberish } from "ethers"
 import type { Account } from "types/common"
 import type { ICurve3Pool, IERC20Metadata } from "types/generated"
 
+const log = logger("test:Curve3Pool")
+
 const curveThreePoolAddress = resolveAddress("CurveThreePool")
 
-const underlyingOraclePriceDecimals = 8
-const underlyingOraclePriceScale = simpleToExactAmount(1, underlyingOraclePriceDecimals)
 const threeCrvTokenScale = simpleToExactAmount(1, 18)
 const threePoolVirtualPriceScale = simpleToExactAmount(1, 18)
 
@@ -98,24 +99,24 @@ describe("Curve 3Pool", async () => {
             .mul(threePoolVirtualPriceScale)
             .mul(threeCrvTokenScale)
             .div(threePoolVirtualPrice.mul(underlyingScale))
-        //console.log(`Deposit Slippage (Basis Points): ${depositSlippage}`)
+        log(`Deposit Slippage (Basis Points): ${depositSlippage}`)
         const minExpectedLpTokens = expectedLpTokens.mul(10000 - depositSlippage).div(10000)
-        //console.log(`Oracle minExpectedLpTokens ${minExpectedLpTokens.toString()}`)
+        log(`Oracle minExpectedLpTokens ${minExpectedLpTokens.toString()}`)
 
         const lpTokensBefore = await threeCrvToken.balanceOf(owner.address)
         await threePool.add_liquidity(getAssetArray(actualLiquidityAmount, underlyingIndex), 0)
         const lpTokensAfter = await threeCrvToken.balanceOf(owner.address)
 
         const receivedTokens = lpTokensAfter.sub(lpTokensBefore)
-        //console.log("ReceivedTokens: " + receivedTokens.toString())
+        log("ReceivedTokens: " + receivedTokens.toString())
 
         expect(receivedTokens, "Received Tokens").to.gt(minExpectedLpTokens)
 
-        //const differenceInActualAndExpected = basisPointDiff(receivedTokens, expectedLpTokens)
-        //console.log(`Actual vs Expected LpTokens (Basis Points): ${differenceInActualAndExpected.toString()}`)
+        const differenceInActualAndExpected = basisPointDiff(receivedTokens, expectedLpTokens)
+        log(`Actual vs Expected LpTokens (Basis Points): ${differenceInActualAndExpected.toString()}`)
 
-        //const differenceInActualvsMinimum = basisPointDiff(receivedTokens, minExpectedLpTokens)
-        //console.log(`Actual vs Minimum LpTokens (Basis Points): ${differenceInActualvsMinimum}`)
+        const differenceInActualvsMinimum = basisPointDiff(receivedTokens, minExpectedLpTokens)
+        log(`Actual vs Minimum LpTokens (Basis Points): ${differenceInActualvsMinimum}`)
         expect(receivedTokens).gte(minExpectedLpTokens)
     }
 
@@ -136,24 +137,24 @@ describe("Curve 3Pool", async () => {
             .mul(actualLpTokens)
             .mul(underlyingScale)
             .div(threePoolVirtualPriceScale.mul(threeCrvTokenScale))
-        //console.log(`Withdraw Slippage (Basis Points): ${withdrawSlippage}`)
+        log(`Withdraw Slippage (Basis Points): ${withdrawSlippage}`)
         const minExpectedAssets = expectedAssets.mul(10000 - withdrawSlippage).div(10000)
-        //console.log(`Oracle minExpectedAssets ${minExpectedAssets.toString()}`)
+        log(`Oracle minExpectedAssets ${minExpectedAssets.toString()}`)
 
         const assetsBefore = await underlying.balanceOf(owner.address)
         await threePool.remove_liquidity_one_coin(actualLpTokens, underlyingIndex, 0)
         const assetsAfter = await underlying.balanceOf(owner.address)
 
         const receivedAssets = assetsAfter.sub(assetsBefore)
-        //console.log("ReceivedAssets: " + receivedAssets.toString())
+        log("ReceivedAssets: " + receivedAssets.toString())
 
         expect(receivedAssets, "Received Assets").to.gt(minExpectedAssets)
 
-        //const differenceInActualAndExpected = basisPointDiff(receivedAssets, expectedAssets)
-        //console.log(`Actual vs Expected Assets (Basis Points): ${differenceInActualAndExpected.toString()}`)
+        const differenceInActualAndExpected = basisPointDiff(receivedAssets, expectedAssets)
+        log(`Actual vs Expected Assets (Basis Points): ${differenceInActualAndExpected.toString()}`)
 
-        //const differenceInActualvsMinimum = basisPointDiff(receivedAssets, minExpectedAssets)
-        //console.log(`Actual vs Minimum Assets (Basis Points): ${differenceInActualvsMinimum}`)
+        const differenceInActualvsMinimum = basisPointDiff(receivedAssets, minExpectedAssets)
+        log(`Actual vs Minimum Assets (Basis Points): ${differenceInActualvsMinimum}`)
         expect(receivedAssets).gte(minExpectedAssets)
     }
 
@@ -196,7 +197,7 @@ describe("Curve 3Pool", async () => {
                 break
         }
 
-        //console.log(` Underlying Balance in pool: ${mainBal.toNumber().toLocaleString("en-US")}`)
+        log(` Underlying Balance in pool: ${mainBal.toNumber().toLocaleString("en-US")}`)
         const assetsAdjusted = actualLiquidityAmount
             .mul(totalBal)
             .div(mainBal.add(othersBal.mul(curveFeeScale.sub(fee).add(curveFeeAdjust)).div(curveFeeScale)))
@@ -210,8 +211,8 @@ describe("Curve 3Pool", async () => {
         const receivedAssetsCurve = assetsAfterCurve.sub(assetsBeforeCurve)
 
         const differenceCurve = basisPointDiff(receivedAssetsCurve, actualLiquidityAmount)
-        //console.log(` Curve Actual vs Expected Assets (Basis Points): ${differenceCurve.toString()}`)
-        //console.log(` Received - Demanded Assets: ${receivedAssetsCurve.sub(actualLiquidityAmount).div(underlyingScale).toString()}`)
+        log(` Curve Actual vs Expected Assets (Basis Points): ${differenceCurve.toString()}`)
+        log(` Received - Demanded Assets: ${receivedAssetsCurve.sub(actualLiquidityAmount).div(underlyingScale).toString()}`)
         expect(receivedAssetsCurve, "Received Assets").to.gt(actualLiquidityAmount)
     }
 
@@ -281,8 +282,8 @@ describe("Curve 3Pool", async () => {
 
         const differenceCurve = basisPointDiff(receivedTokensCurve, actualLpTokens)
 
-        //console.log(` Curve Actual vs Expected LpTokens (Basis Points): ${differenceCurve.toString()}`)
-        //console.log(` Received - Demanded LpTokens: ${receivedTokensCurve.sub(actualLpTokens).div(threeCrvTokenScale).toString()}`)
+        log(` Curve Actual vs Expected LpTokens (Basis Points): ${differenceCurve.toString()}`)
+        log(` Received - Demanded LpTokens: ${receivedTokensCurve.sub(actualLpTokens).div(threeCrvTokenScale).toString()}`)
         expect(receivedTokensCurve, "Received Assets").to.gt(actualLpTokens)
     }
 

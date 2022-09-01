@@ -27,9 +27,13 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
     /// @notice Assets per share scaled to 26 decimal places.
     uint256 public assetsPerShare;
 
+    event AssetsPerShareUpdated(uint256 assetsPerShare, uint256 totalAssets);
+
     /// @dev initialize the starting assets per share.
     function _initialize() internal virtual {
         assetsPerShare = ASSETS_PER_SHARE_SCALE;
+
+        emit AssetsPerShareUpdated(ASSETS_PER_SHARE_SCALE, 0);
     }
 
     /**
@@ -106,5 +110,23 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         returns (uint256 shares)
     {
         shares = (assets * ASSETS_PER_SHARE_SCALE) / assetsPerShare;
+    }
+
+    /// @dev Updates assetPerShare of this vault to be expanted by the child contract to charge perf fees every assetPerShare update.
+    function _updateAssetPerShare() internal virtual {
+        uint256 totalShares = totalSupply();
+        // Update current assets per share
+        uint256 totalAssets = totalAssets();
+        assetsPerShare = totalShares > 0
+            ? (totalAssets * ASSETS_PER_SHARE_SCALE) / totalShares
+            : assetsPerShare;
+
+        emit AssetsPerShareUpdated(assetsPerShare, totalAssets);
+    }
+
+    /// @notice VaultManager can update the `assetPerShare`.
+    /// @dev to be called by watcher
+    function updateAssetPerShare() external onlyVaultManager {
+        _updateAssetPerShare();
     }
 }
