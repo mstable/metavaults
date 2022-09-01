@@ -44,7 +44,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
      * This can be called by anyone but it used by the Liquidator to transfer the
      * rewards tokens from this vault to the liquidator.
      *
-     * @param rewardTokens_ Lost of reward tokens that were collected.
+     * @param rewardTokens_ Array of reward tokens that were collected.
      * @param rewards The amount of reward tokens that were collected.
      * @param donateTokens The token the Liquidator swaps the reward tokens to.
      */
@@ -132,7 +132,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
     /**
      * @notice Returns the token that rewards must be swapped to before donating back to the vault.
      * @param _rewardToken The address of the reward token collected by the vault.
-     * @return token The addrss of the token that `_rewardToken` is to be swapped for.
+     * @return token The address of the token that `_rewardToken` is to be swapped for.
      * @dev Base implementation returns the vault asset.
      * This can be overridden to swap rewards for other tokens.
      */
