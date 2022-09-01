@@ -1168,9 +1168,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
             describe("after settlement", () => {
                 it("partial withdraw", async () => {
-                    await assertVaultWithdraw(staker1, daiToken, daiMetaVault, simpleToExactAmount(60000, DAI.decimals))
-                    await assertVaultWithdraw(staker1, usdcToken, usdcMetaVault, simpleToExactAmount(60000, USDC.decimals))
-                    await assertVaultWithdraw(staker1, usdtToken, usdtMetaVault, simpleToExactAmount(60000, USDT.decimals))
+                    await assertVaultWithdraw(staker1, daiToken, daiMetaVault, simpleToExactAmount(6000, DAI.decimals))
+                    await assertVaultWithdraw(staker1, usdcToken, usdcMetaVault, simpleToExactAmount(6000, USDC.decimals))
+                    await assertVaultWithdraw(staker1, usdtToken, usdtMetaVault, simpleToExactAmount(6000, USDT.decimals))
                 })
                 it("partial redeem", async () => {
                     await assertVaultRedeem(staker1, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
