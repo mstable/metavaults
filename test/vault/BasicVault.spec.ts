@@ -7,9 +7,9 @@ import { BasicVault__factory } from "types/generated"
 import { shouldBehaveLikeAbstractVault } from "../shared/AbstractVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
-import type { AbstractVault, BasicVault, MockERC20, MockNexus,VaultManagerRole } from "types/generated";
+import type { AbstractVault, BasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated"
 
-import type { AbstractVaultBehaviourContext} from "../shared/AbstractVault.behaviour";
+import type { AbstractVaultBehaviourContext } from "../shared/AbstractVault.behaviour"
 describe("BasicVault", () => {
     /* -- Declare shared variables -- */
     let sa: StandardAccounts
@@ -32,6 +32,10 @@ describe("BasicVault", () => {
         vault = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
         // Initialize test contract.
         await vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address)
+
+        // set balance or users for the test.
+        const assetBalance = await asset.balanceOf(sa.default.address)
+        asset.transfer(sa.alice.address, assetBalance.div(2))
     }
 
     before("init contract", async () => {

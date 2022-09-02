@@ -318,6 +318,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         address receiver,
         address owner
     ) external virtual override returns (uint256 shares) {
+        // TODO - why not revert?
         if (assets > 0) {
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultSharesBefore = metaVault.balanceOf(address(this));
@@ -473,9 +474,11 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         address _owner,
         uint256 _slippage
     ) internal virtual returns (uint256 assets) {
+        // TODO  - why not revert if shares are 0 ?
         if (_shares > 0) {
             uint256 allowed = allowance(_owner, msg.sender);
             if (msg.sender != _owner && allowed != type(uint256).max) {
+                require(_shares <= allowed, "Amount exceeds allowance");
                 _approve(_owner, msg.sender, allowed - _shares);
             }
 

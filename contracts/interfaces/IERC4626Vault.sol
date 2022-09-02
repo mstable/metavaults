@@ -142,7 +142,7 @@ interface IERC4626Vault is IERC20 {
      * Note It must be emitted when shares are withdrawn from the Vault in ERC4626.redeem or ERC4626.withdraw methods.
      */
     event Withdraw(
-        address indexed caller,
+        address indexed sender,
         address indexed receiver,
         address indexed owner,
         uint256 assets,

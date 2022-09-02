@@ -150,7 +150,7 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 shares) {
         _checkAndUpdateAssetPerShare(assets);
-        shares = _previewWithdraw(assets);
+        require((shares = _previewWithdraw(assets)) != 0, "Shares are zero");
 
         uint256 actualAssets = _sourceAssets(assets, shares);
         require(assets <= actualAssets, "not enough assets");
@@ -177,7 +177,7 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 assets) {
         _checkAndUpdateAssetPerShare(_convertToAssets(shares));
-        assets = _previewRedeem(shares);
+        require((assets = _previewRedeem(shares)) != 0, "Assets are zero");
 
         uint256 availableAssets = _sourceAssets(assets, shares);
         // take the smaller asset amount.
