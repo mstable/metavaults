@@ -70,7 +70,7 @@ const testTransferFrom = async (ctx: TokenContext, amount: BigNumberish) => {
 export function shouldBehaveLikeToken(ctx: TokenContext): void {
     let decimals: number
 
-    beforeEach(async () => {
+    before(async () => {
         decimals = await ctx.token.decimals()
     })
     it("token details", async () => {

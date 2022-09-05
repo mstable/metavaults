@@ -1,15 +1,16 @@
-import { assertBNClose, findContractEvent } from "@utils/assertions"
+import { assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { ZERO, ZERO_ADDRESS } from "@utils/constants"
-import { BN, simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 
 import type { StandardAccounts } from "@utils/machines"
+import type { BN } from "@utils/math"
 import type { ContractTransaction } from "ethers"
 import type { Account } from "types"
 import type { AbstractVault, ERC20, IERC20Metadata } from "types/generated"
 
-type Variance = BN | number
+type Variance = number | string
 type Variances = {
     deposit?: Variance
     mint?: Variance
@@ -20,11 +21,11 @@ type Variances = {
     maxWithdraw?: Variance
     maxRedeem?: Variance
 }
-
 export interface AbstractVaultBehaviourContext {
     vault: AbstractVault
     asset: ERC20 | IERC20Metadata
     sa: StandardAccounts
+    fixture: () => Promise<void>
     variances?: Variances
 }
 
@@ -38,22 +39,21 @@ interface Data {
     totalSupply: BN
     totalAssets: BN
 }
-
-export const defaultVariances = {
-    deposit: BN.from(1),
-    mint: BN.from(1),
-    withdraw: BN.from(1),
-    redeem: BN.from(1),
-    convertToShares: BN.from(1),
-    convertToAssets: BN.from(1),
-    maxWithdraw: BN.from(1),
-    maxRedeem: BN.from(1),
+const defaultVariances: Variances = {
+    deposit: 0,
+    mint: 0,
+    withdraw: 0,
+    redeem: 0,
+    convertToShares: 0,
+    convertToAssets: 0,
+    maxWithdraw: 0,
+    maxRedeem: 0,
 }
 
-const snapshotData = async (ctx: AbstractVaultBehaviourContext, caller: Account, receiver: Account, owner: Account): Promise<Data> => {
+const snapshotData = async (ctx: AbstractVaultBehaviourContext, sender: Account, receiver: Account, owner: Account): Promise<Data> => {
     return {
-        callerAssetBalance: await ctx.asset.balanceOf(caller.address),
-        callerSharesBalance: await ctx.vault.balanceOf(caller.address),
+        callerAssetBalance: await ctx.asset.balanceOf(sender.address),
+        callerSharesBalance: await ctx.vault.balanceOf(sender.address),
         receiverAssetBalance: await ctx.asset.balanceOf(receiver.address),
         receiverSharesBalance: await ctx.vault.balanceOf(receiver.address),
         ownerAssetBalance: await ctx.asset.balanceOf(owner.address),
@@ -66,103 +66,103 @@ const snapshotData = async (ctx: AbstractVaultBehaviourContext, caller: Account,
 async function expectWithdrawEvent(
     vault: AbstractVault,
     tx: ContractTransaction,
-    caller: Account,
+    sender: Account,
     receiver: Account,
     owner: Account,
     assets: BN,
     shares: BN,
-    variance: Variance = BN.from(10),
+    variance: Variance = 0,
 ) {
     const receipt = await tx.wait()
     await expect(tx).to.emit(vault, "Withdraw")
     const withdrawEvent = findContractEvent(receipt, vault.address, "Withdraw")
     expect(withdrawEvent).to.not.equal(undefined)
-    expect(withdrawEvent.args.sender, "sender").to.eq(caller.address)
+    expect(withdrawEvent.args.sender, "sender").to.eq(sender.address)
     expect(withdrawEvent.args.receiver, "receiver").to.eq(receiver.address)
     expect(withdrawEvent.args.owner, "owner").to.eq(owner.address)
-    assertBNClose(withdrawEvent.args.assets, assets, variance, "assets")
-    assertBNClose(withdrawEvent.args.shares, shares, variance, "shares")
+    assertBNClosePercent(withdrawEvent.args.assets, assets, variance, "assets")
+    assertBNClosePercent(withdrawEvent.args.shares, shares, variance, "shares")
 }
 async function expectDepositEvent(
     vault: AbstractVault,
     tx: ContractTransaction,
-    caller: Account,
+    sender: Account,
     receiver: Account,
     assets: BN,
     shares: BN,
-    variance: Variance = BN.from(10),
+    variance: Variance = 0,
 ) {
     // Verify events, storage change, balance, etc.
     const receipt = await tx.wait()
     await expect(tx).to.emit(vault, "Deposit")
     const event = findContractEvent(receipt, vault.address, "Deposit")
     expect(event).to.not.equal(undefined)
-    expect(event.args.sender, "sender").to.eq(caller.address)
+    expect(event.args.sender, "sender").to.eq(sender.address)
     expect(event.args.receiver, "receiver").to.eq(receiver.address)
-    assertBNClose(event.args.assets, assets, variance, "assets")
-    assertBNClose(event.args.shares, shares, variance, "shares")
+    assertBNClosePercent(event.args.assets, assets, variance, "assets")
+    assertBNClosePercent(event.args.shares, shares, variance, "shares")
 }
 
 async function expectRedeem(
     ctx: AbstractVaultBehaviourContext,
-    caller: Account,
+    sender: Account,
     receiver: Account,
     owner: Account,
     assets: BN,
     shares: BN,
 ) {
-    const dataBefore = await snapshotData(ctx, caller, receiver, owner)
-    const tx = await ctx.vault.connect(caller.signer)["redeem(uint256,address,address)"](shares, receiver.address, owner.address)
+    const dataBefore = await snapshotData(ctx, sender, receiver, owner)
+    const tx = await ctx.vault.connect(sender.signer)["redeem(uint256,address,address)"](shares, receiver.address, owner.address)
 
-    await expectWithdrawEvent(ctx.vault, tx, caller, receiver, owner, assets, shares, ctx.variances.redeem)
-    const data = await snapshotData(ctx, caller, receiver, owner)
+    await expectWithdrawEvent(ctx.vault, tx, sender, receiver, owner, assets, shares, ctx.variances.redeem)
+    const data = await snapshotData(ctx, sender, receiver, owner)
 
-    assertBNClose(await ctx.vault.maxRedeem(caller.address), data.callerSharesBalance, ctx.variances.maxRedeem, "max redeem")
-    assertBNClose(
-        await ctx.vault.maxWithdraw(caller.address),
+    assertBNClosePercent(await ctx.vault.maxRedeem(sender.address), data.callerSharesBalance, ctx.variances.maxRedeem, "max redeem")
+    assertBNClosePercent(
+        await ctx.vault.maxWithdraw(sender.address),
         await ctx.vault.convertToAssets(data.callerSharesBalance),
         ctx.variances.maxWithdraw,
         "max withdraw",
     )
-    assertBNClose(data.totalAssets, dataBefore.totalAssets.sub(assets), ctx.variances.redeem, "totalAssets")
-    assertBNClose(data.ownerSharesBalance, dataBefore.ownerSharesBalance.sub(shares), ctx.variances.redeem, "owner shares")
+    assertBNClosePercent(data.totalAssets, dataBefore.totalAssets.sub(assets), ctx.variances.redeem, "totalAssets")
+    assertBNClosePercent(data.ownerSharesBalance, dataBefore.ownerSharesBalance.sub(shares), ctx.variances.redeem, "owner shares")
     if (owner.address !== receiver.address) {
-        assertBNClose(data.ownerAssetBalance, dataBefore.ownerAssetBalance, ctx.variances.redeem, "owner assets")
+        assertBNClosePercent(data.ownerAssetBalance, dataBefore.ownerAssetBalance, ctx.variances.redeem, "owner assets")
     }
 
-    assertBNClose(data.receiverAssetBalance, dataBefore.receiverAssetBalance.add(assets), ctx.variances.redeem, "receiver assets")
+    assertBNClosePercent(data.receiverAssetBalance, dataBefore.receiverAssetBalance.add(assets), ctx.variances.redeem, "receiver assets")
 }
 
 async function expectWithdraw(
     ctx: AbstractVaultBehaviourContext,
-    caller: Account,
+    sender: Account,
     receiver: Account,
     owner: Account,
     assets: BN,
     shares: BN,
 ) {
-    const dataBefore = await snapshotData(ctx, caller, receiver, owner)
-    const tx = await ctx.vault.connect(caller.signer).withdraw(assets, receiver.address, owner.address)
-    await expectWithdrawEvent(ctx.vault, tx, caller, receiver, owner, assets, shares, ctx.variances.withdraw)
-    const data = await snapshotData(ctx, caller, receiver, owner)
+    const dataBefore = await snapshotData(ctx, sender, receiver, owner)
+    const tx = await ctx.vault.connect(sender.signer).withdraw(assets, receiver.address, owner.address)
+    await expectWithdrawEvent(ctx.vault, tx, sender, receiver, owner, assets, shares, ctx.variances.withdraw)
+    const data = await snapshotData(ctx, sender, receiver, owner)
 
-    assertBNClose(await ctx.vault.maxRedeem(caller.address), data.callerSharesBalance, ctx.variances.maxRedeem, "max redeem")
-    assertBNClose(
-        await ctx.vault.maxWithdraw(caller.address),
+    assertBNClosePercent(await ctx.vault.maxRedeem(sender.address), data.callerSharesBalance, ctx.variances.maxRedeem, "max redeem")
+    assertBNClosePercent(
+        await ctx.vault.maxWithdraw(sender.address),
         await ctx.vault.convertToAssets(data.callerSharesBalance),
         ctx.variances.maxWithdraw,
         "max withdraw",
     )
-    assertBNClose(data.totalAssets, dataBefore.totalAssets.sub(assets), ctx.variances.withdraw, "totalAssets")
-    assertBNClose(data.ownerSharesBalance, dataBefore.ownerSharesBalance.sub(shares), ctx.variances.withdraw, "owner shares")
+    assertBNClosePercent(data.totalAssets, dataBefore.totalAssets.sub(assets), ctx.variances.withdraw, "totalAssets")
+    assertBNClosePercent(data.ownerSharesBalance, dataBefore.ownerSharesBalance.sub(shares), ctx.variances.withdraw, "owner shares")
     if (owner.address !== receiver.address) {
-        assertBNClose(data.ownerAssetBalance, dataBefore.ownerAssetBalance, ctx.variances.withdraw, "owner assets")
+        assertBNClosePercent(data.ownerAssetBalance, dataBefore.ownerAssetBalance, ctx.variances.withdraw, "owner assets")
     }
 
-    assertBNClose(data.receiverAssetBalance, dataBefore.receiverAssetBalance.add(assets), ctx.variances.withdraw, "receiver assets")
+    assertBNClosePercent(data.receiverAssetBalance, dataBefore.receiverAssetBalance.add(assets), ctx.variances.withdraw, "receiver assets")
 }
 
-export function shouldBehaveLikeAbstractVault(ctx: AbstractVaultBehaviourContext): void {
+export function shouldBehaveLikeAbstractVault(ctx: () => AbstractVaultBehaviourContext): void {
     let assetsAmount: BN
     let sharesAmount: BN
     let alice: Account
@@ -173,315 +173,374 @@ export function shouldBehaveLikeAbstractVault(ctx: AbstractVaultBehaviourContext
     let totalSupply = ZERO
     let totalAssets = ZERO
     let variances: Variances
+    let decimals: number
 
     beforeEach("init", async () => {
-        assetsAmount = simpleToExactAmount(1, await (ctx.asset as unknown as IERC20Metadata).decimals())
-        sharesAmount = simpleToExactAmount(1, await (ctx.asset as unknown as IERC20Metadata).decimals())
-        alice = ctx.sa.alice
-        bob = ctx.sa.bob
-        aliceAssetBalance = await ctx.asset.balanceOf(alice.address)
-        aliceSharesBalance = await ctx.vault.balanceOf(alice.address)
-        totalSupply = await ctx.vault.totalSupply()
-        totalAssets = await ctx.vault.totalAssets()
-        variances = { ...defaultVariances, ...ctx.variances }
-        ctx.variances = variances
+        const { vault, asset, sa } = ctx()
+
+        decimals = await (asset as unknown as IERC20Metadata).decimals()
+
+        assetsAmount = simpleToExactAmount(1, decimals)
+        sharesAmount = simpleToExactAmount(1, decimals)
+        alice = sa.alice
+        bob = sa.bob
+        aliceAssetBalance = await asset.balanceOf(alice.address)
+        aliceSharesBalance = await vault.balanceOf(alice.address)
+        totalSupply = await vault.totalSupply()
+        totalAssets = await vault.totalAssets()
+        variances = { ...defaultVariances, ...ctx().variances }
+        ctx().variances = variances
     })
-    it("should properly store valid arguments", async () => {
-        expect(await ctx.vault.asset(), "asset").to.eq(ctx.asset.address)
-    })
-    it("initial values", async () => {
-        expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(0)
-        expect(await ctx.vault.totalSupply(), "totalSupply").to.eq(0)
+    describe("store values", async () => {
+        it("should properly store valid arguments", async () => {
+            const { vault, asset } = ctx()
+
+            expect(await vault.asset(), "asset").to.eq(asset.address)
+        })
+        it("initial values", async () => {
+            const { vault } = ctx()
+
+            expect(await vault.totalAssets(), "totalAssets").to.eq(0)
+            expect(await vault.totalSupply(), "totalSupply").to.eq(0)
+        })
     })
     describe("deposit", async () => {
+        before("initial deposits", async () => {
+            const { vault, asset } = ctx()
+            // initial deposit so all preview functions take into account liquidity
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, assetsAmount)
+            }
+            await await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+        })
         it("should deposit assets to the vault", async () => {
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+            const { vault, asset } = ctx()
+
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
 
-            const shares = await ctx.vault.previewDeposit(assetsAmount)
+            const shares = await vault.previewDeposit(assetsAmount)
 
-            expect(await ctx.vault.maxDeposit(alice.address), "max deposit").to.eq(ethers.constants.MaxUint256)
-            expect(await ctx.vault.maxMint(alice.address), "max mint").to.eq(ethers.constants.MaxUint256)
+            expect(await vault.maxDeposit(alice.address), "max deposit").to.eq(ethers.constants.MaxUint256)
+            expect(await vault.maxMint(alice.address), "max mint").to.eq(ethers.constants.MaxUint256)
 
-            expect(await ctx.vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
-            expect(await ctx.vault.maxWithdraw(alice.address), "max withdraw").to.eq(await ctx.vault.convertToAssets(aliceSharesBalance))
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
-            assertBNClose(await ctx.vault.convertToShares(assetsAmount), shares, variances.convertToShares, "convertToShares")
+            expect(await vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance),
+                variances.convertToAssets,
+                "max withdraw",
+            )
+
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+            assertBNClosePercent(await vault.convertToShares(assetsAmount), shares, variances.convertToShares, "convertToShares")
 
             // Test
-            const tx = await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            const tx = await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
             // Verify events, storage change, balance, etc.
-            await expectDepositEvent(ctx.vault, tx, alice, alice, assetsAmount, shares, variances.deposit)
+            await expectDepositEvent(vault, tx, alice, alice, assetsAmount, shares, variances.deposit)
             // expect alice balance to increase
-            expect(await ctx.asset.balanceOf(alice.address), "asset balance").to.eq(aliceAssetBalance.sub(assetsAmount))
-            expect(await ctx.vault.balanceOf(alice.address), "shares balance").to.eq(aliceSharesBalance.add(shares))
-            assertBNClose(await ctx.vault.totalAssets(), totalAssets.add(assetsAmount), variances.convertToShares, "totalAssets")
+            expect(await asset.balanceOf(alice.address), "asset balance").to.eq(aliceAssetBalance.sub(assetsAmount))
+            expect(await vault.balanceOf(alice.address), "shares balance").to.eq(aliceSharesBalance.add(shares))
+            assertBNClosePercent(await vault.totalAssets(), totalAssets.add(assetsAmount), variances.convertToShares, "totalAssets")
         })
-        it("fails if deposits zero", async () => {
-            await expect(ctx.vault.connect(ctx.sa.default.signer)["deposit(uint256,address)"](0, alice.address)).to.be.revertedWith(
+        xit("fails if deposits zero", async () => {
+            const { vault, sa } = ctx()
+
+            await expect(vault.connect(sa.default.signer)["deposit(uint256,address)"](0, alice.address)).to.be.revertedWith(
                 "Shares are zero",
             )
         })
         it("fails if receiver is zero", async () => {
+            const { vault, sa } = ctx()
+
             // openzeppelin message "ERC20: mint to the zero address"
-            await expect(ctx.vault.connect(ctx.sa.default.signer)["deposit(uint256,address)"](10, ZERO_ADDRESS)).to.be.reverted
+            await expect(vault.connect(sa.default.signer)["deposit(uint256,address)"](10, ZERO_ADDRESS)).to.be.reverted
         })
         it("preview deposit if assets is zero", async () => {
-            expect(await ctx.vault.connect(ctx.sa.default.signer).previewDeposit(ZERO)).to.eq(ZERO)
+            const { vault, sa } = ctx()
+
+            expect(await vault.connect(sa.default.signer).previewDeposit(ZERO)).to.eq(ZERO)
         })
     })
     describe("mint", async () => {
         it("should mint shares to the vault", async () => {
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+            const { vault, asset } = ctx()
+
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
-            const assets = await ctx.vault.previewMint(sharesAmount)
-            const shares = await ctx.vault.previewDeposit(assetsAmount)
+            const assets = await vault.previewMint(sharesAmount)
+            const shares = await vault.previewDeposit(assetsAmount)
 
-            expect(await ctx.vault.maxDeposit(alice.address), "max deposit").to.eq(ethers.constants.MaxUint256)
-            expect(await ctx.vault.maxMint(alice.address), "max mint").to.eq(ethers.constants.MaxUint256)
+            expect(await vault.maxDeposit(alice.address), "max deposit").to.eq(ethers.constants.MaxUint256)
+            expect(await vault.maxMint(alice.address), "max mint").to.eq(ethers.constants.MaxUint256)
+            expect(await vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
+            // expect(await vault.maxWithdraw(alice.address), "max withdraw").to.eq(assetsAmount)
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+            assertBNClosePercent(await vault.convertToShares(assetsAmount), shares, variances.convertToShares, "convertToShares")
+            assertBNClosePercent(await vault.convertToAssets(sharesAmount), assets, variances.convertToAssets, "convertToAssets")
 
-            expect(await ctx.vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
-            // expect(await ctx.vault.maxWithdraw(alice.address), "max withdraw").to.eq(assetsAmount)
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
-            assertBNClose(await ctx.vault.convertToShares(assets), shares, variances.convertToShares, "convertToShares")
-            assertBNClose(await ctx.vault.convertToAssets(shares), assets, variances.convertToAssets, "convertToAssets")
-
-            const tx = await ctx.vault.connect(alice.signer)["mint(uint256,address)"](shares, alice.address)
+            const tx = await vault.connect(alice.signer)["mint(uint256,address)"](sharesAmount, alice.address)
             // Verify events, storage change, balance, etc.
-            expectDepositEvent(ctx.vault, tx, alice, alice, assets, shares, variances.deposit)
-
-            expect(await ctx.vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance.add(shares))
-            assertBNClose(
-                await ctx.vault.maxWithdraw(alice.address),
-                await ctx.vault.convertToAssets(aliceSharesBalance.add(shares)),
+            expectDepositEvent(vault, tx, alice, alice, assets, sharesAmount, variances.deposit)
+            expect(await vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance.add(sharesAmount))
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance.add(sharesAmount)),
                 variances.maxWithdraw,
                 "max withdraw",
             )
 
-            assertBNClose(await ctx.vault.totalAssets(), totalAssets.add(assets), variances.mint, "totalAssets")
-            expect(await ctx.vault.totalSupply(), "totalSupply").to.eq(totalSupply.add(shares))
+            assertBNClosePercent(await vault.totalAssets(), totalAssets.add(assets), variances.mint, "totalAssets")
+            expect(await vault.totalSupply(), "totalSupply").to.eq(totalSupply.add(sharesAmount))
         })
-        it("fails if mint zero", async () => {
-            await expect(ctx.vault.connect(ctx.sa.default.signer)["mint(uint256,address)"](0, alice.address)).to.be.revertedWith(
-                "Assets are zero",
-            )
+        xit("fails if mint zero", async () => {
+            const { vault, sa } = ctx()
+
+            await expect(vault.connect(sa.default.signer)["mint(uint256,address)"](0, alice.address)).to.be.revertedWith("Assets are zero")
         })
         it("fails if receiver is zero", async () => {
+            const { vault, sa } = ctx()
+
             // openzeppelin message "ERC20: mint to the zero address"
-            await expect(ctx.vault.connect(ctx.sa.default.signer)["mint(uint256,address)"](10, ZERO_ADDRESS)).to.be.reverted
+            await expect(vault.connect(sa.default.signer)["mint(uint256,address)"](10, ZERO_ADDRESS)).to.be.reverted
         })
     })
     describe("withdraw", async () => {
-        it("from the vault, same caller, receiver and owner", async () => {
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+        it("from the vault, same sender, receiver and owner", async () => {
+            const { vault, asset } = ctx()
+
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
-            assertBNClose(
-                await ctx.vault.maxWithdraw(alice.address),
-                await ctx.vault.convertToAssets(aliceSharesBalance),
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance),
                 variances.maxWithdraw,
                 "max withdraw",
             )
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
 
             // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
-            const shares = await ctx.vault.previewWithdraw(assetsAmount)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            const shares = await vault.previewWithdraw(assetsAmount)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectWithdraw(ctx, alice, alice, alice, assetsAmount, shares)
+            await expectWithdraw(ctx(), alice, alice, alice, assetsAmount, shares)
         })
-        it("from the vault, caller != receiver and caller = owner", async () => {
-            // Alice deposits assets (owner), Alice withdraws assets (caller), Bob receives assets (receiver)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, assetsAmount)
+        it("from the vault, sender != receiver and sender = owner", async () => {
+            const { vault, asset } = ctx()
+
+            // Alice deposits assets (owner), Alice withdraws assets (sender), Bob receives assets (receiver)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, assetsAmount)
             }
-            assertBNClose(
-                await ctx.vault.maxWithdraw(alice.address),
-                await ctx.vault.convertToAssets(aliceSharesBalance),
-                variances.maxWithdraw,
-                "max withdraw",
-            )
-
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
-
-            // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
-            expect(await ctx.vault.maxWithdraw(alice.address), "max withdraw").to.gt(0)
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.gt(totalAssets)
-            const shares = await ctx.vault.previewWithdraw(assetsAmount)
-            assertBNClose(await ctx.vault.maxRedeem(alice.address), aliceSharesBalance.add(shares), variances.maxRedeem, "max redeem")
-
-            aliceAssetBalance = await ctx.asset.balanceOf(alice.address)
-
-            // Test
-            // Verify events, storage change, balance, etc.
-            await expectWithdraw(ctx, alice, bob, alice, assetsAmount, shares)
-        })
-        it("from the vault caller != owner, infinite approval", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
-            }
-            await ctx.vault.connect(alice.signer).approve(bob.address, ethers.constants.MaxUint256)
-
-            assertBNClose(
-                await ctx.vault.maxWithdraw(alice.address),
-                await ctx.vault.convertToAssets(aliceSharesBalance),
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance),
                 variances.maxWithdraw,
                 "max withdraw",
             )
 
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
 
             // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
-            expect(await ctx.asset.balanceOf(alice.address), "owner assets").to.eq(aliceAssetBalance.sub(assetsAmount))
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            expect(await vault.maxWithdraw(alice.address), "max withdraw").to.gt(0)
+            expect(await vault.totalAssets(), "totalAssets").to.gt(totalAssets)
+            const shares = await vault.previewWithdraw(assetsAmount)
+            assertBNClosePercent(await vault.maxRedeem(alice.address), aliceSharesBalance.add(shares), variances.maxRedeem, "max redeem")
 
-            const shares = await ctx.vault.previewWithdraw(assetsAmount)
+            aliceAssetBalance = await asset.balanceOf(alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectWithdraw(ctx, bob, bob, alice, assetsAmount, shares)
+            await expectWithdraw(ctx(), alice, bob, alice, assetsAmount, shares)
         })
-        it("from the vault, caller != receiver and caller != owner", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+        it("from the vault sender != owner, infinite approval", async () => {
+            const { vault, asset } = ctx()
+
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
+            }
+            await vault.connect(alice.signer).approve(bob.address, ethers.constants.MaxUint256)
+
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance),
+                variances.maxWithdraw,
+                "max withdraw",
+            )
+
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+
+            // Given that
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            expect(await asset.balanceOf(alice.address), "owner assets").to.eq(aliceAssetBalance.sub(assetsAmount))
+
+            const shares = await vault.previewWithdraw(assetsAmount)
+
+            // Test
+            // Verify events, storage change, balance, etc.
+            await expectWithdraw(ctx(), bob, bob, alice, assetsAmount, shares)
+        })
+        it("from the vault, sender != receiver and sender != owner", async () => {
+            const { vault, asset } = ctx()
+
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
 
-            assertBNClose(
-                await ctx.vault.maxWithdraw(alice.address),
-                await ctx.vault.convertToAssets(aliceSharesBalance),
+            assertBNClosePercent(
+                await vault.maxWithdraw(alice.address),
+                await vault.convertToAssets(aliceSharesBalance),
                 variances.maxWithdraw,
                 "max withdraw",
             ) //maxWithdraw
-            expect(await ctx.vault.totalAssets(), "totalAssets").to.eq(totalAssets)
+            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssets)
 
             // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            const shares = await ctx.vault.previewWithdraw(assetsAmount)
-            await ctx.vault.connect(alice.signer).approve(bob.address, shares)
-            await expectWithdraw(ctx, bob, bob, alice, assetsAmount, shares)
+            const shares = await vault.previewWithdraw(assetsAmount)
+            await vault.connect(alice.signer).approve(bob.address, shares)
+            await expectWithdraw(ctx(), bob, bob, alice, assetsAmount, shares)
         })
-        it("fails if withdraw zero", async () => {
-            await expect(ctx.vault.connect(ctx.sa.default.signer).withdraw(0, alice.address, alice.address)).to.be.revertedWith(
-                "Shares are zero",
-            )
+        xit("fails if withdraw zero", async () => {
+            const { vault, sa } = ctx()
+
+            await expect(vault.connect(sa.default.signer).withdraw(0, alice.address, alice.address)).to.be.revertedWith("Shares are zero")
         })
         // it("fails if receiver is zero", async () => {
-        //     await expect(ctx.vault.connect(ctx.sa.default.signer).withdraw(10, ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith(
+        //     await expect(vault.connect(sa.default.signer).withdraw(10, ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith(
         //         "Invalid beneficiary address",
         //     )
         // })
-        it("fail if caller != owner and it has not allowance", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
-            }
-            await ctx.vault.connect(alice.signer).approve(bob.address, 0)
+        it("fail if sender != owner and it has not allowance", async () => {
+            const { vault, asset } = ctx()
 
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
+            }
+            await vault.connect(alice.signer).approve(bob.address, 0)
+
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
             // Test
-            const tx = ctx.vault.connect(bob.signer).withdraw(assetsAmount, bob.address, alice.address)
+            const tx = vault.connect(bob.signer).withdraw(assetsAmount, bob.address, alice.address)
             // Verify events, storage change, balance, etc.
             await expect(tx).to.be.revertedWith("Amount exceeds allowance")
         })
     })
     describe("redeem", async () => {
         beforeEach("initial state", async () => {
-            aliceAssetBalance = await ctx.asset.balanceOf(alice.address)
-            aliceSharesBalance = await ctx.vault.balanceOf(alice.address)
-            totalSupply = await ctx.vault.totalSupply()
-            totalAssets = await ctx.vault.totalAssets()
-        })
-        it("from the vault, same caller, receiver and owner", async () => {
-            const assets = await ctx.vault.previewRedeem(sharesAmount)
+            const { vault, asset } = ctx()
 
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assets)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+            aliceAssetBalance = await asset.balanceOf(alice.address)
+            aliceSharesBalance = await vault.balanceOf(alice.address)
+            totalSupply = await vault.totalSupply()
+            totalAssets = await vault.totalAssets()
+        })
+        it("from the vault, same sender, receiver and owner", async () => {
+            const { vault, asset } = ctx()
+
+            const assets = await vault.previewRedeem(sharesAmount)
+
+            if ((await asset.allowance(alice.address, vault.address)).lt(assets)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
 
-            expect(await ctx.vault.maxRedeem(alice.address), "max maxRedeem").to.eq(aliceSharesBalance)
+            expect(await vault.maxRedeem(alice.address), "max maxRedeem").to.eq(aliceSharesBalance)
 
             // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectRedeem(ctx, alice, alice, alice, assets, sharesAmount)
+            await expectRedeem(ctx(), alice, alice, alice, assets, sharesAmount)
         })
-        it("from the vault, caller != receiver and caller = owner", async () => {
-            // Alice deposits assets (owner), Alice withdraws assets (caller), Bob receives assets (receiver)
+        it("from the vault, sender != receiver and sender = owner", async () => {
+            const { vault, asset } = ctx()
 
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assetsAmount)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, assetsAmount)
+            // Alice deposits assets (owner), Alice withdraws assets (sender), Bob receives assets (receiver)
+
+            if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                await asset.connect(alice.signer).approve(vault.address, assetsAmount)
             }
-            const assets = await ctx.vault.previewRedeem(sharesAmount)
+            const assets = await vault.previewRedeem(sharesAmount)
 
-            expect(await ctx.vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
+            expect(await vault.maxRedeem(alice.address), "max redeem").to.eq(aliceSharesBalance)
 
             // Given that
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectRedeem(ctx, alice, bob, alice, assets, sharesAmount)
+            await expectRedeem(ctx(), alice, bob, alice, assets, sharesAmount)
         })
-        it("from the vault caller != owner, infinite approval", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
+        it("from the vault sender != owner, infinite approval", async () => {
+            const { vault, asset } = ctx()
 
-            const assets = await ctx.vault.previewRedeem(sharesAmount)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assets)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+
+            const assets = await vault.previewRedeem(sharesAmount)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assets)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
-            await ctx.vault.connect(alice.signer).approve(bob.address, sharesAmount)
+            await vault.connect(alice.signer).approve(bob.address, sharesAmount)
 
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectRedeem(ctx, bob, bob, alice, assetsAmount, sharesAmount)
+            await expectRedeem(ctx(), bob, bob, alice, assets, sharesAmount)
         })
-        it("from the vault, caller != receiver and caller != owner", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
-            const assets = await ctx.vault.previewRedeem(sharesAmount)
-            if ((await ctx.asset.allowance(alice.address, ctx.vault.address)).lt(assets)) {
-                await ctx.asset.connect(alice.signer).approve(ctx.vault.address, ethers.constants.MaxUint256)
+        it("from the vault, sender != receiver and sender != owner", async () => {
+            const { vault, asset } = ctx()
+
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+            const assets = await vault.previewRedeem(sharesAmount)
+            if ((await asset.allowance(alice.address, vault.address)).lt(assets)) {
+                await asset.connect(alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             }
-            await ctx.vault.connect(alice.signer).approve(bob.address, sharesAmount)
+            await vault.connect(alice.signer).approve(bob.address, sharesAmount)
 
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
 
             // Test
             // Verify events, storage change, balance, etc.
-            await expectRedeem(ctx, bob, bob, alice, assets, sharesAmount)
+            await expectRedeem(ctx(), bob, bob, alice, assets, sharesAmount)
         })
-        it("fails if deposits zero", async () => {
+        xit("fails if deposits zero", async () => {
+            const { vault, sa } = ctx()
+
             await expect(
-                ctx.vault.connect(ctx.sa.default.signer)["redeem(uint256,address,address)"](0, alice.address, alice.address),
+                vault.connect(sa.default.signer)["redeem(uint256,address,address)"](0, alice.address, alice.address),
             ).to.be.revertedWith("Assets are zero")
         })
         // it("fails if receiver is zero", async () => {
         //     await expect(
-        //         ctx.vault.connect(ctx.sa.default.signer)["redeem(uint256,address,address)"](10, ZERO_ADDRESS, ZERO_ADDRESS),
+        //         vault.connect(sa.default.signer)["redeem(uint256,address,address)"](10, ZERO_ADDRESS, ZERO_ADDRESS),
         //     ).to.be.revertedWith("Invalid beneficiary address")
         // })
-        it("fail if caller != owner and it has not allowance", async () => {
-            // Alice deposits assets (owner), Bob withdraws assets (caller), Bob receives assets (receiver)
-            await ctx.vault.connect(alice.signer).approve(bob.address, 0)
-            const assets = await ctx.vault.previewRedeem(sharesAmount)
+        it("fail if sender != owner and it has not allowance", async () => {
+            const { vault } = ctx()
 
-            await ctx.vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
+            // Alice deposits assets (owner), Bob withdraws assets (sender), Bob receives assets (receiver)
+            await vault.connect(alice.signer).approve(bob.address, 0)
+            const assets = await vault.previewRedeem(sharesAmount)
+
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assets, alice.address)
 
             // Test
-            const tx = ctx.vault.connect(bob.signer)["redeem(uint256,address,address)"](sharesAmount, bob.address, alice.address)
+            const tx = vault.connect(bob.signer)["redeem(uint256,address,address)"](sharesAmount, bob.address, alice.address)
             // Verify events, storage change, balance, etc.
             await expect(tx).to.be.revertedWith("Amount exceeds allowance")
         })

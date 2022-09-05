@@ -53,8 +53,9 @@ describe("BasicVault", () => {
                 vault: vault as unknown as AbstractVault,
                 asset: asset,
                 sa: sa,
+                fixture: async () => {},
             }
-            shouldBehaveLikeAbstractVault(ctxVault)
+            shouldBehaveLikeAbstractVault(() => ctxVault)
         })
         /**
              it("should behave like Initializable ", async () => {
