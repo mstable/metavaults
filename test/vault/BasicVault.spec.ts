@@ -40,23 +40,20 @@ describe("BasicVault", () => {
 
     before("init contract", async () => {
         await setup()
+        ctxVault = {
+            vault: vault as unknown as AbstractVault,
+            asset: asset,
+            sa: sa,
+            fixture: async () => {},
+        }
     })
     describe("behaviors", async () => {
-        it("should behave like VaultManagerRole ", async () => {
-            shouldBehaveLikeVaultManagerRole({
-                vaultManagerRole: vault as unknown as VaultManagerRole,
-                sa: sa,
-            })
-        })
-        it("should behave like AbstractVault ", async () => {
-            ctxVault = {
-                vault: vault as unknown as AbstractVault,
-                asset: asset,
-                sa: sa,
-                fixture: async () => {},
-            }
-            shouldBehaveLikeAbstractVault(() => ctxVault)
-        })
+        shouldBehaveLikeVaultManagerRole(() => ({
+            vaultManagerRole: vault as VaultManagerRole,
+            sa,
+        }))
+
+        shouldBehaveLikeAbstractVault(() => ctxVault)
         /**
              it("should behave like Initializable ", async () => {
                      await shouldBehaveLikeInitializable(ctx)

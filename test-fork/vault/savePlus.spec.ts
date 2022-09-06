@@ -667,6 +667,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         const rewardsAddress = [CRV.address.toLowerCase(), CVX.address.toLowerCase()]
         // When collects rewards from all vaults
         const tx = await liquidator.collectRewards(vaults)
+        await logTxDetails(tx, "collectRewards")
 
         // Then rewards are transfer to the liquidator
         const receipt = await tx.wait()
@@ -710,10 +711,12 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         // When Swap CRV for DAI
         let tx = await liquidator.connect(governor.signer).swap(CRV.address, DAI.address, 0, "0x")
+        await logTxDetails(tx, "swap CRV for DAI")
         await expect(tx).to.emit(liquidator, "Swapped")
 
         // When Swap CVX for DAI
         tx = await liquidator.connect(governor.signer).swap(CVX.address, DAI.address, 0, "0x")
+        await logTxDetails(tx, "swap CVX for DAI")
         await expect(tx).to.emit(liquidator, "Swapped")
 
         // Then
@@ -726,7 +729,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
     }
     const assertLiquidatorDonateTokens = async (assets: IERC20Metadata[], vaultsAddress: string[]): Promise<ContractTransaction> => {
         const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(deployer, vaultsAddress)
-        const tx = liquidator.connect(governor.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
+        const tx = await liquidator.connect(governor.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
+        await logTxDetails(tx, "donateTokens")
+
         for (let i = 0; i < vaultsAddress.length; i++) {
             await expect(tx, `asset ${i}`).to.emit(assets[i], "Transfer")
         }
