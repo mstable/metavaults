@@ -133,9 +133,10 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         it("should behave like ImmutableModule ", async () => {
             shouldBehaveLikeModule({ module: vault, sa })
         })
-        it("should behave like VaultManagerRole", async () => {
-            shouldBehaveLikeVaultManagerRole({ vaultManagerRole: vault as unknown as VaultManagerRole, sa })
-        })
+        shouldBehaveLikeVaultManagerRole(() => ({
+            vaultManagerRole: vault as unknown as VaultManagerRole,
+            sa,
+        }))
         describe("should behave like ERC20", async () => {
             const tokenContext: Partial<TokenContext> = {
                 maxAmount: MAX_UINT256,
