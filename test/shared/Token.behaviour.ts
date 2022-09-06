@@ -8,6 +8,7 @@ import type { IERC20, InitializableTokenDetails } from "types/generated"
 export type TokenERC20 = IERC20 & InitializableTokenDetails
 
 export interface TokenContext {
+    decimals: number
     token: TokenERC20
     sender: Account
     spender: Account
@@ -67,141 +68,152 @@ const testTransferFrom = async (ctx: TokenContext, amount: BigNumberish) => {
     )
 }
 
-export function shouldBehaveLikeToken(ctx: TokenContext): void {
-    let decimals: number
-
-    beforeEach(async () => {
-        decimals = await ctx.token.decimals()
-    })
+export function shouldBehaveLikeToken(ctx: () => TokenContext): void {
     it("token details", async () => {
-        expect(await ctx.token.name(), "name").to.not.eq(undefined)
-        expect(await ctx.token.symbol(), "symbol").to.not.eq(undefined)
-        expect(await ctx.token.decimals(), "decimals >= 0").to.gte(0)
-        expect(await ctx.token.decimals(), "decimals <= 30").to.lt(30)
+        const { token } = ctx()
+        expect(await token.name(), "name").to.not.eq(undefined)
+        expect(await token.symbol(), "symbol").to.not.eq(undefined)
+        expect(await token.decimals(), "decimals >= 0").to.gte(0)
+        expect(await token.decimals(), "decimals <= 30").to.lt(30)
     })
     describe("sender should transfer to recipient", () => {
         describe("without allowance", () => {
             beforeEach(async () => {
-                await ctx.token.connect(ctx.sender.signer).approve(ctx.recipient.address, 0)
+                const { recipient, sender, token } = ctx()
+                await token.connect(sender.signer).approve(recipient.address, 0)
             })
             it("zero amount", async () => {
-                await testTransfer(ctx, 0)
+                await testTransfer(ctx(), 0)
             })
             it("smallest unit", async () => {
-                await testTransfer(ctx, 1)
+                await testTransfer(ctx(), 1)
             })
             it("one whole unit", async () => {
+                const { decimals } = ctx()
                 const amount = decimals > 0 ? simpleToExactAmount(1, decimals) : 1
-                await testTransfer(ctx, amount)
+                await testTransfer(ctx(), amount)
             })
             it("all sender's tokens", async () => {
-                await testTransfer(ctx, await ctx.token.balanceOf(ctx.sender.address))
+                const { sender, token } = ctx()
+                await testTransfer(ctx(), await token.balanceOf(sender.address))
             })
         })
         describe("with allowance", () => {
             beforeEach(async () => {
-                const allowanceAmount = await ctx.token.balanceOf(ctx.sender.address)
-                await ctx.token.connect(ctx.sender.signer).approve(ctx.recipient.address, allowanceAmount)
+                const { recipient, sender, token } = ctx()
+                const allowanceAmount = await token.balanceOf(sender.address)
+                await token.connect(sender.signer).approve(recipient.address, allowanceAmount)
             })
             it("zero", async () => {
-                await testTransfer(ctx, 0)
+                await testTransfer(ctx(), 0)
             })
             it("smallest unit", async () => {
-                await testTransfer(ctx, 1)
+                await testTransfer(ctx(), 1)
             })
             it("one whole unit", async () => {
+                const { decimals } = ctx()
                 const amount = decimals > 0 ? simpleToExactAmount(1, decimals) : 1
-                await testTransfer(ctx, amount)
+                await testTransfer(ctx(), amount)
             })
             it("all sender's tokens", async () => {
-                await testTransfer(ctx, await ctx.token.balanceOf(ctx.sender.address))
+                const { sender, token } = ctx()
+                await testTransfer(ctx(), await token.balanceOf(sender.address))
             })
         })
     })
     describe("sender should fail to transfer with insufficient balance", async () => {
         it("just over balance", async () => {
-            const senderBalBefore = await ctx.token.balanceOf(ctx.sender.address)
+            const { recipient, sender, token } = ctx()
+            const senderBalBefore = await token.balanceOf(sender.address)
 
-            const tx = ctx.token.connect(ctx.sender.signer).transfer(ctx.recipient.address, senderBalBefore.add(1))
+            const tx = token.connect(sender.signer).transfer(recipient.address, senderBalBefore.add(1))
 
             await expect(tx).to.revertedWith("ERC20: transfer amount exceeds balance")
-            expect(await ctx.token.balanceOf(ctx.sender.address), "sender bal").to.eq(senderBalBefore)
+            expect(await token.balanceOf(sender.address), "sender bal").to.eq(senderBalBefore)
         })
         it("max amount", async () => {
-            const senderBalBefore = await ctx.token.balanceOf(ctx.sender.address)
+            const { maxAmount, recipient, sender, token } = ctx()
+            const senderBalBefore = await token.balanceOf(sender.address)
 
-            const tx = ctx.token.connect(ctx.sender.signer).transfer(ctx.recipient.address, ctx.maxAmount)
+            const tx = token.connect(sender.signer).transfer(recipient.address, maxAmount)
 
             await expect(tx).to.revertedWith("ERC20: transfer amount exceeds balance")
-            expect(await ctx.token.balanceOf(ctx.sender.address), "sender bal").to.eq(senderBalBefore)
+            expect(await token.balanceOf(sender.address), "sender bal").to.eq(senderBalBefore)
         })
     })
     describe("spender should transfer from sender to recipient", () => {
         describe("with allowance same as sender balance", () => {
             beforeEach(async () => {
-                const allowanceAmount = await ctx.token.balanceOf(ctx.sender.address)
-                await ctx.token.connect(ctx.sender.signer).approve(ctx.spender.address, allowanceAmount)
+                const { sender, spender, token } = ctx()
+                const allowanceAmount = await token.balanceOf(sender.address)
+                await token.connect(sender.signer).approve(spender.address, allowanceAmount)
             })
             it("zero amount", async () => {
-                await testTransferFrom(ctx, 0)
+                await testTransferFrom(ctx(), 0)
             })
             it("smallest unit", async () => {
-                await testTransferFrom(ctx, 1)
+                await testTransferFrom(ctx(), 1)
             })
             it("one whole unit", async () => {
+                const { decimals } = ctx()
                 const amount = decimals > 0 ? simpleToExactAmount(1, decimals) : 1
-                await testTransferFrom(ctx, amount)
+                await testTransferFrom(ctx(), amount)
             })
             it("all sender's tokens", async () => {
-                await testTransferFrom(ctx, await ctx.token.balanceOf(ctx.sender.address))
+                const { sender, token } = ctx()
+                await testTransferFrom(ctx(), await token.balanceOf(sender.address))
             })
         })
         describe("with allowance 1/3 of sender balance", () => {
             let allowanceAmount: BigNumberish
             beforeEach(async () => {
-                allowanceAmount = (await ctx.token.balanceOf(ctx.sender.address)).div(3)
-                await ctx.token.connect(ctx.sender.signer).approve(ctx.spender.address, allowanceAmount)
+                const { sender, spender, token } = ctx()
+                allowanceAmount = (await token.balanceOf(sender.address)).div(3)
+                await token.connect(sender.signer).approve(spender.address, allowanceAmount)
             })
             it("zero amount", async () => {
-                await testTransferFrom(ctx, 0)
+                await testTransferFrom(ctx(), 0)
             })
             it("smallest unit", async () => {
-                await testTransferFrom(ctx, 1)
+                await testTransferFrom(ctx(), 1)
             })
             it("one whole unit", async () => {
+                const { decimals } = ctx()
                 const amount = decimals > 0 ? simpleToExactAmount(1, decimals) : 1
-                await testTransferFrom(ctx, amount)
+                await testTransferFrom(ctx(), amount)
             })
             it("all allowance tokens", async () => {
-                await testTransferFrom(ctx, allowanceAmount)
+                await testTransferFrom(ctx(), allowanceAmount)
             })
         })
     })
     describe("spender should fail to transfer from sender", async () => {
         it("just over sender balance", async () => {
-            const senderBalBefore = await ctx.token.balanceOf(ctx.sender.address)
+            const { recipient, sender, spender, token } = ctx()
+            const senderBalBefore = await token.balanceOf(sender.address)
             const allowanceAmount = senderBalBefore.add(1)
-            await ctx.token.connect(ctx.sender.signer).approve(ctx.spender.address, allowanceAmount)
+            await token.connect(sender.signer).approve(spender.address, allowanceAmount)
 
-            const tx = ctx.token.connect(ctx.spender.signer).transferFrom(ctx.sender.address, ctx.recipient.address, allowanceAmount)
+            const tx = token.connect(spender.signer).transferFrom(sender.address, recipient.address, allowanceAmount)
 
             await expect(tx).to.revertedWith("ERC20: transfer amount exceeds balance")
 
-            expect(await ctx.token.balanceOf(ctx.sender.address), "sender bal").to.eq(senderBalBefore)
-            expect(await ctx.token.allowance(ctx.sender.address, ctx.spender.address), "sender allows spender").to.eq(allowanceAmount)
+            expect(await token.balanceOf(sender.address), "sender bal").to.eq(senderBalBefore)
+            expect(await token.allowance(sender.address, spender.address), "sender allows spender").to.eq(allowanceAmount)
         })
         it("just over allowance balance", async () => {
-            const senderBalBefore = await ctx.token.balanceOf(ctx.sender.address)
+            const { recipient, sender, spender, token } = ctx()
+            const senderBalBefore = await token.balanceOf(sender.address)
             // allowance amount is 1/3 of the sender's balance
             const allowanceAmount = senderBalBefore.div(3)
-            await ctx.token.connect(ctx.sender.signer).approve(ctx.spender.address, allowanceAmount)
+            await token.connect(sender.signer).approve(spender.address, allowanceAmount)
 
-            const tx = ctx.token.connect(ctx.spender.signer).transferFrom(ctx.sender.address, ctx.recipient.address, allowanceAmount.add(1))
+            const tx = token.connect(spender.signer).transferFrom(sender.address, recipient.address, allowanceAmount.add(1))
 
             await expect(tx).to.revertedWith("ERC20: insufficient allowance")
 
-            expect(await ctx.token.balanceOf(ctx.sender.address), "sender bal").to.eq(senderBalBefore)
-            expect(await ctx.token.allowance(ctx.sender.address, ctx.spender.address), "sender allows spender").to.eq(allowanceAmount)
+            expect(await token.balanceOf(sender.address), "sender bal").to.eq(senderBalBefore)
+            expect(await token.allowance(sender.address, spender.address), "sender allows spender").to.eq(allowanceAmount)
         })
     })
 }

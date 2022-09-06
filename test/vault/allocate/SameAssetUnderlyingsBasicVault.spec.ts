@@ -133,9 +133,10 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         it("should behave like ImmutableModule ", async () => {
             shouldBehaveLikeModule({ module: vault, sa })
         })
-        it("should behave like VaultManagerRole", async () => {
-            shouldBehaveLikeVaultManagerRole({ vaultManagerRole: vault as unknown as VaultManagerRole, sa })
-        })
+        shouldBehaveLikeVaultManagerRole(() => ({
+            vaultManagerRole: vault as unknown as VaultManagerRole,
+            sa,
+        }))
         describe("should behave like ERC20", async () => {
             const tokenContext: Partial<TokenContext> = {
                 maxAmount: MAX_UINT256,
@@ -152,7 +153,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
 
                 tokenContext.token = vault as unknown as TokenERC20
             })
-            shouldBehaveLikeToken(tokenContext as TokenContext)
+            shouldBehaveLikeToken(() => tokenContext as TokenContext)
         })
     })
     describe("constructor", async () => {
@@ -196,7 +197,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             const vaultTemp = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
             // Initialize test contract.
             await expect(
-                vaultTemp.initialize(`saub${await asset.name()}`, `saub${await asset.symbol()}`, sa.vaultManager.address, [])
+                vaultTemp.initialize(`saub${await asset.name()}`, `saub${await asset.symbol()}`, sa.vaultManager.address, []),
             ).to.be.revertedWith("No underlying vaults")
         })
     })

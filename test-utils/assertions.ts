@@ -34,10 +34,11 @@ export const assertBNClosePercent = (a: BN, b: BN, variance: string | number = "
     if (a.eq(b)) return
     const varianceBN = simpleToExactAmount(variance.toString().substr(0, 6), 16)
     const diff = a.sub(b).abs().mul(2).mul(fullScale).div(a.add(b))
+    const diffPer = diff.div(simpleToExactAmount(1, 12)).toNumber() / 10000
     const str = reason ? `\n\tReason: ${reason}\n\t${a.toString()} vs ${b.toString()}` : ""
     assert.ok(
         diff.lte(varianceBN),
-        `Numbers exceed ${variance}% diff (Delta between a and b is ${diff.toString()}%, but variance was only ${varianceBN.toString()})${str}`,
+        `Numbers exceed ${variance}% diff (Delta between a and b is ${diffPer.toString()}%, ${diff.toString()} , but variance was only ${varianceBN.toString()})${str}`,
     )
 }
 

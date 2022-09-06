@@ -38,14 +38,18 @@ Vaults that deposit into a Curve 3Pool (3Crv) based metapool before depositing t
 
 ### Total Assets
 
-Get the total assets (3Crv) in a `Convex3CrvAbstractVault`.
+Get the total assets (3Crv) in `Convex3CrvAbstractVault`.
 
 Uses the Curve 3Pool and Metapool virtual prices to calculate the value of the vault's assets (3Crv) from the staked Metapool LP tokens in the Convex pool, eg cvxmusd3Crv. This does not include slippage or fees.
 
 Steps:
 
 -   Get vault's balance of staked Curve Metapool LP tokens in the Convex rewards pool (cvxmusd3Crv).
--   Get virtual 3CRV price in USD from 3Pool.
+-   Get when the base virtual price was last cached in the Metapool.
+-   If the Metapool cache has not expired
+    -   Get virtual 3CRV price in USD from Metapool.
+-   else the Metapool cache has expired
+    -   Get virtual 3CRV price in USD from 3Pool.
 -   Get virtual Curve Metapool LP token price in USD from the Curve Metapool. eg musd3Crv.
 -   Total assets = Metapool LP tokens \* Metapool LP virtual price in USD / 3Crv virtual price in USD.
 

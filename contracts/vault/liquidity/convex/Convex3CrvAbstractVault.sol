@@ -174,6 +174,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             totalSupply()
         );
 
+        // require(shares != 0, "Shares are zero");
+
         _mint(_receiver, shares);
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
@@ -237,7 +239,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             requiredMetapoolTokens,
             1
         );
-
+        // require(assets != 0, "Assets are zero");
         // Protect against sandwich and flash loan attacks where the balance of the metapool is manipulated.
         uint256 maxAssets = (requiredMetapoolTokens * invariant * VIRTUAL_PRICE_SCALE) /
             (metapoolTotalSupply * baseVirtualPrice);
@@ -285,6 +287,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         address receiver,
         address owner
     ) internal virtual override returns (uint256 shares) {
+        // why not require( assets != 0, "Assets are zero"); ?
         if (assets > 0) {
             (
                 uint256 metapoolTokensRequired,
@@ -307,6 +310,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
                 baseRewardPool.balanceOf(address(this)),
                 totalSupply()
             );
+            // require(shares != 0, "Shares are zero");
 
             // If caller is not the owner of the shares
             uint256 allowed = allowance(owner, msg.sender);
@@ -390,9 +394,11 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         address _owner,
         uint256 _slippage
     ) internal virtual returns (uint256 assets) {
+        // TODO  - why not revert if shares are 0 ? // why not require( _shares != 0, "Shares are zero"); ?
         if (_shares > 0) {
             uint256 allowed = allowance(_owner, msg.sender);
             if (msg.sender != _owner && allowed != type(uint256).max) {
+                require(_shares <= allowed, "Amount exceeds allowance");
                 _approve(_owner, msg.sender, allowed - _shares);
             }
 
