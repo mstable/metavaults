@@ -152,7 +152,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
 
                 tokenContext.token = vault as unknown as TokenERC20
             })
-            shouldBehaveLikeToken(tokenContext as TokenContext)
+            shouldBehaveLikeToken(() => tokenContext as TokenContext)
         })
     })
     describe("constructor", async () => {
@@ -196,7 +196,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             const vaultTemp = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
             // Initialize test contract.
             await expect(
-                vaultTemp.initialize(`saub${await asset.name()}`, `saub${await asset.symbol()}`, sa.vaultManager.address, [])
+                vaultTemp.initialize(`saub${await asset.name()}`, `saub${await asset.symbol()}`, sa.vaultManager.address, []),
             ).to.be.revertedWith("No underlying vaults")
         })
     })
