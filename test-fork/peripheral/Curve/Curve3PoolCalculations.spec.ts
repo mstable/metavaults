@@ -1,7 +1,6 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { DAI, resolveAddress, ThreeCRV, USDC, usdFormatter, USDT } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
-import { impersonateAccount } from "@utils/fork"
+import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { BigNumber, ethers } from "ethers"
@@ -254,7 +253,7 @@ describe("Curve 3Pool calculations", async () => {
             await usdcToken.connect(staker1.signer).approve(threePool.address, ethers.constants.MaxUint256)
         }
         beforeEach(async () => {
-            await loadFixture(setup)
+            await loadOrExecFixture(setup)
         })
         const lpAmounts = [BN.from(1), simpleToExactAmount(1, 6), , simpleToExactAmount(1, 12), 1, 10000000]
         lpAmounts.forEach((amount) => {
@@ -316,7 +315,7 @@ describe("Curve 3Pool calculations", async () => {
             initialise(staker1)
         }
         beforeEach(async () => {
-            await loadFixture(setup)
+            await loadOrExecFixture(setup)
         })
         it("Deposit DAI for LP tokens", async () => {
             const daiTokens = simpleToExactAmount(100000)

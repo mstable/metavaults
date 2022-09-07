@@ -1,7 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { logTxDetails } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { ONE_DAY } from "@utils/constants"
+import { loadOrExecFixture } from "@utils/fork"
 import { BN } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -73,7 +73,7 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
     describe("EIP-4626", () => {
         describe("view functions", () => {
             before(async () => {
-                await loadFixture(ctx().fixture)
+                await loadOrExecFixture(ctx().fixture)
                 const { amounts, owner, vault } = ctx()
                 await vault["deposit(uint256,address)"](amounts.initialDeposit, owner.address)
             })
@@ -141,7 +141,7 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
         })
         describe("preview functions", () => {
             beforeEach(async () => {
-                await loadFixture(ctx().fixture)
+                await loadOrExecFixture(ctx().fixture)
                 const { amounts, owner, vault } = ctx()
                 await vault["deposit(uint256,address)"](amounts.initialDeposit, owner.address)
             })
@@ -192,7 +192,7 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
         })
         describe("vault operations", () => {
             before(async () => {
-                await loadFixture(ctx().fixture)
+                await loadOrExecFixture(ctx().fixture)
             })
             it("user deposits assets to vault", async () => {
                 const { amounts, metaVault, vault, owner } = ctx()

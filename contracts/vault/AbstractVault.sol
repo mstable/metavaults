@@ -56,7 +56,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _deposit(uint256 assets, address receiver) internal virtual returns (uint256 shares) {
-        require((shares = _previewDeposit(assets)) != 0, "Shares are zero");
+        shares = _previewDeposit(assets);
 
         _transferAndMint(assets, shares, receiver, true);
     }
@@ -87,8 +87,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _mint(uint256 shares, address receiver) internal virtual returns (uint256 assets) {
-        require((assets = _previewMint(shares)) != 0, "Assets are zero");
-
+        assets = _previewMint(shares);
         _transferAndMint(assets, shares, receiver, false);
     }
 
@@ -143,7 +142,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         address receiver,
         address owner
     ) internal virtual returns (uint256 shares) {
-        require((shares = _previewWithdraw(assets)) != 0, "Shares are zero");
+        shares = _previewWithdraw(assets);
 
         _burnTransfer(assets, shares, receiver, owner, false);
     }
@@ -177,8 +176,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         address receiver,
         address owner
     ) internal virtual returns (uint256 assets) {
-        require((assets = _previewRedeem(shares)) != 0, "Assets are zero");
-
+        assets = _previewRedeem(shares);
         _burnTransfer(assets, shares, receiver, owner, true);
     }
 

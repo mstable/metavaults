@@ -3,11 +3,14 @@ import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import { BasicVault__factory, PeriodicAllocationBasicVault__factory } from "types/generated"
+import { AbstractVault, BasicVault__factory, PeriodicAllocationBasicVault__factory, VaultManagerRole } from "types/generated"
 
 import type { BigNumberish } from "ethers"
 import type { Account } from "types"
 import type { BasicVault, MockERC20, MockNexus, PeriodicAllocationBasicVault } from "types/generated"
+import shouldBehaveLikeAbstractVault, { AbstractVaultBehaviourContext, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import shouldBehaveLikeVaultManagerRole from "@test/shared/VaultManagerRole.behaviour"
+import { vault } from "types/generated/contracts"
 
 interface PABVaultData {
     assetPerShare: BN
@@ -95,6 +98,10 @@ describe("PeriodicAllocationBasicVault", async () => {
         await asset.connect(pabVault.signer).approve(bVault1.address, ethers.constants.MaxUint256)
         await asset.connect(pabVault.signer).approve(bVault2.address, ethers.constants.MaxUint256)
         await asset.connect(user.signer).approve(pabVault.address, ethers.constants.MaxUint256)
+
+        // set balance or users for the test.
+        const assetBalance = await asset.balanceOf(sa.default.address)
+        asset.transfer(sa.alice.address, assetBalance.div(2))
     }
 
     const snapVault = async (): Promise<SnapVaultData> => {
@@ -149,7 +156,6 @@ describe("PeriodicAllocationBasicVault", async () => {
     before("init contract", async () => {
         await setup()
     })
-
     describe("constructor", async () => {
         it("should properly store valid arguments", async () => {
             expect(await pabVault.nexus(), "nexus").to.eq(nexus.address)
@@ -236,6 +242,19 @@ describe("PeriodicAllocationBasicVault", async () => {
             await expect(tx).to.be.revertedWith("Invalid source vault index")
         })
     })
+    describe("behaviors", async () => {
+        const ctx: Partial<AbstractVaultBehaviourContext> = {}
+        before(async () => {
+            ctx.fixture = async function fixture() {
+                await setup()
+                ctx.vault = pabVault as unknown as AbstractVault
+                ctx.asset = asset
+                ctx.sa = sa
+                ctx.amounts = testAmounts(100, await asset.decimals())
+            }
+        })
+        shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+    })
     describe("Vault operations", async () => {
         const initialDepositAmount = tenMil
 
@@ -243,9 +262,12 @@ describe("PeriodicAllocationBasicVault", async () => {
             const redeemAmount = oneMil
             const withdrawAmount = oneMil
             const mintAmount = oneMil
-            it("deposit should fail with 0 assets", async () => {
-                const tx = pabVault.connect(user.signer).deposit(0, user.address)
-                await expect(tx).to.be.revertedWith("Shares are zero")
+            it("deposit 0 should not fail", async () => {
+                await setup()
+                await pabVault.connect(user.signer).deposit(0, user.address)
+                const data = await snapVault()
+                // internal balance should not be changed
+                await assertVaultBalances(data, assetsPerShareScale, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             })
             it("deposit", async () => {
                 await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
@@ -322,9 +344,24 @@ describe("PeriodicAllocationBasicVault", async () => {
                 expect(data.vaultData.userShares, "userShares").to.eq(userSharesBefore.sub(withdrawAmount))
                 expect(userAssetsRecv, "userAssetsReceived").to.eq(withdrawAmount)
             })
-            it("mint should fail with 0 shares", async () => {
-                const tx = pabVault.connect(user.signer).mint(0, user.address)
-                await expect(tx).to.be.revertedWith("Assets are zero")
+            it("mint should not fail with 0 shares", async () => {
+                const dataBefore = await snapVault()
+                await pabVault.connect(user.signer).mint(0, user.address)
+                const data = await snapVault()
+                // internal balance should not be changed
+                await assertVaultBalances(
+                    data,
+                    assetsPerShareScale,
+                    dataBefore.vaultData.totalAssets,
+                    dataBefore.vaultData.totalSupply,
+                    dataBefore.vaultData.totalAssets,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                )
             })
             it("mint", async () => {
                 const userSharesBefore = await pabVault.balanceOf(user.address)

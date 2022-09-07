@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory } from "types/generated"
 
-import { shouldBehaveLikeAbstractVault } from "../shared/AbstractVault.behaviour"
+import { shouldBehaveLikeAbstractVault, testAmounts } from "../shared/AbstractVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
 import type { AbstractVault, BasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated"
@@ -15,7 +15,7 @@ describe("BasicVault", () => {
     let sa: StandardAccounts
     let mocks: ContractMocks
     let nexus: MockNexus
-    let ctxVault: AbstractVaultBehaviourContext
+
     // Testing contract
     let vault: BasicVault
     let asset: MockERC20
@@ -37,23 +37,27 @@ describe("BasicVault", () => {
         const assetBalance = await asset.balanceOf(sa.default.address)
         asset.transfer(sa.alice.address, assetBalance.div(2))
     }
-
     before("init contract", async () => {
         await setup()
-        ctxVault = {
-            vault: vault as unknown as AbstractVault,
-            asset: asset,
-            sa: sa,
-            fixture: async () => {},
-        }
     })
+
     describe("behaviors", async () => {
+        const ctxVault: Partial<AbstractVaultBehaviourContext> = {}
+        before("init contract", async () => {
+            ctxVault.fixture = async function fixture() {
+                await setup()
+                ctxVault.vault = vault as unknown as AbstractVault
+                ctxVault.asset = asset
+                ctxVault.sa = sa
+                ctxVault.amounts = testAmounts(100, 18)
+            }
+        })
         shouldBehaveLikeVaultManagerRole(() => ({
             vaultManagerRole: vault as VaultManagerRole,
             sa,
         }))
 
-        shouldBehaveLikeAbstractVault(() => ctxVault)
+        shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
         /**
              it("should behave like Initializable ", async () => {
                      await shouldBehaveLikeInitializable(ctx)
