@@ -287,7 +287,6 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         address receiver,
         address owner
     ) internal virtual override returns (uint256 shares) {
-        // why not require( assets != 0, "Assets are zero"); ?
         if (assets > 0) {
             (
                 uint256 metapoolTokensRequired,
@@ -394,7 +393,6 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         address _owner,
         uint256 _slippage
     ) internal virtual returns (uint256 assets) {
-        // TODO  - why not revert if shares are 0 ? // why not require( _shares != 0, "Shares are zero"); ?
         if (_shares > 0) {
             uint256 allowed = allowance(_owner, msg.sender);
             if (msg.sender != _owner && allowed != type(uint256).max) {
