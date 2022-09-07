@@ -108,7 +108,7 @@ export const setBalance = async (userAddress: string, tokenAddress: string, amou
 }
 /**
  * Load a fixture only if the network is Hardhat otherwise it calls directly the fixture function.
- * This is allows errors if the network is anvil or other different from hardhat.
+ * This avoid errors if the network is anvil or other different from hardhat.
  *
  * @export
  * @template T
