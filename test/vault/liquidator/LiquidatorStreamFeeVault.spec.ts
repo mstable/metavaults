@@ -1,3 +1,5 @@
+import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
@@ -16,8 +18,17 @@ import {
 import { shouldBehaveLikeLiquidatorStreamFeeAbstractVault } from "../../shared/LiquidatorStreamFeeAbstractVault.behaviour"
 
 import type { TransactionResponse } from "@ethersproject/providers"
+import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
 import type { BigNumberish } from "ethers"
-import type { BasicDexSwap, Liquidator, LiquidatorStreamFeeBasicVault, MockERC20, MockNexus } from "types/generated"
+import type {
+    AbstractVault,
+    BasicDexSwap,
+    Liquidator,
+    LiquidatorStreamFeeBasicVault,
+    MockERC20,
+    MockNexus,
+    VaultManagerRole,
+} from "types/generated"
 
 const defaultDonationFee = 10000 // 1%
 
@@ -165,7 +176,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
         await nexus.setLiquidator(liquidator.address)
     }
 
-    const deployVault = async (decimals = 18): Promise<LiquidatorStreamFeeBasicVault> => {
+    const setup = async (decimals = 18): Promise<LiquidatorStreamFeeBasicVault> => {
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
 
@@ -177,10 +188,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
             sa.feeReceiver.address,
             defaultDonationFee,
         )
-
         // Approve vault to transfer assets from default signer
         await asset.approve(vault.address, ethers.constants.MaxUint256)
-
+        // set balance or users for the test.
+        const assetBalance = await asset.balanceOf(sa.default.address)
+        asset.transfer(sa.alice.address, assetBalance.div(2))
         return vault
     }
 
@@ -190,11 +202,25 @@ describe("Streamed Liquidator Fee Vault", async () => {
     })
     describe("behaviors", async () => {
         before(async () => {
-            await deployFeeVaultDependencies()
-            vault = await new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
+            vault = await setup()
         })
         it("should behave like LiquidatorStreamFeeAbstractVault ", async () => {
-            await shouldBehaveLikeLiquidatorStreamFeeAbstractVault({ sa, vault })
+            shouldBehaveLikeLiquidatorStreamFeeAbstractVault({ sa, vault })
+        })
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
+
+        describe("should behave like AbstractVaultBehaviourContext", async () => {
+            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            before(async () => {
+                ctx.fixture = async function fixture() {
+                    await setup()
+                    ctx.vault = vault as unknown as AbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(100, await asset.decimals())
+                }
+            })
+            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
         })
     })
     describe("constructor", async () => {
@@ -207,6 +233,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
             expect(await vault.asset(), "underlying asset").to.eq(asset.address)
             expect(await vault.asset(), "asset").to.eq(asset.address)
             expect(await vault.FEE_SCALE(), "fee scale").to.eq(simpleToExactAmount(1, 6))
+        })
+        it("should fail if arguments are wrong", async () => {
+            await expect(
+                new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS, ONE_DAY),
+            ).to.be.revertedWith("Asset is zero")
         })
     })
     describe("calling initialize", async () => {
@@ -258,7 +289,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
     })
     context("no streamed shares", async () => {
         beforeEach(async () => {
-            vault = await deployVault()
+            vault = await setup()
             await increaseTime(ONE_DAY)
         })
         it("mint", async () => {
@@ -298,7 +329,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
     })
     context("donated shares", () => {
         beforeEach(async () => {
-            vault = await deployVault()
+            vault = await setup()
             await increaseTime(ONE_WEEK)
         })
         it("before investor shares", async () => {
@@ -418,7 +449,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
         const decimals = 2
         const firstMintAmount = simpleToExactAmount(1000, decimals)
         beforeEach(async () => {
-            vault = await deployVault(decimals)
+            vault = await setup(decimals)
             await increaseTime(ONE_DAY)
 
             await vault.mint(firstMintAmount, sa.default.address)

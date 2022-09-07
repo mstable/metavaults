@@ -1,3 +1,5 @@
+import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
@@ -14,8 +16,17 @@ import {
 } from "types/generated"
 
 import type { TransactionResponse } from "@ethersproject/providers"
+import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
 import type { BigNumberish } from "ethers"
-import type { BasicDexSwap, Liquidator, LiquidatorStreamBasicVault, MockERC20, MockNexus } from "types/generated"
+import type {
+    AbstractVault,
+    BasicDexSwap,
+    Liquidator,
+    LiquidatorStreamBasicVault,
+    MockERC20,
+    MockNexus,
+    VaultManagerRole,
+} from "types/generated"
 
 describe("Streamed Liquidator Vault", async () => {
     let sa: StandardAccounts
@@ -151,7 +162,7 @@ describe("Streamed Liquidator Vault", async () => {
         await nexus.setLiquidator(liquidator.address)
     }
 
-    const deployVault = async (decimals = 18): Promise<LiquidatorStreamBasicVault> => {
+    const setup = async (decimals = 18): Promise<LiquidatorStreamBasicVault> => {
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
 
@@ -159,25 +170,47 @@ describe("Streamed Liquidator Vault", async () => {
 
         // Approve vault to transfer assets from default signer
         await asset.approve(vault.address, ethers.constants.MaxUint256)
-
+        // set balance or users for the test.
+        const assetBalance = await asset.balanceOf(sa.default.address)
+        asset.transfer(sa.alice.address, assetBalance.div(2))
         return vault
     }
 
     before("init contract", async () => {
         const accounts = await ethers.getSigners()
         sa = await new StandardAccounts().initAccounts(accounts)
+        vault = await setup()
     })
     describe("constructor", async () => {
-        before(async () => {
-            await deployFeeVaultDependencies()
-            vault = await new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
-        })
         it("should properly store constructor arguments", async () => {
             expect(await vault.nexus(), "nexus").to.eq(nexus.address)
             expect(await vault.asset(), "underlying asset").to.eq(asset.address)
             expect(await vault.asset(), "asset").to.eq(asset.address)
         })
+        it("should fail if arguments are wrong", async () => {
+            await expect(
+                new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS, ONE_DAY),
+            ).to.be.revertedWith("Asset is zero")
+        })
     })
+    describe("behaviors", async () => {
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
+
+        describe("should behave like AbstractVaultBehaviourContext", async () => {
+            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            before(async () => {
+                ctx.fixture = async function fixture() {
+                    await setup()
+                    ctx.vault = vault as unknown as AbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(100, await asset.decimals())
+                }
+            })
+            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+        })
+    })
+
     describe("calling initialize", async () => {
         before(async () => {
             await deployFeeVaultDependencies(12)
@@ -207,7 +240,7 @@ describe("Streamed Liquidator Vault", async () => {
     })
     context("no streamed shares", async () => {
         beforeEach(async () => {
-            vault = await deployVault()
+            vault = await setup()
             await increaseTime(ONE_DAY)
         })
         it("mint", async () => {
@@ -247,7 +280,7 @@ describe("Streamed Liquidator Vault", async () => {
     })
     context("donated shares", () => {
         beforeEach(async () => {
-            vault = await deployVault()
+            vault = await setup()
             await increaseTime(ONE_WEEK)
         })
         it("before investor shares", async () => {
@@ -363,7 +396,7 @@ describe("Streamed Liquidator Vault", async () => {
         const decimals = 2
         const firstMintAmount = simpleToExactAmount(1000, decimals)
         beforeEach(async () => {
-            vault = await deployVault(decimals)
+            vault = await setup(decimals)
             await increaseTime(ONE_DAY)
 
             await vault.mint(firstMintAmount, sa.default.address)

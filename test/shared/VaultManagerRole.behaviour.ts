@@ -2,6 +2,8 @@ import { ZERO_ADDRESS } from "@utils/constants"
 import { expect } from "chai"
 import { INexus__factory } from "types/generated"
 
+import { shouldBehaveLikeModule } from "./Module.behaviour"
+
 import type { StandardAccounts } from "@utils/machines"
 import type { VaultManagerRole } from "types/generated"
 
@@ -91,6 +93,9 @@ export function shouldBehaveLikeVaultManagerRole(ctx: () => VaultManagerRoleBeha
                 const { sa, vaultManagerRole } = ctx()
                 await expect(vaultManagerRole.connect(sa.other.signer).pause()).to.be.revertedWith("Only governor can execute")
             })
+        })
+        it("should behave like Module ", async () => {
+            shouldBehaveLikeModule({ module: ctx().vaultManagerRole, sa: ctx().sa })
         })
     })
 }

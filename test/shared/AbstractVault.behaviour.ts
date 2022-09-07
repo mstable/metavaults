@@ -172,11 +172,8 @@ async function expectWithdraw(
 }
 
 export function shouldBehaveLikeAbstractVault(ctx: () => AbstractVaultBehaviourContext): void {
-    // let assetsAmount: BN
-    // let sharesAmount: BN
     let alice: Account
     let bob: Account
-    //
     let aliceAssetBalance = ZERO
     let aliceSharesBalance = ZERO
     let totalSupply = ZERO
