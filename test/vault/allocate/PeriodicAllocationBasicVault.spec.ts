@@ -1,16 +1,17 @@
+import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
+import { ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import { AbstractVault, BasicVault__factory, PeriodicAllocationBasicVault__factory, VaultManagerRole } from "types/generated"
+import { BasicVault__factory, PeriodicAllocationBasicVault__factory } from "types/generated"
 
+import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type { Account } from "types"
-import type { BasicVault, MockERC20, MockNexus, PeriodicAllocationBasicVault } from "types/generated"
-import shouldBehaveLikeAbstractVault, { AbstractVaultBehaviourContext, testAmounts } from "@test/shared/AbstractVault.behaviour"
-import shouldBehaveLikeVaultManagerRole from "@test/shared/VaultManagerRole.behaviour"
-import { vault } from "types/generated/contracts"
+import type { AbstractVault, BasicVault, MockERC20, MockNexus, PeriodicAllocationBasicVault, VaultManagerRole } from "types/generated"
 
 interface PABVaultData {
     assetPerShare: BN
@@ -31,11 +32,6 @@ interface SnapVaultData {
     vaultData: PABVaultData
     bVault1Data: BasicVaultData
     bVault2Data: BasicVaultData
-}
-
-interface Settlement {
-    vaultIndex: BN
-    assets: BN
 }
 
 const assetsPerShareScale = simpleToExactAmount(1, 26)
@@ -161,6 +157,11 @@ describe("PeriodicAllocationBasicVault", async () => {
             expect(await pabVault.nexus(), "nexus").to.eq(nexus.address)
             expect(await pabVault.asset(), "asset").to.eq(asset.address)
         })
+        it("should fail if arguments are wrong", async () => {
+            await expect(
+                new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS),
+            ).to.be.revertedWith("Asset is zero")
+        })
     })
     describe("initialize", async () => {
         it("should properly store valid arguments", async () => {
@@ -253,6 +254,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 ctx.amounts = testAmounts(100, await asset.decimals())
             }
         })
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: pabVault as VaultManagerRole, sa }))
+
         shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
     })
     describe("Vault operations", async () => {

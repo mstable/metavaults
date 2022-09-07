@@ -1,3 +1,4 @@
+import { ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
@@ -52,24 +53,15 @@ describe("BasicVault", () => {
                 ctxVault.amounts = testAmounts(100, 18)
             }
         })
-        shouldBehaveLikeVaultManagerRole(() => ({
-            vaultManagerRole: vault as VaultManagerRole,
-            sa,
-        }))
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
 
         shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
         /**
              it("should behave like Initializable ", async () => {
                      await shouldBehaveLikeInitializable(ctx)
                  })
-                 it("should behave like VaultManagerRole ", async () => {
-                    await shouldBehaveLikeVaultManagerRole(ctx)
-                })
                  it("should behave like ImmutableModule ", async () => {
                     await shouldBehaveLikeImmutableModule(ctx)
-                })
-                 it("should behave like ModuleKeys ", async () => {
-                    await shouldBehaveLikeModuleKeys(ctx)
                 })
                  it("should behave like InitializableToken ", async () => {
                     await shouldBehaveLikeInitializableToken(ctx)
@@ -87,6 +79,9 @@ describe("BasicVault", () => {
         it("should properly store valid arguments", async () => {
             expect(await vault.nexus(), "nexus").to.eq(nexus.address)
             expect(await vault.asset(), "asset").to.eq(asset.address)
+        })
+        it("should fail if arguments are wrong", async () => {
+            await expect(new BasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)).to.be.revertedWith("Asset is zero")
         })
     })
 

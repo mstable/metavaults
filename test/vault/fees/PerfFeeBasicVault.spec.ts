@@ -1,23 +1,27 @@
+import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
+import { ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { MockERC20ForceBurnable__factory, MockNexus__factory, PerfFeeBasicVault__factory } from "types/generated"
 
+import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type { Account } from "types"
-import type { MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault } from "types/generated"
+import type { AbstractVault, MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault, VaultManagerRole } from "types/generated"
 
 const perfAssetsPerShareScale = simpleToExactAmount(1, 26)
 const feeScale = simpleToExactAmount(1, 6)
 const performanceFee = simpleToExactAmount(4, 2)
 
 interface CheckData {
-    investor: string,
-    investorShares: BigNumberish,
-    totalShares: BigNumberish,
-    totalAssets: BigNumberish,
-    perfFeesAssetsPerShare?: BigNumberish,
+    investor: string
+    investorShares: BigNumberish
+    totalShares: BigNumberish
+    totalAssets: BigNumberish
+    perfFeesAssetsPerShare?: BigNumberish
 }
 
 describe("Performance Fees", async () => {
@@ -34,10 +38,7 @@ describe("Performance Fees", async () => {
         }
     }
 
-    const assertBalances = async (
-        test: string,
-        data: CheckData
-    ) => {
+    const assertBalances = async (test: string, data: CheckData) => {
         checkAndSetDefaultAssetPerShare(data)
         const totalVaultAssets = await vault.totalAssets()
         const totalVaultShares = await vault.totalSupply()
@@ -62,9 +63,7 @@ describe("Performance Fees", async () => {
             : BN.from(0)
     }
 
-    const assertChargeFee = async (
-        data: CheckData
-    ) => {
+    const assertChargeFee = async (data: CheckData) => {
         checkAndSetDefaultAssetPerShare(data)
         await assertBalances("before feeCharge", data)
 
@@ -104,7 +103,7 @@ describe("Performance Fees", async () => {
         )
     }
 
-    const deployFeeVault = async (decimals = 18): Promise<PerfFeeBasicVault> => {
+    const setup = async (decimals = 18): Promise<PerfFeeBasicVault> => {
         if (!asset) {
             await deployFeeVaultDependencies(decimals)
         }
@@ -115,6 +114,9 @@ describe("Performance Fees", async () => {
         // Approve vault to transfer assets from default signer
         await asset.approve(vault.address, ethers.constants.MaxUint256)
 
+        // set balance or users for the test.
+        const assetBalance = await asset.balanceOf(sa.default.address)
+        asset.transfer(sa.alice.address, assetBalance.div(2))
         return vault
     }
 
@@ -127,7 +129,7 @@ describe("Performance Fees", async () => {
 
     describe("constructor", async () => {
         before(async () => {
-            await deployFeeVault()
+            vault = await setup()
         })
         it("should properly store constructor arguments", async () => {
             expect(await vault.nexus(), "nexus").to.eq(nexus.address)
@@ -135,6 +137,27 @@ describe("Performance Fees", async () => {
             expect(await vault.PERF_ASSETS_PER_SHARE_SCALE(), "assets/share scale").to.eq(perfAssetsPerShareScale)
             expect(await vault.FEE_SCALE(), "fee scale").to.eq(feeScale)
         })
+        it("should fail if arguments are wrong", async () => {
+            await expect(new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)).to.be.revertedWith(
+                "Asset is zero",
+            )
+        })
+    })
+    describe("behaviors", async () => {
+        describe("should behave like AbstractVaultBehaviourContext", async () => {
+            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            before(async () => {
+                ctx.fixture = async function fixture() {
+                    vault = await setup()
+                    ctx.vault = vault as unknown as AbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(100, await asset.decimals())
+                }
+            })
+            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+        })
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
     })
     describe("calling initialize", async () => {
         before(async () => {
@@ -167,7 +190,7 @@ describe("Performance Fees", async () => {
         context("18 decimal asset", async () => {
             const depositAmt = simpleToExactAmount(1000000)
             beforeEach(async () => {
-                vault = await deployFeeVault()
+                vault = await setup()
                 await asset.transfer(user.address, simpleToExactAmount(20000000))
                 await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
                 await vault.connect(user.signer).deposit(depositAmt, user.address)
@@ -215,7 +238,7 @@ describe("Performance Fees", async () => {
         context("2 decimal asset", async () => {
             const depositAmt = simpleToExactAmount(1000, 2)
             before(async () => {
-                vault = await deployFeeVault(2)
+                vault = await setup(2)
                 await asset.transfer(user.address, simpleToExactAmount(20000, 2))
                 await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
                 await vault.connect(user.signer).deposit(depositAmt, user.address)
@@ -252,7 +275,7 @@ describe("Performance Fees", async () => {
     describe("set Performance fees", async () => {
         const depositAmt = simpleToExactAmount(1000000)
         beforeEach(async () => {
-            vault = await deployFeeVault()
+            vault = await setup()
             await asset.transfer(user.address, simpleToExactAmount(20000000))
             await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
             await vault.connect(user.signer).deposit(depositAmt, user.address)
@@ -276,7 +299,7 @@ describe("Performance Fees", async () => {
                 investor: user.address,
                 investorShares: depositAmt,
                 totalShares: depositAmt,
-                totalAssets: totalAssets
+                totalAssets: totalAssets,
             }
             const feeShares = calculateFeeShares(data, calculateAssetsPerShare(data))
 

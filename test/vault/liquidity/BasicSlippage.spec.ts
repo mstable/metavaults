@@ -1,10 +1,11 @@
+import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { StandardAccounts } from "@utils/machines"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicSlippage__factory, MockNexus__factory } from "types/generated"
 
 import type { ContractTransaction } from "ethers"
-import type { BasicSlippage, MockNexus } from "types/generated"
+import type { BasicSlippage, MockNexus, VaultManagerRole } from "types/generated"
 
 const initialSlippage = {
     mint: 99,
@@ -13,7 +14,7 @@ const initialSlippage = {
     withdraw: 12,
 }
 
-describe("Slippage", () => {
+describe("BasicSlippage", () => {
     let sa: StandardAccounts
     let nexus: MockNexus
     let slippage: BasicSlippage
@@ -26,6 +27,9 @@ describe("Slippage", () => {
 
         slippage = await new BasicSlippage__factory(sa.default.signer).deploy(nexus.address)
         initTx = await slippage.initialize(sa.vaultManager.address, initialSlippage)
+    })
+    describe("behaviors", async () => {
+        shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: slippage as VaultManagerRole, sa }))
     })
 
     it("post deploy", async () => {
