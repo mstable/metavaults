@@ -18,7 +18,7 @@ import { LightAbstractVault } from "./LightAbstractVault.sol";
  * @dev     VERSION: 1.0
  *          DATE:    2022-08-29
  */
-contract BasicVault is LightAbstractVault, Initializable {
+contract LightBasicVault is LightAbstractVault, Initializable {
     using SafeERC20 for IERC20;
 
     /**

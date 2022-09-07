@@ -9,6 +9,7 @@ import type { StandardAccounts } from "@utils/machines"
 import type { BN } from "@utils/math"
 import type { ContractTransaction } from "ethers"
 import type { Account } from "types"
+<<<<<<< HEAD
 import type { AbstractVault, ERC20, IERC20Metadata } from "types/generated"
 
 type Variance = number | string
@@ -32,6 +33,14 @@ type Amounts = {
 export interface AbstractVaultBehaviourContext {
     vault: AbstractVault
     asset: ERC20 | IERC20Metadata
+=======
+import type { AbstractVault,ERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
+
+export type BaseAbstractVault = AbstractVault | LightAbstractVault
+export interface AbstractVaultBehaviourContext {
+    vault: BaseAbstractVault
+    asset: ERC20
+>>>>>>> a4ca270 (feat: combined vault)
     sa: StandardAccounts
     fixture: () => Promise<void>
     amounts: Amounts
