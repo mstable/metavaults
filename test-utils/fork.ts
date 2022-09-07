@@ -8,6 +8,8 @@ import type { Account, ERC20 } from "types"
 
 const log = logger("fork")
 
+type Fixture<T> = () => Promise<T>
+
 // impersonates a specific account
 export const impersonate = async (addr: string, fund = true): Promise<Signer> => {
     // Dynamic import hardhat module to avoid importing while hardhat config is being defined.
@@ -103,6 +105,25 @@ export const setBalance = async (userAddress: string, tokenAddress: string, amou
 
     log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
     await setStorageAt(tokenAddress, toBytes32(BN.from(index)), toBytes32(amount).toString())
+}
+/**
+ * Load a fixture only if the network is Hardhat otherwise it calls directly the fixture function.
+ * This is allows errors if the network is anvil or other different from hardhat.
+ *
+ * @export
+ * @template T
+ * @param {Fixture<T>} fixture
+ * @return {*}  {Promise<T>}
+ */
+export async function loadOrExecFixture<T>(fixture: Fixture<T>): Promise<T> {
+    const { network } = await import("hardhat")
+    const { loadFixture } = await import("@nomicfoundation/hardhat-network-helpers")
+
+    if (network.name.toLowerCase() === "hardhat") {
+        return loadFixture(fixture)
+    } else {
+        return fixture()
+    }
 }
 
 /**

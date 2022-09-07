@@ -1,9 +1,8 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { config } from "@tasks/deployment/mainnet-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
-import { impersonate, impersonateAccount } from "@utils/fork"
+import { impersonate, impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -213,13 +212,13 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         }
         describe("no streaming", async () => {
             before(async () => {
-                ctx = await loadFixture(behaviourSnapshot)
+                ctx = await loadOrExecFixture(behaviourSnapshot)
             })
             behaveLikeConvex3CrvVault(() => ctx)
         })
         describe("streaming", async () => {
             before(async () => {
-                ctx = await loadFixture(behaviourSnapshot)
+                ctx = await loadOrExecFixture(behaviourSnapshot)
 
                 // Donate some tokens so the streaming will start
                 const daiAmount = simpleToExactAmount(1000, DAI.decimals)

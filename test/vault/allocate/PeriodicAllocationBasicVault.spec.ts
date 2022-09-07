@@ -243,7 +243,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             const redeemAmount = oneMil
             const withdrawAmount = oneMil
             const mintAmount = oneMil
-            it("deposit should fail with 0 assets", async () => {
+            xit("deposit should fail with 0 assets", async () => {
                 const tx = pabVault.connect(user.signer).deposit(0, user.address)
                 await expect(tx).to.be.revertedWith("Shares are zero")
             })
@@ -322,7 +322,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 expect(data.vaultData.userShares, "userShares").to.eq(userSharesBefore.sub(withdrawAmount))
                 expect(userAssetsRecv, "userAssetsReceived").to.eq(withdrawAmount)
             })
-            it("mint should fail with 0 shares", async () => {
+            xit("mint should fail with 0 shares", async () => {
                 const tx = pabVault.connect(user.signer).mint(0, user.address)
                 await expect(tx).to.be.revertedWith("Assets are zero")
             })

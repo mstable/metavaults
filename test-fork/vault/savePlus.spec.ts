@@ -1,12 +1,11 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { deploy3CrvMetaVaults, deployCommon, deployCore } from "@tasks/deployment"
 import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
-import { shouldBehaveLikeAbstractVault } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
-import { impersonateAccount, setBalancesToAccount } from "@utils/fork"
+import { impersonateAccount, loadOrExecFixture, setBalancesToAccount } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
@@ -485,7 +484,25 @@ describe("Save+ Basic and Meta Vaults", async () => {
     let dataEmitter: DataEmitter
     const { network } = hre
 
+    const resetNetwork = async (blockNumber: number) => {
+        // Only reset if using the in memory hardhat chain
+        // No need to reset if using a local fork node
+        if (network.name === "hardhat") {
+            await network.provider.request({
+                method: "hardhat_reset",
+                params: [
+                    {
+                        forking: {
+                            jsonRpcUrl: process.env.NODE_URL,
+                            blockNumber,
+                        },
+                    },
+                ],
+            })
+        }
+    }
     const setup = async () => {
+        await resetNetwork(14960000)
         const accounts = await ethers.getSigners()
         sa = await new StandardAccounts().initAccounts(accounts)
         governor = await impersonateAccount(governorAddress)
@@ -601,23 +618,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             usdt: usdtMetaVault,
         }
     }
-    const resetNetwork = async (blockNumber: number) => {
-        // Only reset if using the in memory hardhat chain
-        // No need to reset if using a local fork node
-        if (network.name === "hardhat") {
-            await network.provider.request({
-                method: "hardhat_reset",
-                params: [
-                    {
-                        forking: {
-                            jsonRpcUrl: process.env.NODE_URL,
-                            blockNumber,
-                        },
-                    },
-                ],
-            })
-        }
-    }
+
     const assertConvex3CrvVaultConfiguration = async (convex3CrvVault: Convex3CrvLiquidatorVault, convex3CrvPool: Convex3CrvPool) => {
         const rewardTokens = await convex3CrvVault.rewardTokens()
         expect(await convex3CrvVault.nexus(), "nexus").eq(nexus.address)
@@ -739,12 +740,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         return tx
     }
     before("reset block number", async () => {
-        await resetNetwork(14960000)
-        if (network.name === "Hardhat") {
-            await loadFixture(setup)
-        } else {
-            await setup()
-        }
+        await loadOrExecFixture(setup)
     })
     context("deployment check", async () => {
         describe("proxy instant admin", async () => {
@@ -823,62 +819,56 @@ describe("Save+ Basic and Meta Vaults", async () => {
     context("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
-                let ctxVault: Partial<AbstractVaultBehaviourContext> = {}
+                const ctx: Partial<AbstractVaultBehaviourContext> = {}
                 before(async () => {
-                    ctxVault = {
-                        vault: periodicAllocationPerfFeeMetaVault as unknown as AbstractVault,
-                        asset: threeCrvToken,
-                        sa: sa,
-                        fixture: async () => {},
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+
+                        ctx.vault = periodicAllocationPerfFeeMetaVault as unknown as AbstractVault
+                        ctx.asset = threeCrvToken
+                        ctx.sa = sa
+                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                     }
                 })
-                shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
+                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
             describe("convex3CrvLiquidatorVault - musd", async () => {
-                let ctxVault: Partial<AbstractVaultBehaviourContext> = {}
-
+                const ctx: Partial<AbstractVaultBehaviourContext> = {}
+                // 'RewardPool : Cannot stake 0'
                 before(async () => {
-                    ctxVault = {
-                        vault: musdConvexVault as unknown as AbstractVault,
-                        asset: threeCrvToken,
-                        sa: sa,
-                        fixture: async () => {},
-                        variances: {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = musdConvexVault as unknown as AbstractVault
+                        ctx.asset = threeCrvToken
+                        ctx.sa = sa
+                        ctx.variances = {
                             deposit: 0.0001,
                             mint: 0.02,
                             withdraw: 0.0006,
                             redeem: 0.0003,
                             convertToAssets: 0.04,
                             convertToShares: 0.04,
-                            maxWithdraw: 0.0006,
+                            maxWithdraw: 0.0007,
                             maxRedeem: 0.02,
-                        },
+                        }
+                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                     }
                 })
 
-                shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
-                // FIXME
-                // behavior is not the same on the following scenarios
-                //     1) deposit - fails if deposits zero:
-                //       AssertionError: Expected transaction to be reverted with reason 'Shares are zero', but it reverted without a reason
-
-                //    2) mint - fails if mint zero:
-                //       AssertionError: Expected transaction to be reverted with reason 'Assets are zero', but it reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)
-
-                //    3) withdraw - fails if withdraw zero:
-                //       AssertionError: Expected transaction to be reverted with reason 'Shares are zero', but it didn't revert
-
-                //    4) redeem - fails if deposits zero:
-                //       AssertionError: Expected transaction to be reverted with reason 'Assets are zero', but it didn't revert
+                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
             describe("curve3CrvBasicMetaVault - dai", async () => {
-                let ctxVault: Partial<AbstractVaultBehaviourContext> = {}
+                const ctx: Partial<AbstractVaultBehaviourContext> = {}
                 before(async () => {
-                    ctxVault = {
-                        vault: daiMetaVault as unknown as AbstractVault,
-                        asset: daiToken,
-                        sa: sa,
-                        variances: {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = daiMetaVault as unknown as AbstractVault
+                        ctx.asset = daiToken
+                        ctx.sa = sa
+                        ctx.variances = {
                             deposit: 0.0001,
                             mint: 0.005,
                             withdraw: 0.0001,
@@ -887,35 +877,18 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             convertToShares: 0.06,
                             maxWithdraw: 0.0001,
                             maxRedeem: 0.007,
-                        },
-                        fixture: async () => {},
+                        }
+                        ctx.amounts = testAmounts(1000, DAI.decimals)
                     }
                 })
-                shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
-                // FIXME -
-                //         1) deposit - fails if deposits zero:
-                //         AssertionError: Expected transaction to be reverted with reason 'Shares are zero', but it reverted without a reason
-
-                //    2) mint - fails if mint zero:
-                //         AssertionError: Expected transaction to be reverted with reason 'Assets are zero', but it reverted with reason 'too much slippage'
-
-                //    3) withdraw - fails if withdraw zero:
-                //         AssertionError: Expected transaction to be reverted with reason 'Shares are zero', but it didn't revert
-
-                //    4) redeem - fails if deposits zero:
-                //         AssertionError: Expected transaction to be reverted with reason 'Assets are zero', but it didn't revert
+                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
         })
     })
     context("PeriodicAllocationPerfFeeMetaVault", async () => {
         let vaultsDataBefore
         before("reset block number", async () => {
-            // await resetNetwork(14960000)
-            if (network.name === "Hardhat") {
-                await loadFixture(setup)
-            } else {
-                await setup()
-            }
+            await loadOrExecFixture(setup)
         })
         beforeEach("snap data", async () => {
             vaultsDataBefore = await snapshotVaults(
@@ -1082,7 +1055,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
             describe("after settlement", () => {
                 it("partial withdraw", async () => {
-                    // FIXME - this is still failing
                     await assertVaultWithdraw(
                         staker1,
                         threeCrvToken,
@@ -1110,8 +1082,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                     expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.users.user1Balance, "user balance").to.be.eq(0)
                     expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                    // FIXME - it is still failing
-                    // FIXME - this scenario is still failing
                     assertBNClose(
                         vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets,
                         BN.from(0),
@@ -1126,12 +1096,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         let vaultsDataBefore
 
         before("reset block number", async () => {
-            // await resetNetwork(14960000)
-            if (network.name === "Hardhat") {
-                await loadFixture(setup)
-            } else {
-                await setup()
-            }
+            await loadOrExecFixture(setup)
         })
         beforeEach("snap data", async () => {
             vaultsDataBefore = await snapshotVaults(
@@ -1280,7 +1245,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                 // metavault
                 expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                // FIXME - this scenario is still failing
                 assertBNClose(
                     vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets,
                     BN.from(0),
@@ -1381,7 +1345,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                     // metavault
                     expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                    // FIXME - this scenario is still failing
                     assertBNClose(
                         vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets,
                         BN.from(0),

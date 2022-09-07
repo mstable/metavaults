@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory } from "types/generated"
 
-import { shouldBehaveLikeAbstractVault } from "../shared/AbstractVault.behaviour"
+import { shouldBehaveLikeAbstractVault, testAmounts } from "../shared/AbstractVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
 import type { AbstractVault, BasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated"
@@ -39,12 +39,12 @@ describe("BasicVault", () => {
     }
 
     before("init contract", async () => {
-        await setup()
         ctxVault = {
             vault: vault as unknown as AbstractVault,
             asset: asset,
             sa: sa,
-            fixture: async () => {},
+            fixture: setup,
+            amounts: testAmounts(100, await asset.decimals()),
         }
     })
     describe("behaviors", async () => {

@@ -1,7 +1,6 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers"
 import { DAI, mUSD, musd3CRV, resolveAddress, ThreeCRV, USDC, usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
-import { impersonateAccount } from "@utils/fork"
+import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { musdConvexConstructorData } from "@utils/peripheral/convex-curve"
 import { expect } from "chai"
@@ -271,7 +270,7 @@ describe("Curve 3Crv metapool calculations", async () => {
             await usdcToken.connect(staker1.signer).approve(threePool.address, ethers.constants.MaxUint256)
         }
         beforeEach(async () => {
-            await loadFixture(setup)
+            await loadOrExecFixture(setup)
         })
         after(async () => {
             await outputMetapoolBalances("after")
