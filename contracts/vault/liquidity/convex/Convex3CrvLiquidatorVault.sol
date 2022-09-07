@@ -192,10 +192,7 @@ contract Convex3CrvLiquidatorVault is
         // Get vault's asset (3Crv) balance after adding token to Curve's 3Pool.
         assets_ = _asset.balanceOf(address(this));
         // Add asset (3Crv) to metapool with slippage protection.
-        ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
-
-        // TODO do we deposit the balance? Or use what's returned from add_liquidity?
-        uint256 metapoolTokens = IERC20(metapoolToken).balanceOf(address(this));
+        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
 
         // Calculate share value of the new assets before depositing the metapool tokens to the Convex pool.
         shares_ = _getSharesFromMetapoolTokens(

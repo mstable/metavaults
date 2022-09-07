@@ -19,12 +19,19 @@ import { ICurve3Pool } from "./ICurve3Pool.sol";
  *          https://atulagarwal.dev/posts/curveamm/stableswap/
  */
 library Curve3PoolCalculatorLibrary {
+    /// @notice Number of coins in the pool.
     uint256 public constant N_COINS = 3;
-    uint256 public constant CURVE_FEE_SCALE = 1e10;
     uint256 public constant VIRTUAL_PRICE_SCALE = 1e18;
+    /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
+    uint256 public constant CURVE_FEE_SCALE = 1e10;
+    /// @notice Address of the Curve.fi 3Pool contract.
     ICurve3Pool public constant THREE_POOL =
         ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    /// @notice Address of the Curve.fi 3Pool liquidity token (3Crv).
     IERC20 public constant LP_TOKEN = IERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
+    /// @notice Scales up the mint tokens by 0.002 basis points.
+    uint256 public constant MINT_ADJUST = 10000002;
+    uint256 public constant MINT_ADJUST_SCALE = 10000000;
 
     /**
      * @notice Calculates the amount of liquidity provider tokens (3Crv) to mint for depositing a fixed amount of pool tokens.
@@ -294,9 +301,8 @@ library Curve3PoolCalculatorLibrary {
         // Deposit more to account for rounding errors
         tokenAmount_ = _coinIndex == 0 ? tokenAmount_ : tokenAmount_ / 1e12;
 
-        // TODO can this be a fixed amount rather than a percentage? eg +3e12
-        // Increase the amont by 0.001 basis points
-        tokenAmount_ = (tokenAmount_ * 10000001) / 10000000;
+        // Round up the amount
+        tokenAmount_ = (tokenAmount_ * MINT_ADJUST) / MINT_ADJUST_SCALE;
     }
 
     /**

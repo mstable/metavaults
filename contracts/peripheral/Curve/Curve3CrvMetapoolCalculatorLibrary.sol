@@ -23,13 +23,16 @@ import { ICurveMetapool } from "./ICurveMetapool.sol";
 library Curve3CrvMetapoolCalculatorLibrary {
     /// @notice Curve's 3Pool used as a base pool by the Curve metapools.
     ICurve3Pool public constant BASE_POOL = ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
-
+    
+    /// @notice Number of coins in the pool.
     uint256 public constant N_COINS = 2;
     uint256 public constant VIRTUAL_PRICE_SCALE = 1e18;
     /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
     uint256 public constant CURVE_FEE_SCALE = 1e10;
-    uint256 public constant BASE_CACHE_EXPIRES = 10 * 60; // 10 minutes
-    uint256 public constant MINT_ADJUST = 10000001;
+    /// @notice Time in seconds the 3Pool virtual price is cached in the Metapool = 10 minutes.
+    uint256 public constant BASE_CACHE_EXPIRES = 10 * 60;
+    /// @notice Scales up the mint tokens by 0.002 basis points.
+    uint256 public constant MINT_ADJUST = 10000002;
     uint256 public constant MINT_ADJUST_SCALE = 10000000;
 
     /**
@@ -298,6 +301,7 @@ library Curve3CrvMetapoolCalculatorLibrary {
             ? requiredBalanceScaled - newBalancesScaled0
             : ((requiredBalanceScaled - newBalancesScaled1) * VIRTUAL_PRICE_SCALE) /
                 baseVirtualPrice_;
+        // Round up the amount
         tokenAmount_ = (tokenAmount_ * MINT_ADJUST) / MINT_ADJUST_SCALE;
     }
 
