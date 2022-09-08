@@ -117,6 +117,13 @@ const testVault = async (vaultType: String) => {
                 await vault.connect(sa.default.signer).withdraw(assets.div(2), sa.default.address, sa.default.address)
                 expect(await vault.totalAssets(), "totalAssets should decrease").to.eq(initialAssets.add(assets).sub(assets.div(2)))
             })
+            it("conversions with totalShares = 0", async () => {
+                await setup()
+                expect(await vault.totalSupply(), "totalSupply").to.eq(0)
+                const testAmount = simpleToExactAmount(100)
+                expect(await vault.convertToAssets(testAmount), "convertToAssets").to.eq(testAmount)
+                expect(await vault.convertToShares(testAmount), "convertToShares").to.eq(testAmount)
+            })
         })
     })
 }
