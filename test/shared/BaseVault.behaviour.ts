@@ -205,6 +205,14 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             expect(await vault.totalSupply(), "totalSupply").to.eq(0)
         })
     })
+    describe("conversions with totalSupply = 0", async () => {
+        it("should calculate correctly", async () => {
+            const { vault, amounts } = ctx()
+            expect(await vault.totalSupply(), "totalSupply").to.eq(ZERO)
+            expect(await vault.convertToAssets(amounts.deposit), "convertToAssets").to.eq(amounts.deposit)
+            expect(await vault.convertToShares(amounts.deposit), "convertToShares").to.eq(amounts.deposit)
+        })
+    })
     describe("deposit", async () => {
         before("initial deposits", async () => {
             const { vault, asset, amounts } = ctx()
