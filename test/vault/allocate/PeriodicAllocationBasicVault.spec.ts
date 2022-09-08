@@ -44,7 +44,8 @@ const sourceParams = {
     singleVaultSharesThreshold: BN.from(1000),
     singleSourceVaultIndex: BN.from(0),
 }
-
+// AssetsPerShareUpdated event is never evaluated
+// ASSETS_PER_SHARE_SCALE
 describe("PeriodicAllocationBasicVault", async () => {
     /* -- Declare shared variables -- */
     let sa: StandardAccounts
@@ -968,10 +969,13 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should revert if invalid value", async () => {
+                    // TODO - why 100000? should get the value from BASIS_SCALE
                     const tx = pabVault.connect(sa.governor.signer).setSingleVaultSharesThreshold(100000)
                     await expect(tx).to.be.revertedWith("Invalid shares threshold")
                 })
                 it("should correctly update", async () => {
+                    // TODO - Check state before and after 
+                    // TODO - verify that all fn calling `_sourceAssets` behave as expected _withdraw, _redeem
                     await pabVault.connect(sa.governor.signer).setSingleVaultSharesThreshold(100)
                     expect((await pabVault.sourceParams()).singleVaultSharesThreshold).to.be.eq(100)
                 })
@@ -982,10 +986,13 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should revert if invalid value", async () => {
+                    // TODO - avoid magic numbers 
                     const tx = pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
                     await expect(tx).to.be.revertedWith("Invalid source vault index")
                 })
                 it("should correctly update", async () => {
+                    // TODO - Check state before and after 
+                    // TODO - verify that all fn calling `_sourceAssets` behave as expected _withdraw, _redeem                    
                     await pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(1)
                     expect((await pabVault.sourceParams()).singleSourceVaultIndex).to.be.eq(1)
                 })
@@ -996,6 +1003,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should correctly update", async () => {
+                    // TODO - avoid magic numbers 
+                    // TODO - should be there a limit ? any edge case ? 
+                    // TODO - test the behavior of deposit, mint, redeem, withdraw
                     await pabVault.connect(sa.governor.signer).setAssetPerShareUpdateThreshold(1)
                     expect(await pabVault.assetPerShareUpdateThreshold()).to.be.eq(1)
                 })
