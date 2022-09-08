@@ -240,7 +240,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     function _convertToShares(uint256 assets) internal view virtual returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
-        if (totalShares == 0 || _asset.balanceOf(address(this)) == 0) {
+        if (totalShares == 0) {
             shares = assets; // 1:1 value of shares and assets
         } else {
             shares = (assets * totalShares) / totalAssets();
