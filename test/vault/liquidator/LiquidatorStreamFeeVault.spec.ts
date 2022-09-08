@@ -1,4 +1,4 @@
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
@@ -18,7 +18,7 @@ import {
 import { shouldBehaveLikeLiquidatorStreamFeeAbstractVault } from "../../shared/LiquidatorStreamFeeAbstractVault.behaviour"
 
 import type { TransactionResponse } from "@ethersproject/providers"
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type {
     AbstractVault,
@@ -210,7 +210,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
 
         describe("should behave like AbstractVaultBehaviourContext", async () => {
-            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
             before(async () => {
                 ctx.fixture = async function fixture() {
                     await setup()
@@ -220,7 +220,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
                     ctx.amounts = testAmounts(100, await asset.decimals())
                 }
             })
-            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
     })
     describe("constructor", async () => {

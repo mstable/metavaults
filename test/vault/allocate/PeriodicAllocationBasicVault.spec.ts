@@ -1,4 +1,4 @@
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ZERO_ADDRESS } from "@utils/constants"
@@ -8,7 +8,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, PeriodicAllocationBasicVault__factory } from "types/generated"
 
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type { Account } from "types"
 import type { AbstractVault, BasicVault, MockERC20, MockNexus, PeriodicAllocationBasicVault, VaultManagerRole } from "types/generated"
@@ -244,7 +244,7 @@ describe("PeriodicAllocationBasicVault", async () => {
         })
     })
     describe("behaviors", async () => {
-        const ctx: Partial<AbstractVaultBehaviourContext> = {}
+        const ctx: Partial<BaseVaultBehaviourContext> = {}
         before(async () => {
             ctx.fixture = async function fixture() {
                 await setup()
@@ -256,7 +256,7 @@ describe("PeriodicAllocationBasicVault", async () => {
         })
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: pabVault as VaultManagerRole, sa }))
 
-        shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+        shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
     })
     describe("Vault operations", async () => {
         const initialDepositAmount = tenMil

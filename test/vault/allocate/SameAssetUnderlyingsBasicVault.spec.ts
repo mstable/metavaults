@@ -1,4 +1,4 @@
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeModule } from "@test/shared/Module.behaviour"
 import { shouldBehaveLikeToken } from "@test/shared/Token.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
@@ -11,7 +11,7 @@ import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "ty
 
 import { impersonate } from "../../../test-utils/fork"
 
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { TokenContext, TokenERC20 } from "@test/shared/Token.behaviour"
 import type { BN } from "@utils/math"
 import type { BigNumberish, ContractTransaction } from "ethers"
@@ -212,7 +212,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             shouldBehaveLikeToken(() => tokenContext as TokenContext)
         })
         describe("should behave like AbstractVaultBehaviourContext", async () => {
-            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
             before(async () => {
                 ctx.fixture = async function fixture() {
                     await setup()
@@ -222,7 +222,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
                     ctx.amounts = testAmounts(100, await asset.decimals())
                 }
             })
-            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
     })
     describe("Vault operations", async () => {
