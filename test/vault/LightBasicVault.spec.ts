@@ -5,7 +5,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { LightBasicVault__factory, BasicVault__factory } from "types/generated"
 
-import { shouldBehaveLikeAbstractVault } from "../shared/AbstractVault.behaviour"
+import { shouldBehaveLikeAbstractVault, testAmounts } from "../shared/AbstractVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
 import type { LightAbstractVault, LightBasicVault, BasicVault, AbstractVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated";
@@ -23,7 +23,7 @@ const testVault = async (vaultType: String) => {
         let sa: StandardAccounts
         let mocks: ContractMocks
         let nexus: MockNexus
-        let ctxVault: AbstractVaultBehaviourContext
+
         // Testing contract
         let vault: BaseVault
         let asset: MockERC20
@@ -44,37 +44,31 @@ const testVault = async (vaultType: String) => {
             }
             // Initialize test contract.
             await vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address)
+            // set balance or users for the test.
+            const assetBalance = await asset.balanceOf(sa.default.address)
+            asset.transfer(sa.alice.address, assetBalance.div(2))
         }
 
         before("init contract", async () => {
             await setup()
         })
         describe("behaviors", async () => {
-            it("should behave like VaultManagerRole ", async () => {
-                shouldBehaveLikeVaultManagerRole({
-                    vaultManagerRole: vault as unknown as VaultManagerRole,
-                    sa: sa,
-                })
+            const ctxVault: Partial<AbstractVaultBehaviourContext> = {}
+            before("init contract", async () => {
+                ctxVault.fixture = async function fixture() {
+                    await setup()
+                    if (vaultType == LIGHT_BASIC_VAULT) {
+                        ctxVault.vault = vault as unknown as LightAbstractVault
+                    } else if (vaultType == BASIC_VAULT) {
+                        ctxVault.vault = vault as unknown as AbstractVault
+                    }
+                    ctxVault.asset = asset
+                    ctxVault.sa = sa
+                    ctxVault.amounts = testAmounts(100, 18)
+                }
             })
-            if (vaultType == LIGHT_BASIC_VAULT) {
-                it("should behave like LightAbstractVault ", async () => {
-                    ctxVault = {
-                        vault: vault as unknown as LightAbstractVault,
-                        asset: asset,
-                        sa: sa,
-                    }
-                    shouldBehaveLikeAbstractVault(ctxVault)
-                })
-            } else {
-                it("should behave like AbstractVault ", async () => {
-                    ctxVault = {
-                        vault: vault as unknown as AbstractVault,
-                        asset: asset,
-                        sa: sa,
-                    }
-                    shouldBehaveLikeAbstractVault(ctxVault)
-                })
-            }
+            shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
+            shouldBehaveLikeAbstractVault(() => ctxVault as AbstractVaultBehaviourContext)
         })
 
         describe("constructor", async () => {
