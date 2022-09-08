@@ -7,6 +7,20 @@ Provide liquidity to [Curve](https://curve.readthedocs.io/) pools.
 -   [Curve3CrvAbstractMetaVault](./Curve3CrvAbstractMetaVault.sol) Abstract ERC-4626 vault with one of DAI/USDC/USDT asset invested in 3Pool, and then deposited in the Convex 3Crv Meta Vault.
 -   [Curve3CrvBasicMetaVault](./Curve3CrvBasicMetaVault.sol) Basic implementation of Curve3CrvBasicMetaVault.
 
+# Capabilities
+
+## Curve3CrvBasicMetaVault
+
+* [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) compliant tokenized vault.
+* [ERC-20](https://eips.ethereum.org/EIPS/eip-20) compliant token.
+* Invests DAI, USDC or USDT in Curve's 3Pool and then invests the 3Crv LP token in an underlying ERC4626 vault.
+* Sandwich attack protection on ERC4626 operations `deposit`, `mint`, `withdraw` and `redeem`.
+* Vault operations are pausable by the `Governor`.
+* Emergency asset recovery by the `Governor`.
+* Vault configuration is controlled by a protocol `Governor`. This includes:
+    * Setting the slippage limits for mint, deposit, redeem and withdraw.
+* One week time delay for proxy upgrades by the `Governor`.
+
 # Diagrams
 
 ## Stablecoin (DAI/USDC/USDT) Convex 3Crv Meta Vault
@@ -31,12 +45,6 @@ Get the total assets in USD in a `Curve3CrvAbstractMetaVault`.
 
 Calculates the vault's total assets by extrapolating the asset tokens (DAI, USDC or USDT) received from redeeming one Curve 3Pool LP token (3Crv) by the amount of 3Crv in the underlying Meta Vault.
 This takes into account Curve 3Pool token balances but does not take into account any slippage or fees.
-
-Steps:
-
--   Get vault's balance of Curve 3Pool LP tokens (3Crv) in the underlying Meta Vault.
--   Get tokens (DAI, USDC or USDT) for removing one Crv token from the Curve 3Pool.
--   assets = tokens \* vault's 3Crv in the underlying Meta Vault.
 
 ![Get total assets](../../../../docs/curve3CrvVaultTotalAssets.png)
 

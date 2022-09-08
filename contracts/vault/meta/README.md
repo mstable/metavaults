@@ -20,11 +20,12 @@ A Meta Vault is composed of other ERC-4626 compliant vaults.
 * Small withdrawals are taken from a single configured underlying vault to save gas.
 * Large withdraws are proportionally taken from all underlying vaults.
 * Performance fee periodically charged on assets per share increases.
+* Vault operations are pausable by the `Governor`.
 * Vault configuration is controlled by a protocol `Governor`. This includes:
     * Which underlying vaults are used.
     * Which vault small withdrawals are taken from.
     * The threshold for large withdraws as a percentage of shares.
-* Vault operations are pausable by the `Governor`.
+    * Setting the account that receives the performance fee.
 * One week time delay for proxy upgrades by the `Governor`.
 
 # Diagrams
