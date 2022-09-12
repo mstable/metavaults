@@ -50,8 +50,24 @@ This takes into account Curve 3Pool token balances but does not take into accoun
 
 ## Preview Deposit
 
-Shareholder previews the amount of shares returned from a deposit of assets (3Crv) in a `Curve3CrvAbstractMetaVault`.
+Shareholder previews the number of shares returned from a deposit of assets (3Crv) in a `Curve3CrvAbstractMetaVault`.
 
-Uses the Curve 3Pool virtual price to calculate the minimum shares from depositing an amount of assets using a configured max slippage.
+![Preview Deposit Assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
 
-![Preview Deposit assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
+# Deposit
+
+Shareholder deposits assets (DAI) into a `Curve3CrvAbstractMetaVault` for vault shares.
+
+![Deposit Assets](../../../../docs/curve3CrvVaultDeposit.png)
+
+# Preview Mint
+
+Shareholder previews the number of assets (DAI) required to deposit for an amount of vault share from a `Curve3CrvAbstractMetaVault`.
+
+![Preview Mint Shares](../../../../docs/curve3CrvVaultPreviewMint.png)
+
+# Mint
+
+Shareholder mints vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Mint Shares](../../../../docs/curve3CrvVaultMint.png)
