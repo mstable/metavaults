@@ -3,6 +3,7 @@ import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import shouldBehaveLikeSameAssetUnderlyingsAbstractVault from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture, setBalancesToAccount } from "@utils/fork"
@@ -23,12 +24,13 @@ import {
     IERC20Metadata__factory,
     MockGPv2Settlement__factory,
     MockGPv2VaultRelayer__factory,
-    PeriodicAllocationPerfFeeMetaVault__factory,
+    PeriodicAllocationPerfFeeMetaVault__factory
 } from "types/generated"
 
 import { buildDonateTokensInput, CRV, CVX, DAI, logTxDetails, ThreeCRV, USDC, usdFormatter, USDT } from "../../tasks/utils"
 
 import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour";
 import type { BigNumber, ContractTransaction, Signer } from "ethers"
 import type {
     Convex3CrvLiquidatorVault,
@@ -41,13 +43,14 @@ import type {
     Nexus,
 } from "types"
 import type { Account, AnyVault } from "types/common"
-import type { AbstractVault, ERC20, IERC20Metadata, InstantProxyAdmin, PeriodicAllocationPerfFeeMetaVault } from "types/generated"
+import type { AbstractVault, ERC20, IERC20Metadata, InstantProxyAdmin, PeriodicAllocationPerfFeeMetaVault ,
+    SameAssetUnderlyingsAbstractVault} from "types/generated"
 
 const log = logger("test:savePlus")
 
 const governorAddress = resolveAddress("Governor")
 const feeReceiver = resolveAddress("mStableDAO")
-const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf" //Coinbase 6
+// const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf" //Coinbase 6
 const usdtWhaleAddress = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 const staker1Address = "0xA86e412109f77c45a3BC1c5870b880492Fb86A14" // Tokemak: Manager
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
@@ -514,7 +517,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
         sa.bob = staker2
 
         rewardsWhale = await impersonateAccount(rewardsWhaleAddress)
-        vaultManager = await impersonateAccount(vaultManagerAddress)
+        // vaultManager = await impersonateAccount(vaultManagerAddress)
+        vaultManager = sa.vaultManager
+
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
         // Deploy core contracts  (nexus, proxy admin)
@@ -537,7 +542,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             convex3CrvVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curve3CrvMetaVaults,
-        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManagerAddress)
+        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManager.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)
@@ -550,6 +555,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
             periodicAllocationPerfFeeVault.proxy.address,
             deployer,
         )
+        const vaultManagerAddres = await periodicAllocationPerfFeeMetaVault.vaultManager()
+        console.log("🚀 ~ file: savePlus.spec.ts ~ line 556 ~ setup ~ sa.vaultManager.address", sa.vaultManager.address, vaultManagerAddres)
+
 
         //  3.- 4626 Wrappers of the save plus meta vault
         daiMetaVault = Curve3CrvBasicMetaVault__factory.connect(curve3CrvMetaVaults.dai.proxy.address, deployer)
@@ -742,7 +750,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
     before("reset block number", async () => {
         await loadOrExecFixture(setup)
     })
-    context("deployment check", async () => {
+    context.skip("deployment check", async () => {
         describe("proxy instant admin", async () => {
             it("owner is the multisig governor", async () => {
                 expect(await proxyAdmin.owner(), "owner must be governor").to.be.eq(governorAddress)
@@ -817,7 +825,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         })
     })
     context("behaviors", async () => {
-        context("should behave like AbstractVault", async () => {
+        context.skip("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<AbstractVaultBehaviourContext> = {}
                 before(async () => {
@@ -829,7 +837,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
-                    }
+                    }                
                 })
                 shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
@@ -884,8 +892,50 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
         })
+        context("should behave like SameAssetUnderlyingsAbstractVault", async () => {
+            describe("periodicAllocationPerfFeeMetaVault", async () => {
+                const ctxSa: Partial<SameAssetUnderlyingsAbstractVaultBehaviourContext> = {}
+                before(async () => {
+                    ctxSa.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+
+                        ctxSa.vault = periodicAllocationPerfFeeMetaVault as unknown as SameAssetUnderlyingsAbstractVault
+                        ctxSa.asset = threeCrvToken
+                        ctxSa.sa = sa
+                        ctxSa.amounts = { initialDeposit: simpleToExactAmount(100,ThreeCRV.decimals) }
+                        ctxSa.variances = {  rebalance: 0.04, rebalancebVault0: 60, rebalancebVault1:28}
+                        // underlying vaults are empty even after an initial deposit with this implementation.
+                        // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
+                        await assertVaultDeposit(
+                            staker1,
+                            threeCrvToken,
+                            periodicAllocationPerfFeeMetaVault,
+                            simpleToExactAmount(50000, ThreeCRV.decimals),
+                        )
+                        const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
+                        // Settle evenly to underlying assets
+                        const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(4) }
+                        const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(4) }
+                        const lusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(4) }
+                        const busdSettlement = { vaultIndex: BN.from(3), assets: totalAssets.div(4) }
+                        const settlements = { musd: musdSettlement, frax: fraxSettlement, lusd: lusdSettlement, busd: busdSettlement }
+                        await assertVaultSettle(
+                            vaultManager,
+                            convex3CrvLiquidatorVaults,
+                            periodicAllocationPerfFeeMetaVault,
+                            curve3CrvBasicMetaVaults,
+                            settlements,
+                            staker1,
+                        )                        
+
+                    }                    
+                })
+                shouldBehaveLikeSameAssetUnderlyingsAbstractVault(() => ctxSa as SameAssetUnderlyingsAbstractVaultBehaviourContext)
+            })
+        })
+
     })
-    context("PeriodicAllocationPerfFeeMetaVault", async () => {
+    context.skip("PeriodicAllocationPerfFeeMetaVault", async () => {
         let vaultsDataBefore
         before("reset block number", async () => {
             await loadOrExecFixture(setup)
@@ -1092,7 +1142,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context("Curve3CrvBasicMetaVault", async () => {
+    context.skip("Curve3CrvBasicMetaVault", async () => {
         let vaultsDataBefore
 
         before("reset block number", async () => {

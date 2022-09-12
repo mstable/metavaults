@@ -81,6 +81,14 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     }
 
     /**
+     * @notice Returns the total number of underlying vaults.
+     *
+     * @return  vaultsLen The total number of underlying vaults
+     */
+    function underlyingVaultsLength() external view virtual returns (uint256 vaultsLen) {
+        vaultsLen = underlyingVaults.length;
+    }
+    /**
      * @notice `VaultManager` rebalances the assets in the underlying vaults.
      * This can be moving assets between underlying vaults, moving assets in underlying
      * vaults back to this vault, or moving assets in this vault to underlying vaults.
@@ -138,6 +146,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
 
     function _addVault(address _underlyingVault) internal virtual {
         require(IERC4626Vault(_underlyingVault).asset() == address(_asset), "Invalid vault asset");
+        // TODO - should avoid adding same vault more than once
 
         // Get the index of the vault that is about to be added.
         uint256 vaultIndex = underlyingVaults.length;
