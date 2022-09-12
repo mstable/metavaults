@@ -265,7 +265,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         _asset.safeTransferFrom(msg.sender, address(this), assets);
 
         // Deposit asset (DAI, USDC or USDT) into 3Pool and then deposit into underlying meta vault.
-        _addAndDeposit(assets, requiredMetaVaultShares);
+        _addAndDeposit(assets, requiredThreeCrvTokens);
 
         _mint(receiver, shares);
 
@@ -678,18 +678,20 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         }
     }
 
-    /// @dev Utility function to convert assets (DAI, USDC or USDT) to expected 3Crv token amount.
-    /// @param _assetsAmount amount of assets (DAI, USDC or USDT) to burn.
-    /// @return expectedthreeCrvTokens Amount of 3Crv tokens expected from Curve 3Pool.
+    /// @dev Utility function to convert asset (DAI, USDC or USDT) amount to fair 3Crv token amount.
+    /// @param _assetsAmount Amount of assets (DAI, USDC or USDT) to burn.
+    /// @return expectedthreeCrvTokens Fair amount of 3Crv tokens expected from Curve 3Pool.
     function _getThreeCrvTokensForAssets(uint256 _assetsAmount)
         internal
         view
         returns (uint256 expectedthreeCrvTokens)
     {
-        // Curve lp token virtual price in USD. Non-manipulable
+        // Curve 3Pool lp token virtual price which is the price of one scaled 3Crv (USD/3Crv). Non-manipulable
         uint256 lpVirtualPrice = Curve3PoolCalculatorLibrary.getVirtualPrice();
 
-        // Amount of lp tokens corresponding to assetTokens
+        // Amount of 3Pool lp tokens (3Crv) corresponding to asset tokens (DAI, USDC or USDT)
+        // Assume 1 DAI == 1 USD
+        // 3Crv amount = DAI amount / 3Crv/USD virtual price
         expectedthreeCrvTokens =
             (Curve3PoolCalculatorLibrary.VIRTUAL_PRICE_SCALE * _assetsAmount * threeCrvTokenScale) /
             (lpVirtualPrice * assetScale);

@@ -75,7 +75,7 @@ describe("Curve 3Crv Basic Vault", async () => {
         }
     }
 
-    it.skip("initialize Curve 3Crv Meta Vault", async () => {
+    it("initialize Curve 3Crv Meta Vault", async () => {
         await commonSetup(normalBlock)
         const vault = await deployContract<Curve3CrvBasicMetaVault>(
             new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer),
