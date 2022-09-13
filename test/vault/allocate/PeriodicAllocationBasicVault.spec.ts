@@ -207,7 +207,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             const pabVaultTemp = await new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
 
             const sourceParamsTemp = {
-                singleVaultSharesThreshold: BN.from(10001),
+                singleVaultSharesThreshold: (await pabVault.BASIS_SCALE()).add(1),
                 singleSourceVaultIndex: BN.from(10),
             }
 
@@ -227,9 +227,11 @@ describe("PeriodicAllocationBasicVault", async () => {
             // Deploy test contract.
             const pabVaultTemp = await new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
 
+            const invalidVaultIndex = 10
+
             const sourceParamsTemp = {
                 singleVaultSharesThreshold: BN.from(1000),
-                singleSourceVaultIndex: BN.from(10),
+                singleSourceVaultIndex: BN.from(invalidVaultIndex),
             }
 
             // Initialize test contract.
@@ -324,7 +326,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 expect(userAssetsRecv, "userAssetsReceived").to.eq(redeemAmount)
             })
             it("withdraw should fail assetsWithdrawn > vaultBalance", async () => {
-                const tx = pabVault.connect(user.signer).withdraw(initialDepositAmount.mul(2), user.address, user.address)
+                const tx = pabVault.connect(user.signer).withdraw((await pabVault.totalAssets()).mul(2), user.address, user.address)
                 await expect(tx).to.be.revertedWith("not enough assets")
             })
             it("withdraw", async () => {
@@ -405,8 +407,9 @@ describe("PeriodicAllocationBasicVault", async () => {
         })
         describe("settlement", async () => {
             it("fails if wrong vaultIndex", async () => {
+                const invalidVaultIndex = 3
                 const settlement = {
-                    vaultIndex: BN.from(3),
+                    vaultIndex: BN.from(invalidVaultIndex),
                     assets: oneMil,
                 }
                 const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement])
@@ -1030,10 +1033,11 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should revert if invalid value", async () => {
-                    const tx = pabVault.connect(sa.governor.signer).setSingleVaultSharesThreshold(100000)
+                    const tx = pabVault.connect(sa.governor.signer).setSingleVaultSharesThreshold((await pabVault.BASIS_SCALE()).add(1))
                     await expect(tx).to.be.revertedWith("Invalid shares threshold")
                 })
                 it("should correctly update", async () => {
+                    expect((await pabVault.sourceParams()).singleVaultSharesThreshold).to.not.eq(100)
                     await pabVault.connect(sa.governor.signer).setSingleVaultSharesThreshold(100)
                     expect((await pabVault.sourceParams()).singleVaultSharesThreshold).to.be.eq(100)
                 })
@@ -1044,7 +1048,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should revert if invalid value", async () => {
-                    const tx = pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
+                    const invalidSourceVaultIndex = 100
+                    const tx = pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(invalidSourceVaultIndex)
                     await expect(tx).to.be.revertedWith("Invalid source vault index")
                 })
                 it("should correctly update", async () => {
@@ -1058,6 +1063,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     await expect(tx).to.be.revertedWith("Only governor can execute")
                 })
                 it("should correctly update", async () => {
+                    expect(await pabVault.assetPerShareUpdateThreshold()).to.not.eq(1)
                     await pabVault.connect(sa.governor.signer).setAssetPerShareUpdateThreshold(1)
                     expect(await pabVault.assetPerShareUpdateThreshold()).to.be.eq(1)
                 })
