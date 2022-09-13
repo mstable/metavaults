@@ -50,7 +50,7 @@ This takes into account Curve 3Pool token balances but does not take into accoun
 
 ## Preview Deposit
 
-Shareholder previews the number of shares returned from a deposit of assets (3Crv) in a `Curve3CrvAbstractMetaVault`.
+Shareholder previews the number of shares returned from a deposit of assets (DAI) in a `Curve3CrvAbstractMetaVault`.
 
 ![Preview Deposit Assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
 
@@ -71,3 +71,27 @@ Shareholder previews the number of assets (DAI) required to deposit for an amoun
 Shareholder mints vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
 
 ![Mint Shares](../../../../docs/curve3CrvVaultMint.png)
+
+## Preview Withdraw
+
+Shareholder previews the number of shares burned from a withdrawal of assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Preview Withdraw Assets](../../../../docs/curve3CrvVaultPreviewWithdraw.png)
+
+# Withdraw
+
+Shareholder withdraws assets (DAI) from a `Curve3CrvAbstractMetaVault` for vault shares.
+
+![Withdraw Assets](../../../../docs/curve3CrvVaultWithdraw.png)
+
+# Preview Redeem
+
+Shareholder previews the number of assets (DAI) received for redeeming an amount of vault share from a `Curve3CrvAbstractMetaVault`.
+
+![Preview Redeem Shares](../../../../docs/curve3CrvVaultPreviewRedeem.png)
+
+# Redeem
+
+Shareholder redeems vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Mint Shares](../../../../docs/curve3CrvVaultRedeem.png)
