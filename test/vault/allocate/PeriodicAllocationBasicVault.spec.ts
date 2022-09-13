@@ -34,9 +34,9 @@ interface SnapVaultData {
     bVault2Data: BasicVaultData
 }
 
-const halfMil = simpleToExactAmount(500000)
 const oneMil = simpleToExactAmount(1000000)
 const tenMil = oneMil.mul(10)
+const basisScale = BN.from(10000)
 const assetPerShareUpdateThreshold = oneMil
 const sourceParams = {
     singleVaultSharesThreshold: BN.from(1000),
@@ -262,7 +262,7 @@ describe("PeriodicAllocationBasicVault", async () => {
     })
     describe("Vault operations", async () => {
         const initialDepositAmount = tenMil
-        const singleVaultThresholdAmount = initialDepositAmount.mul((await pabVault.sourceParams()).singleVaultSharesThreshold).div(await pabVault.BASIS_SCALE())
+        const singleVaultThresholdAmount = initialDepositAmount.mul(sourceParams.singleVaultSharesThreshold).div(basisScale)
         const belowThresholdAmount = singleVaultThresholdAmount.div(2)
         const aboveThresholdAmount = singleVaultThresholdAmount.mul(2)
 
@@ -278,7 +278,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 await assertVaultBalances(data, assetsPerShareScale, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             })
             it("deposit", async () => {
-                await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
+                const tx = pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, 0)
                 const data = await snapVault()
 
                 await assertVaultBalances(
@@ -299,7 +300,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 const userSharesBefore = await pabVault.balanceOf(user.address)
                 const userAssetsBefore = await asset.balanceOf(user.address)
 
-                await pabVault.connect(user.signer).redeem(redeemAmount, user.address, user.address)
+                const tx = pabVault.connect(user.signer).redeem(redeemAmount, user.address, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                 const data = await snapVault()
 
                 const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -330,7 +332,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 const userAssetsBefore = await asset.balanceOf(user.address)
 
                 const dataBefore = await snapVault()
-                await pabVault.connect(user.signer).withdraw(withdrawAmount, user.address, user.address)
+                const tx = pabVault.connect(user.signer).withdraw(withdrawAmount, user.address, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, dataBefore.vaultData.totalAssets)
                 const data = await snapVault()
 
                 const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -376,7 +379,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 const userAssetsBefore = await asset.balanceOf(user.address)
 
                 const dataBefore = await snapVault()
-                await pabVault.connect(user.signer).mint(mintAmount, user.address)
+                const tx = pabVault.connect(user.signer).mint(mintAmount, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, dataBefore.vaultData.totalAssets)
                 const data = await snapVault()
 
                 const userAssetsConsumed = userAssetsBefore.sub(await asset.balanceOf(user.address))
@@ -430,7 +434,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             assets: BN.from(0),
                         }
 
-                        await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                     })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
@@ -457,7 +462,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             const userAssetsBefore = await asset.balanceOf(user.address)
 
                             const dataBefore = await snapVault()
-                            await pabVault.connect(user.signer).withdraw(aboveThresholdAmount, user.address, user.address)
+                            const tx = pabVault.connect(user.signer).withdraw(aboveThresholdAmount, user.address, user.address)
+                            await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, dataBefore.vaultData.totalAssets)
                             const data = await snapVault()
 
                             const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -484,7 +490,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                             const userSharesBefore = await pabVault.balanceOf(user.address)
                             const userAssetsBefore = await asset.balanceOf(user.address)
 
-                            await pabVault.connect(user.signer).withdraw(initialDepositAmount, user.address, user.address)
+                            const totalAssetsBefore = await pabVault.totalAssets()
+                            const tx = pabVault.connect(user.signer).withdraw(initialDepositAmount, user.address, user.address)
+                            await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, totalAssetsBefore)
                             const data = await snapVault()
 
                             const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -570,7 +578,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             assets: bVault2SettleAmount,
                         }
 
-                        await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                     })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
@@ -596,7 +605,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             const userSharesBefore = await pabVault.balanceOf(user.address)
                             const userAssetsBefore = await asset.balanceOf(user.address)
 
-                            await pabVault.connect(user.signer).withdraw(aboveThresholdAmount, user.address, user.address)
+                            const tx = pabVault.connect(user.signer).withdraw(aboveThresholdAmount, user.address, user.address)
+                            await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                             const data = await snapVault()
 
                             const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -629,7 +639,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             const userSharesBefore = await pabVault.balanceOf(user.address)
                             const userAssetsBefore = await asset.balanceOf(user.address)
 
-                            await pabVault.connect(user.signer).withdraw(initialDepositAmount, user.address, user.address)
+                            const tx = pabVault.connect(user.signer).withdraw(initialDepositAmount, user.address, user.address)
+                            await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                             const data = await snapVault()
 
                             const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
@@ -683,7 +694,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             assets: bVault2SettleAmount,
                         }
 
-                        await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                     })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
@@ -759,7 +771,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                             assets: bVault2SettleAmount,
                         }
 
-                        await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                        await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
                     })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
@@ -891,6 +904,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             const redeemAmount = oneMil
             const withdrawAmount = oneMil
             const mintAmount = oneMil
+            const transferAmount = oneMil.mul(2)
 
             const inVaultSettleAmount = oneMil.mul(2)
             const bVault1SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
@@ -912,13 +926,13 @@ describe("PeriodicAllocationBasicVault", async () => {
                 await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
 
                 // Send some assets to bVault1 to change assetPerShare
-                const transferAmount = oneMil.mul(2)
                 await asset.transfer(bVault1.address, transferAmount)
 
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
 
                 // Update assetPerShare
-                await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+                const tx = pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
             })
             it("should have correct assetPerShare", async () => {
                 const actualAssetPerShare = await pabVault.assetsPerShare()
@@ -926,7 +940,8 @@ describe("PeriodicAllocationBasicVault", async () => {
             })
             it("deposit", async () => {
                 const userSharesBefore = await pabVault.balanceOf(user.address)
-                await pabVault.connect(user.signer).deposit(depositAmount, user.address)
+                const tx = pabVault.connect(user.signer).deposit(depositAmount, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userSharesRecv = (await pabVault.balanceOf(user.address)).sub(userSharesBefore)
                 const expectedSharesRecv = depositAmount.mul(assetsPerShareScale).div(updatedAssetPerShare)
@@ -934,7 +949,8 @@ describe("PeriodicAllocationBasicVault", async () => {
             })
             it("redeem", async () => {
                 const userAssetsBefore = await asset.balanceOf(user.address)
-                await pabVault.connect(user.signer).redeem(redeemAmount, user.address, user.address)
+                const tx = pabVault.connect(user.signer).redeem(redeemAmount, user.address, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userAssetsRecv = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
                 const expectedAssetsRecv = redeemAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
@@ -942,7 +958,8 @@ describe("PeriodicAllocationBasicVault", async () => {
             })
             it("withdraw", async () => {
                 const userSharesBefore = await pabVault.balanceOf(user.address)
-                await pabVault.connect(user.signer).withdraw(withdrawAmount, user.address, user.address)
+                const tx = pabVault.connect(user.signer).withdraw(withdrawAmount, user.address, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userSharesConsumed = userSharesBefore.sub(await pabVault.balanceOf(user.address))
                 const expectedSharesConsumed = withdrawAmount.mul(assetsPerShareScale).div(updatedAssetPerShare)
@@ -950,7 +967,8 @@ describe("PeriodicAllocationBasicVault", async () => {
             })
             it("mint", async () => {
                 const userAssetsBefore = await asset.balanceOf(user.address)
-                await pabVault.connect(user.signer).mint(mintAmount, user.address)
+                const tx = pabVault.connect(user.signer).mint(mintAmount, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userAssetsConsumed = userAssetsBefore.sub(await asset.balanceOf(user.address))
                 const expectedAssetsConsumed = mintAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
@@ -974,7 +992,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                     assets: bVault2SettleAmount,
                 }
 
-                await pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
             })
             it("when transferAmount < updateThreshold", async () => {
                 await pabVault.connect(user.signer).deposit(belowThresholdAmount, user.address)
@@ -986,7 +1005,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
 
-                await pabVault.connect(user.signer).deposit(aboveThresholdAmount, user.address)
+                const tx = pabVault.connect(user.signer).deposit(aboveThresholdAmount, user.address)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
                 expect(await pabVault.assetsTransferred(), "assetsTransferred").to.eq(0)
             })
@@ -995,9 +1015,10 @@ describe("PeriodicAllocationBasicVault", async () => {
                 await asset.transfer(bVault1.address, transferAmount)
 
                 const miniDepositAmount = simpleToExactAmount(1)
-                await pabVault.connect(user.signer).deposit(miniDepositAmount, user.address)
+                const tx = pabVault.connect(user.signer).deposit(miniDepositAmount, user.address)
 
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
                 expect(await pabVault.assetsTransferred(), "assetsTransferred").to.eq(0)
             })
