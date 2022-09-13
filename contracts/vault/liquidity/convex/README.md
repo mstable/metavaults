@@ -12,6 +12,24 @@ Vaults that deposit into a Curve 3Pool (3Crv) based Metapool before depositing t
 -   [Convex3CrvBasicVault](./Convex3CrvBasicVault.sol) basic implementation of `Convex3CrvAbstractVault` used for testing purposes.
 -   [Convex3CrvLiquidatorVault](./Convex3CrvLiquidatorVault.sol) ERC-4626 vault that deposits Curve 3Pool LP tokens (3Crv) in a Curve Metapool, eg musd3Crv; deposits the Metapool LP token in Convex; and stakes the Convex LP tokens, eg cvxmusd3Crv, in Convex for CRV and CVX rewards. The Convex rewards are swapped for a Curve 3Pool token, eg DAI, USDC or USDT, using the [Liquidator module](../liquidator/README.md) and donated back to the vault. On donation back to the vault, the DAI, USDC or USDT is deposited into the underlying Curve Metapool; the Curve Metapool LP token is deposited into the corresponding Convex pool and the Convex LP token staked.
 
+# Capabilities
+
+## Convex3CrvLiquidatorVault
+
+* [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) compliant tokenized vault.
+* [ERC-20](https://eips.ethereum.org/EIPS/eip-20) compliant token.
+* Invests 3Crv assets in a Curve Metapool and LP token staked in Convex for boosted returns.
+* Sandwich attack protection on ERC4626 operations `deposit`, `mint`, `withdraw` and `redeem`.
+* Liquidation of Convex rewards like CRV and CVX for more reinvested 3Crv assets.
+* Front running protection against liquidation of rewards by streaming the increase in assets per share.
+* Fee charged on liquidated Convex rewards.
+* Vault operations are pausable by the `Governor`.
+* Emergency asset recovery by the `Governor`.
+* Vault configuration is controlled by a protocol `Governor`. This includes:
+    * Setting the slippage limits for mint, deposit, redeem and withdraw.
+    * Setting the account that receives the liquidation fee.
+* One week time delay for proxy upgrades by the `Governor`.
+
 # Diagrams
 
 ## Convex Vault for 3Pool-based Curve Metapools (3Crv)

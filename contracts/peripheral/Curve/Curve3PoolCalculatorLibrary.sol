@@ -382,18 +382,19 @@ library Curve3PoolCalculatorLibrary {
     }
 
     /**
-     * Get 3Pool's virtual price which is in USD. This is the pool's invariant
+     * Get 3Pool's virtual price which is in USD. This is 3Pool's USD value (invariant)
      * divided by the number of LP tokens scaled to `VIRTUAL_PRICE_SCALE` which is 1e18.
      * @return virtualPrice_ 3Pool's virtual price in USD scaled to 18 decimal places.
      */
     function getVirtualPrice() external view returns (uint256 virtualPrice_) {
-        // Calculate the invariant
+        // Calculate the USD value of the 3Pool which is the invariant
         uint256 invariant = _getD(
             [THREE_POOL.balances(0), THREE_POOL.balances(1) * 1e12, THREE_POOL.balances(2) * 1e12],
             THREE_POOL.A() * N_COINS
         );
 
-        // This will fail if the pool is empty
+        // This will fail if the pool is empty.
+        // virtual price of one 3Crv in USD scaled to 18 decimal places (3Crv/USD) = 3Pool USD value * 1e18 / total 3Crv
         virtualPrice_ = (invariant * VIRTUAL_PRICE_SCALE) / LP_TOKEN.totalSupply();
     }
 

@@ -7,6 +7,20 @@ Provide liquidity to [Curve](https://curve.readthedocs.io/) pools.
 -   [Curve3CrvAbstractMetaVault](./Curve3CrvAbstractMetaVault.sol) Abstract ERC-4626 vault with one of DAI/USDC/USDT asset invested in 3Pool, and then deposited in the Convex 3Crv Meta Vault.
 -   [Curve3CrvBasicMetaVault](./Curve3CrvBasicMetaVault.sol) Basic implementation of Curve3CrvBasicMetaVault.
 
+# Capabilities
+
+## Curve3CrvBasicMetaVault
+
+* [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) compliant tokenized vault.
+* [ERC-20](https://eips.ethereum.org/EIPS/eip-20) compliant token.
+* Invests DAI, USDC or USDT in Curve's 3Pool and then invests the 3Crv LP token in an underlying ERC4626 vault.
+* Sandwich attack protection on ERC4626 operations `deposit`, `mint`, `withdraw` and `redeem`.
+* Vault operations are pausable by the `Governor`.
+* Emergency asset recovery by the `Governor`.
+* Vault configuration is controlled by a protocol `Governor`. This includes:
+    * Setting the slippage limits for mint, deposit, redeem and withdraw.
+* One week time delay for proxy upgrades by the `Governor`.
+
 # Diagrams
 
 ## Stablecoin (DAI/USDC/USDT) Convex 3Crv Meta Vault
@@ -32,18 +46,52 @@ Get the total assets in USD in a `Curve3CrvAbstractMetaVault`.
 Calculates the vault's total assets by extrapolating the asset tokens (DAI, USDC or USDT) received from redeeming one Curve 3Pool LP token (3Crv) by the amount of 3Crv in the underlying Meta Vault.
 This takes into account Curve 3Pool token balances but does not take into account any slippage or fees.
 
-Steps:
-
--   Get vault's balance of Curve 3Pool LP tokens (3Crv) in the underlying Meta Vault.
--   Get tokens (DAI, USDC or USDT) for removing one Crv token from the Curve 3Pool.
--   assets = tokens \* vault's 3Crv in the underlying Meta Vault.
-
 ![Get total assets](../../../../docs/curve3CrvVaultTotalAssets.png)
 
 ## Preview Deposit
 
-Shareholder previews the amount of shares returned from a deposit of assets (3Crv) in a `Curve3CrvAbstractMetaVault`.
+Shareholder previews the number of shares returned from a deposit of assets (DAI) in a `Curve3CrvAbstractMetaVault`.
 
-Uses the Curve 3Pool virtual price to calculate the minimum shares from depositing an amount of assets using a configured max slippage.
+![Preview Deposit Assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
 
-![Preview Deposit assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
+# Deposit
+
+Shareholder deposits assets (DAI) into a `Curve3CrvAbstractMetaVault` for vault shares.
+
+![Deposit Assets](../../../../docs/curve3CrvVaultDeposit.png)
+
+# Preview Mint
+
+Shareholder previews the number of assets (DAI) required to deposit for an amount of vault share from a `Curve3CrvAbstractMetaVault`.
+
+![Preview Mint Shares](../../../../docs/curve3CrvVaultPreviewMint.png)
+
+# Mint
+
+Shareholder mints vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Mint Shares](../../../../docs/curve3CrvVaultMint.png)
+
+## Preview Withdraw
+
+Shareholder previews the number of shares burned from a withdrawal of assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Preview Withdraw Assets](../../../../docs/curve3CrvVaultPreviewWithdraw.png)
+
+# Withdraw
+
+Shareholder withdraws assets (DAI) from a `Curve3CrvAbstractMetaVault` for vault shares.
+
+![Withdraw Assets](../../../../docs/curve3CrvVaultWithdraw.png)
+
+# Preview Redeem
+
+Shareholder previews the number of assets (DAI) received for redeeming an amount of vault share from a `Curve3CrvAbstractMetaVault`.
+
+![Preview Redeem Shares](../../../../docs/curve3CrvVaultPreviewRedeem.png)
+
+# Redeem
+
+Shareholder redeems vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
+
+![Mint Shares](../../../../docs/curve3CrvVaultRedeem.png)
