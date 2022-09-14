@@ -56,7 +56,6 @@ const log = logger("test:savePlus")
 
 const governorAddress = resolveAddress("Governor")
 const feeReceiver = resolveAddress("mStableDAO")
-// const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf" //Coinbase 6
 const usdtWhaleAddress = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 const staker1Address = "0xA86e412109f77c45a3BC1c5870b880492Fb86A14" // Tokemak: Manager
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
@@ -523,7 +522,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
         sa.bob = staker2
 
         rewardsWhale = await impersonateAccount(rewardsWhaleAddress)
-        // vaultManager = await impersonateAccount(vaultManagerAddress)
         vaultManager = sa.vaultManager
 
         usdtWhale = await impersonateAccount(usdtWhaleAddress)

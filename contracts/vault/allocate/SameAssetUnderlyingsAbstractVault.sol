@@ -148,7 +148,6 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
 
     function _addVault(address _underlyingVault) internal virtual {
         require(IERC4626Vault(_underlyingVault).asset() == address(_asset), "Invalid vault asset");
-        // TODO - should avoid adding same vault more than once
 
         // Get the index of the vault that is about to be added.
         uint256 vaultIndex = underlyingVaults.length;
