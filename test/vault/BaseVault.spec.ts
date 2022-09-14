@@ -15,9 +15,6 @@ import type { BaseVaultBehaviourContext } from "../shared/BaseVault.behaviour"
 
 export type BaseVault = LightBasicVault | BasicVault
 
-// const BASIC_VAULT = "BasicVault"
-// const LIGHT_BASIC_VAULT = "LightBasicVault"
-
 const testVault = async <F extends ContractFactory, V extends BaseVault>(factory: { new (signer: Signer): F }) => {
     describe(factory.name, () => {
         /* -- Declare shared variables -- */
