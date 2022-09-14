@@ -9,7 +9,7 @@ import { AbstractVault__factory, BasicVault__factory, Convex3CrvLiquidatorVault_
 
 import type { StandardAccounts } from "@utils/machines"
 import type { Account } from "types"
-import type { BasicVault, ERC20, IERC20Metadata, MockNexus, SameAssetUnderlyingsAbstractVault } from "types/generated"
+import type { BasicVault, ERC20, IERC20Metadata, SameAssetUnderlyingsAbstractVault } from "types/generated"
 
 type Variance = BN
 type Variances = {
