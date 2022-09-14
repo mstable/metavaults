@@ -64,7 +64,7 @@ const testVault = async (vaultType: String) => {
                     }
                     ctxVault.asset = asset
                     ctxVault.sa = sa
-                    ctxVault.amounts = testAmounts(100, 18)
+                    ctxVault.amounts = testAmounts(100, await vault.decimals())
                 }
             })
             shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
