@@ -75,11 +75,11 @@ abstract contract PeriodicAllocationAbstractVault is
      */
     function settle(Settlement[] calldata settlements) external virtual onlyVaultManager {
         Settlement memory settlement;
-        uint256 underlyingVaultsLength = underlyingVaults.length;
+        uint256 underlyingVaultsLen = underlyingVaults.length;
 
         for (uint256 i = 0; i < settlements.length; ) {
             settlement = settlements[i];
-            require(settlement.vaultIndex < underlyingVaultsLength, "Invalid Vault Index");
+            require(settlement.vaultIndex < underlyingVaultsLen, "Invalid Vault Index");
 
             if (settlement.assets > 0) {
                 // Deposit assets in underlying vault

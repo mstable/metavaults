@@ -1,21 +1,22 @@
-import { assertBNClosePercent } from "@utils/assertions"
+import { assertBNClose } from "@utils/assertions"
 import { DEAD_ADDRESS } from "@utils/constants"
 import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "ethers"
-import { AbstractVault__factory, BasicVault__factory } from "types/generated"
+import { AbstractVault__factory, BasicVault__factory, Convex3CrvLiquidatorVault__factory } from "types/generated"
 
 import type { StandardAccounts } from "@utils/machines"
 import type { Account } from "types"
 import type { BasicVault, ERC20, IERC20Metadata, SameAssetUnderlyingsAbstractVault } from "types/generated"
 
-type Variance = number | string
+type Variance = BN
 type Variances = {
-    rebalance?: Variance
-    rebalancebVault0?: Variance
-    rebalancebVault1?: Variance
+    totalAssets?: Variance
+    totalSupply?: Variance
+    bVault0?: Variance
+    bVault1?: Variance
 }
 type Amounts = {
     initialDeposit: BN
@@ -50,9 +51,10 @@ interface SnapVaultData {
 }
 // --------
 const defaultVariances: Variances = {
-    rebalance: 0,
-    rebalancebVault0: 0,
-    rebalancebVault1: 0,
+    totalAssets: BN.from(1),
+    totalSupply: BN.from(1),
+    bVault0: BN.from(1),
+    bVault1: BN.from(1),
 }
 type Swap = {
     fromVaultIndex: number
@@ -78,7 +80,7 @@ const calculateSharesRedeem = (swaps: Array<Swap>, vaultIndex: number) =>
         .filter((s) => s.fromVaultIndex === vaultIndex)
         .map((s) => s.shares)
         .reduce(sumBN, BN.from(0))
-const calculateSharesRedeemTo = (swaps: Array<Swap>, vaultIndex: number) =>
+const calculateSharesMint = (swaps: Array<Swap>, vaultIndex: number) =>
     swaps
         .filter((s) => s.toVaultIndex === vaultIndex)
         .map((s) => s.shares)
@@ -96,54 +98,21 @@ const snapVault = async (ctx: SameAssetUnderlyingsAbstractVaultBehaviourContext)
         vaultData: {
             totalAssets: await vault.totalAssets(),
             totalSupply: await vault.totalSupply(),
-            aliceShares: await vault.balanceOf(sa.alice.address),
-            bobShares: await vault.balanceOf(sa.bob.address),
+            aliceShares: await vault.maxWithdraw(sa.alice.address),
+            bobShares: await vault.maxRedeem(sa.bob.address),
         },
         bVault0Data: {
             totalAssets: await bVault0.totalAssets(),
             totalSupply: await bVault0.totalSupply(),
             vaultMaxWithdraw: await bVault0.maxWithdraw(vault.address),
-            vaultShares: await bVault0.balanceOf(vault.address),
+            vaultShares: await bVault0.maxRedeem(vault.address),
         },
         bVault1Data: {
             totalAssets: await bVault1.totalAssets(),
             totalSupply: await bVault1.totalSupply(),
             vaultMaxWithdraw: await bVault1.maxWithdraw(vault.address),
-            vaultShares: await bVault1.balanceOf(vault.address),
+            vaultShares: await bVault1.maxRedeem(vault.address),
         },
-    }
-    if (snap.bVault0Data.totalAssets.lt(snap.bVault0Data.vaultMaxWithdraw)) {
-        // TODO  - temporary fix totalAssets should never be lt vaultMaxWithdraw
-        console.log(
-            `== warning: bVault0Data totalAssets ${snap.bVault0Data.totalAssets.toString()}, vaultMaxWithdraw ${snap.bVault0Data.vaultMaxWithdraw.toString()}, diff ${snap.bVault0Data.vaultMaxWithdraw
-                .sub(snap.bVault0Data.totalAssets)
-                .toString()} `,
-        )
-        snap.bVault0Data.vaultMaxWithdraw = snap.bVault0Data.totalAssets
-    }
-    if (snap.bVault1Data.totalAssets.lt(snap.bVault1Data.vaultMaxWithdraw)) {
-        // TODO  - temporary fix totalAssets should never be lt vaultMaxWithdraw
-        console.log(
-            `== warning: bVault1Data totalAssets ${snap.bVault1Data.totalAssets.toString()}, vaultMaxWithdraw ${snap.bVault1Data.vaultMaxWithdraw.toString()}, diff ${snap.bVault1Data.vaultMaxWithdraw
-                .sub(snap.bVault1Data.totalAssets)
-                .toString()} `,
-        )
-        // temporary fix
-        snap.bVault1Data.vaultMaxWithdraw = snap.bVault1Data.totalAssets
-    }
-    if (snap.bVault0Data.totalSupply.lt(snap.bVault0Data.vaultShares)) {
-        console.log(
-            `== warning: bVault0Data totalSupply ${snap.bVault0Data.totalSupply.toString()}, vaultShares ${snap.bVault0Data.vaultShares.toString()}, diff ${snap.bVault0Data.vaultShares
-                .sub(snap.bVault0Data.totalSupply)
-                .toString()} `,
-        )
-    }
-    if (snap.bVault1Data.totalSupply.lt(snap.bVault1Data.vaultShares)) {
-        console.log(
-            `== warning: bVault1Data totalSupply ${snap.bVault1Data.totalSupply.toString()}, vaultShares ${snap.bVault1Data.vaultShares.toString()}, diff ${snap.bVault1Data.vaultShares
-                .sub(snap.bVault1Data.totalSupply)
-                .toString()} `,
-        )
     }
     return snap
 }
@@ -156,32 +125,23 @@ const calculateVaultDataSwap = async (
 ) => {
     const { vault, sa } = ctx
     const bVaultAddress = await vault.underlyingVaults(vaultIndex)
-    const bVault = BasicVault__factory.connect(bVaultAddress, sa.default.signer)
+    const bVault = Convex3CrvLiquidatorVault__factory.connect(bVaultAddress, sa.default.signer)
 
-    let vaultAssetsDeposit = calculateAssetsDeposit(swaps, vaultIndex)
-    let vaultAssetsWithdraw = calculateAssetsWithdraw(swaps, vaultIndex)
-    const vaultSharesRedeem = calculateSharesRedeem(swaps, vaultIndex)
-    const vaultSharesRedeemTo = calculateSharesRedeemTo(swaps, vaultIndex)
-    // console.log(`🚀 ~ calculateVaultDataSwap ~ vaultAssetsDeposit ${vaultAssetsDeposit.toString()}, vaultAssetsWithdraw ${vaultAssetsWithdraw.toString()},
-    // vaultSharesRedeem ${vaultSharesRedeem.toString()}, vaultSharesRedeemTo ${vaultSharesRedeemTo.toString()}`)
+    const vaultAssetsDeposit = calculateAssetsDeposit(swaps, vaultIndex)
+    const vaultAssetsWithdraw = calculateAssetsWithdraw(swaps, vaultIndex)
+    let vaultSharesMint = calculateSharesMint(swaps, vaultIndex)
+    let vaultSharesRedeem = calculateSharesRedeem(swaps, vaultIndex)
 
-    // underlying vault  , state changes after re-balance
-    vaultAssetsDeposit = vaultAssetsDeposit.add(await bVault.previewMint(vaultSharesRedeemTo))
-    vaultAssetsWithdraw = vaultAssetsWithdraw.add(await bVault.previewRedeem(vaultSharesRedeem))
+    vaultSharesMint = vaultSharesMint.add(await bVault.previewDeposit(vaultAssetsDeposit))
+    vaultSharesRedeem = vaultSharesRedeem.add(await bVault.previewWithdraw(vaultAssetsWithdraw))
 
-    // TODO - temporary fix , there might be an error with previewRedeem as it is the same used by maxWithdraw
-    if (vaultAssetsWithdraw.gt(bVaultDataBefore.totalAssets)) {
-        console.log(`🚀 ~ calculateVaultDataSwap ~ vaultAssetsDeposit ${vaultAssetsDeposit.toString()}, vaultAssetsWithdraw ${vaultAssetsWithdraw.toString()}, 
-    bVaultDataBefore.totalAssets ${bVaultDataBefore.totalAssets.toString()}`)
-        vaultAssetsWithdraw = bVaultDataBefore.totalAssets
-    }
+    const vaultSharesDelta = vaultSharesMint.sub(vaultSharesRedeem)
+    let totalSupply = bVaultDataBefore.totalSupply.add(vaultSharesDelta)
+    totalSupply = totalSupply.isNegative() ? BN.from(0) : totalSupply
 
-    const totalAssets = bVaultDataBefore.totalAssets.sub(vaultAssetsWithdraw).add(vaultAssetsDeposit)
-    const totalSupply = await bVault.convertToShares(totalAssets)
-    const vaultSharesDelta = vaultAssetsDeposit.sub(vaultAssetsWithdraw)
-    const vaultShares = bVaultDataBefore.vaultShares.add(
-        (await bVault.convertToShares(vaultSharesDelta.abs())).mul(vaultSharesDelta.isNegative() ? -1 : 1),
-    )
+    const totalAssets = await bVault.previewMint(totalSupply)
+
+    const vaultShares = bVaultDataBefore.vaultShares.add(vaultSharesDelta)
 
     return { totalAssets, totalSupply, vaultShares }
 }
@@ -197,49 +157,17 @@ async function expectRebalance(ctx: SameAssetUnderlyingsAbstractVaultBehaviourCo
 
     const dataAfter = await snapVault(ctx)
 
-    // vault total assets might change a little
-    assertBNClosePercent(dataBefore.vaultData.totalAssets, dataAfter.vaultData.totalAssets, variances.rebalance, "vault totalAssets")
-    assertBNClosePercent(dataBefore.vaultData.totalSupply, dataAfter.vaultData.totalSupply, variances.rebalance, "vault totalSupply")
-
+    // vault total assets is not 100% accurate, totalSupply is the best guess
+    assertBNClose(dataBefore.vaultData.totalAssets, dataAfter.vaultData.totalAssets, variances.totalAssets, "vault totalAssets")
+    assertBNClose(dataBefore.vaultData.totalSupply, dataAfter.vaultData.totalSupply, variances.totalSupply, "vault totalSupply")
     // underlying vault 1 , state changes after re-balance
-    assertBNClosePercent(
-        dataAfter.bVault0Data.totalAssets,
-        expectedVault0Data.totalAssets,
-        variances.rebalancebVault0,
-        "underlying vault 0 totalAssets",
-    )
-    assertBNClosePercent(
-        dataAfter.bVault0Data.totalSupply,
-        expectedVault0Data.totalSupply,
-        variances.rebalancebVault0,
-        "underlying vault 0 totalSupply",
-    )
-    assertBNClosePercent(
-        dataAfter.bVault0Data.vaultShares,
-        expectedVault0Data.vaultShares,
-        variances.rebalancebVault0,
-        "underlying vault 0 balanceOf",
-    )
+    assertBNClose(dataAfter.bVault0Data.totalAssets, expectedVault0Data.totalAssets, variances.bVault0, "underlying vault 0 totalAssets")
+    assertBNClose(dataAfter.bVault0Data.totalSupply, expectedVault0Data.totalSupply, variances.bVault0, "underlying vault 0 totalSupply")
+    assertBNClose(dataAfter.bVault0Data.vaultShares, expectedVault0Data.vaultShares, variances.bVault0, "underlying vault 0 vaultShares")
 
-    // underlying vault 2 , state changes after re-balance
-    assertBNClosePercent(
-        dataAfter.bVault1Data.totalAssets,
-        expectedVault1Data.totalAssets,
-        variances.rebalancebVault1,
-        "underlying vault 1 totalAssets",
-    )
-    assertBNClosePercent(
-        dataAfter.bVault1Data.totalSupply,
-        expectedVault1Data.totalSupply,
-        variances.rebalancebVault1,
-        "underlying vault 1 totalSupply",
-    )
-    assertBNClosePercent(
-        dataAfter.bVault1Data.vaultShares,
-        expectedVault1Data.vaultShares,
-        variances.rebalancebVault1,
-        "underlying vault 1 balanceOf",
-    )
+    assertBNClose(dataAfter.bVault1Data.totalAssets, expectedVault1Data.totalAssets, variances.bVault1, "underlying vault 1 totalAssets")
+    assertBNClose(dataAfter.bVault1Data.totalSupply, expectedVault1Data.totalSupply, variances.bVault1, "underlying vault 1 totalSupply")
+    assertBNClose(dataAfter.bVault1Data.vaultShares, expectedVault1Data.vaultShares, variances.bVault1, "underlying vault 1 vaultShares")
 
     expect(dataBefore.vaultData.aliceShares, "alice shares should not change").to.eq(dataAfter.vaultData.aliceShares)
 }
@@ -338,11 +266,14 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             })
             context("using assets", async () => {
                 it("100% from vault0 to vault1", async () => {
-                    // const { vault, sa } = ctx()
                     const dataBefore = await snapVault(ctx())
                     const fromVaultIndex = 0
-                    // TODO - WARNING - maxWithdraw should do the job but it is not
-                    const swap = { fromVaultIndex, toVaultIndex: 1, assets: dataBefore.bVault0Data.vaultMaxWithdraw, shares: BN.from(0) }
+                    const swap = {
+                        fromVaultIndex,
+                        toVaultIndex: 1,
+                        assets: dataBefore[`bVault${fromVaultIndex}Data`].vaultMaxWithdraw,
+                        shares: BN.from(0),
+                    }
                     const swaps = [swap]
                     await expectRebalance(ctx(), swaps)
                 })
@@ -386,7 +317,6 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const dataBefore = await snapVault(ctx())
                     expect(dataBefore.bVault0Data.vaultShares, "bVault0 balance of vault").to.be.gt(0)
                     const shares = dataBefore.bVault0Data.vaultShares.div(2)
-                    // TODO - WARNING - not working as expected
                     const assets = dataBefore.bVault0Data.vaultMaxWithdraw.div(2)
 
                     const swap = { fromVaultIndex: 0, toVaultIndex: 1, assets: assets, shares: shares }
@@ -429,10 +359,6 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const { vault, sa, asset } = ctx()
                     const nexus = mocks.nexus
                     bVaultNewIndex = (await vault.underlyingVaultsLength()).toNumber()
-                    console.log(
-                        "🚀 ~ file: SameAssetUnderlyingsAbstractVault.behaviour.ts ~ line 360 ~ before ~ bVaultNewIndex",
-                        bVaultNewIndex,
-                    )
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
 
@@ -445,20 +371,16 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                         fromVaultIndex: 0,
                         toVaultIndex: bVaultNewIndex,
                         assets: BN.from(0),
-                        shares: (await bVault0.balanceOf(vault.address)).mul(90).div(100),
+                        shares: await bVault0.maxRedeem(vault.address),
                     }
                     const swap2 = {
                         fromVaultIndex: 1,
                         toVaultIndex: bVaultNewIndex,
                         assets: BN.from(0),
-                        shares: (await bVault1.balanceOf(vault.address)).mul(90).div(100),
+                        shares: await bVault1.maxRedeem(vault.address),
                     }
                     const swaps = [swap1, swap2]
-                    // await vault.connect(sa.vaultManager.signer).rebalance(swaps)
                     await expectRebalance(ctx(), swaps)
-
-                    // expect(await bVaultNew.totalAssets(), "bVaultNew totalAssets").to.eq(await vault.totalAssets())
-                    // expect(await bVaultNew.totalSupply(), "bVaultNew totalSupply").to.eq(await bVaultNew.balanceOf(vault.address))
                 })
                 it("should be able to rebalance from newly added vault", async () => {
                     const { vault } = ctx()

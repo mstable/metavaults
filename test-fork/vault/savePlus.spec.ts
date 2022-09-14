@@ -3,7 +3,7 @@ import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
-import shouldBehaveLikeSameAssetUnderlyingsAbstractVault from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
+import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture, setBalancesToAccount } from "@utils/fork"
@@ -561,8 +561,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
             periodicAllocationPerfFeeVault.proxy.address,
             deployer,
         )
-        const vaultManagerAddres = await periodicAllocationPerfFeeMetaVault.vaultManager()
-        console.log("🚀 ~ file: savePlus.spec.ts ~ line 556 ~ setup ~ sa.vaultManager.address", sa.vaultManager.address, vaultManagerAddres)
 
         //  3.- 4626 Wrappers of the save plus meta vault
         daiMetaVault = Curve3CrvBasicMetaVault__factory.connect(curve3CrvMetaVaults.dai.proxy.address, deployer)
@@ -755,7 +753,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
     before("reset block number", async () => {
         await loadOrExecFixture(setup)
     })
-    context.skip("deployment check", async () => {
+    context("deployment check", async () => {
         describe("proxy instant admin", async () => {
             it("owner is the multisig governor", async () => {
                 expect(await proxyAdmin.owner(), "owner must be governor").to.be.eq(governorAddress)
@@ -830,7 +828,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         })
     })
     context("behaviors", async () => {
-        context.skip("should behave like AbstractVault", async () => {
+        context("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<AbstractVaultBehaviourContext> = {}
                 before(async () => {
@@ -908,7 +906,12 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctxSa.asset = threeCrvToken
                         ctxSa.sa = sa
                         ctxSa.amounts = { initialDeposit: simpleToExactAmount(100, ThreeCRV.decimals) }
-                        ctxSa.variances = { rebalance: 0.04, rebalancebVault0: 210, rebalancebVault1: 28 }
+                        ctxSa.variances = {
+                            totalAssets: simpleToExactAmount(21, 18),
+                            totalSupply: simpleToExactAmount(1, 1),
+                            bVault0: simpleToExactAmount(2, 20),
+                            bVault1: simpleToExactAmount(4, 20),
+                        }
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
                         await assertVaultDeposit(
@@ -938,7 +941,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context.skip("PeriodicAllocationPerfFeeMetaVault", async () => {
+    context("PeriodicAllocationPerfFeeMetaVault", async () => {
         let vaultsDataBefore
         before("reset block number", async () => {
             await loadOrExecFixture(setup)
@@ -1145,7 +1148,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context.skip("Curve3CrvBasicMetaVault", async () => {
+    context("Curve3CrvBasicMetaVault", async () => {
         let vaultsDataBefore
 
         before("reset block number", async () => {
