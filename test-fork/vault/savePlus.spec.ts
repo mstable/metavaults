@@ -514,6 +514,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         const accounts = await ethers.getSigners()
         sa = await new StandardAccounts().initAccounts(accounts)
         governor = await impersonateAccount(governorAddress)
+        sa.governor = governor
         deployer = governor.signer
 
         staker1 = await impersonateAccount(staker1Address)
