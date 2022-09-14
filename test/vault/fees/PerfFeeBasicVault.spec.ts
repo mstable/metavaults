@@ -3,6 +3,7 @@ import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.
 import { ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
+import { loadOrExecFixture } from "@utils/fork"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { MockERC20ForceBurnable__factory, MockNexus__factory, PerfFeeBasicVault__factory } from "types/generated"
@@ -11,6 +12,7 @@ import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour
 import { BigNumberish, Wallet } from "ethers"
 import type { Account } from "types"
 import type { AbstractVault, MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault, VaultManagerRole } from "types/generated"
+
 
 const perfAssetsPerShareScale = simpleToExactAmount(1, 26)
 const feeScale = simpleToExactAmount(1, 6)
@@ -189,12 +191,13 @@ describe("Performance Fees", async () => {
     describe("charge performance fees correctly", async () => {
         context("18 decimal asset", async () => {
             const depositAmt = simpleToExactAmount(1000000)
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 vault = await setup()
                 await asset.transfer(user.address, simpleToExactAmount(20000000))
                 await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
                 await vault.connect(user.signer).deposit(depositAmt, user.address)
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("on same asset/share", async () => {
                 const data = {
                     investor: user.address,
@@ -275,12 +278,13 @@ describe("Performance Fees", async () => {
     context("admin", async () => {
         describe("set Performance fees", async () => {
             const depositAmt = simpleToExactAmount(1000000)
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 vault = await setup()
                 await asset.transfer(user.address, simpleToExactAmount(20000000))
                 await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
                 await vault.connect(user.signer).deposit(depositAmt, user.address)
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("should fail if callee is not governor", async () => {
                 const tx = vault.connect(sa.dummy1.signer).setPerformanceFee(1000)
                 await expect(tx).to.be.revertedWith("Only governor can execute")

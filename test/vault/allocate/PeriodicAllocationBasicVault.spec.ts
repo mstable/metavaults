@@ -2,6 +2,7 @@ import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.b
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ZERO_ADDRESS } from "@utils/constants"
+import { loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
@@ -441,7 +442,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             })
             context("settle all assets", async () => {
                 describe("in vault1", async () => {
-                    beforeEach(async () => {
+                    const beforeEachFixture = async function fixture() {
                         await setup()
                         await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                         const settlement1 = {
@@ -455,7 +456,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                         const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
                         await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
-                    })
+                    }
+                    beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
 
@@ -595,7 +597,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 describe("in vault1 and vault2 with 70:30 ratio", async () => {
                     const bVault1SettleAmount = oneMil.mul(7)
                     const bVault2SettleAmount = initialDepositAmount.sub(bVault1SettleAmount)
-                    beforeEach(async () => {
+                    const beforeEachFixture = async function fixture() {
                         await setup()
                         await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                         const settlement1 = {
@@ -609,7 +611,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                         const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
                         await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
-                    })
+                    }
+                    beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
                         const balances = {
@@ -719,7 +722,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 describe("in vault1 and vault2 with 04:96 ratio", async () => {
                     const bVault1SettleAmount = simpleToExactAmount(400000)
                     const bVault2SettleAmount = initialDepositAmount.sub(bVault1SettleAmount)
-                    beforeEach(async () => {
+                    const beforeEachFixture = async function fixture() {
                         await setup()
                         await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                         const settlement1 = {
@@ -733,7 +736,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                         const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
                         await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
-                    })
+                    }
+                    beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
                         const balances = {
@@ -795,7 +799,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     const inVaultSettleAmount = simpleToExactAmount(400000)
                     const bVault1SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
                     const bVault2SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
-                    beforeEach(async () => {
+                    const beforeEachFixture = async function fixture() {
                         await setup()
                         await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                         const settlement1 = {
@@ -809,7 +813,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                         const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
                         await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
-                    })
+                    }
+                    beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
                     it("it should have correct vault parameters", async () => {
                         const dataAfter = await snapVault()
                         const balances = {
@@ -954,7 +959,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             const bVault2SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
             let updatedAssetPerShare: BN
 
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 await setup()
                 await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                 const settlement1 = {
@@ -976,7 +981,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 // Update assetPerShare
                 const tx = pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
                 await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("should have correct assetPerShare", async () => {
                 const actualAssetPerShare = await pabVault.assetsPerShare()
                 expect(actualAssetPerShare, "new assetPerShare").to.eq(updatedAssetPerShare)
@@ -1023,7 +1029,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             const bVault1SettleAmount = oneMil.mul(7)
             const bVault2SettleAmount = initialDepositAmount.sub(bVault1SettleAmount)
             const transferAmount = oneMil.mul(2)
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 await setup()
                 await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
                 const settlement1 = {
@@ -1037,7 +1043,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                 const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement1, settlement2])
                 await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(assetsPerShareScale, initialDepositAmount)
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("when transferAmount < updateThreshold", async () => {
                 await pabVault.connect(user.signer).deposit(belowThresholdAmount, user.address)
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)

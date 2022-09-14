@@ -1,5 +1,5 @@
 import { ZERO } from "@utils/constants"
-import { impersonate } from "@utils/fork"
+import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { encodeInitiateSwap, encodeSettleSwap } from "@utils/peripheral/cowswap"
@@ -215,7 +215,7 @@ describe("Liquidator", async () => {
     describe("collect rewards", () => {
         const asset1Deposit = asset1Total.mul(1).div(10)
         const asset2Deposit = asset2Total.mul(1).div(10)
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             await setup()
             await asset1.approve(vault1.address, asset1Deposit)
             await asset2.approve(vault2.address, asset2Deposit)
@@ -224,7 +224,8 @@ describe("Liquidator", async () => {
             await vault1.deposit(asset1Deposit, sa.default.address)
             await vault2.deposit(asset2Deposit, sa.default.address)
             await vault3.deposit(asset1Deposit.mul(2), sa.default.address)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("from a single vault with single reward", async () => {
             await rewards1.transfer(vault3.address, vault3reward1)
 
@@ -295,8 +296,8 @@ describe("Liquidator", async () => {
             // Transfers to vault 3
             await expect(tx).to.emit(rewards1, "Transfer").withArgs(vault3.address, liquidator.address, vault3reward1)
         })
-        it("twice in a batch", async () => {})
-        it("for a second batch", async () => {})
+        it("twice in a batch", async () => { })
+        it("for a second batch", async () => { })
         it("no rewards in any vault", async () => {
             const tx = await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
 
@@ -985,14 +986,15 @@ describe("Liquidator", async () => {
             const reward1Amount = simpleToExactAmount(700000)
             const asset1Amount = reward1Amount.mul(2)
             let rewardTokens, purchaseTokens, vaults
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 await setup()
                 await rewards1.transfer(vault3.address, reward1Amount)
                 const input = await buildDonateTokensInput(sa.default.signer, [vault3.address])
                 rewardTokens = input.rewardTokens
                 purchaseTokens = input.purchaseTokens
                 vaults = input.vaults
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("no rewards collected for vault", async () => {
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
                 await expect(tx).to.revertedWith("nothing to donate")
@@ -1183,10 +1185,11 @@ describe("Liquidator", async () => {
             const reward1Amount = simpleToExactAmount(700000)
             const asset1Amount = reward1Amount.mul(2)
 
-            beforeEach(async () => {
+            const beforeEachFixture = async function fixture() {
                 await setup()
                 await rewards1.transfer(vault3.address, reward1Amount)
-            })
+            }
+            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("no rewards collected for pair", async () => {
                 const tx = liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
                 await expect(tx).to.revertedWith(ERROR.INVALID_BATCH)

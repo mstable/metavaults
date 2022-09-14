@@ -5,6 +5,7 @@ import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { getTimestampFromTx, increaseTime } from "@utils/time"
+import { loadOrExecFixture } from "@utils/fork"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import {
@@ -27,6 +28,7 @@ import type {
     MockNexus,
     VaultManagerRole,
 } from "types/generated"
+
 
 describe("Streamed Liquidator Vault", async () => {
     let sa: StandardAccounts
@@ -239,10 +241,11 @@ describe("Streamed Liquidator Vault", async () => {
         })
     })
     context("no streamed shares", async () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_DAY)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("mint", async () => {
             const mintAmount = simpleToExactAmount(1000)
 
@@ -279,10 +282,11 @@ describe("Streamed Liquidator Vault", async () => {
         })
     })
     context("donated shares", () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_WEEK)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("before investor shares", async () => {
             const txAmount = simpleToExactAmount(300)
 

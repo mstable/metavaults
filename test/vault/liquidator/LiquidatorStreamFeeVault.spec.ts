@@ -4,6 +4,7 @@ import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
+import { loadOrExecFixture } from "@utils/fork"
 import { getTimestampFromTx, increaseTime } from "@utils/time"
 import { expect } from "chai"
 import { ethers } from "hardhat"
@@ -288,10 +289,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
         })
     })
     context("no streamed shares", async () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_DAY)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("mint", async () => {
             const mintAmount = simpleToExactAmount(1000)
 
@@ -328,10 +330,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
         })
     })
     context("donated shares", () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_WEEK)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("before investor shares", async () => {
             const txAmount = simpleToExactAmount(300)
 
