@@ -88,6 +88,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     function underlyingVaultsLength() external view virtual returns (uint256 vaultsLen) {
         vaultsLen = underlyingVaults.length;
     }
+
     /**
      * @notice `VaultManager` rebalances the assets in the underlying vaults.
      * This can be moving assets between underlying vaults, moving assets in underlying
@@ -96,11 +97,11 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     function rebalance(Swap[] calldata swaps) external virtual onlyVaultManager {
         // For each swap
         Swap memory swap;
-        uint256 underlyingVaultsLength = underlyingVaults.length;
+        uint256 underlyingVaultsLen = underlyingVaults.length;
         for (uint256 i = 0; i < swaps.length; ) {
             swap = swaps[i];
-            require(swap.fromVaultIndex < underlyingVaultsLength, "Invalid from vault index");
-            require(swap.toVaultIndex < underlyingVaultsLength, "Invalid to vault index");
+            require(swap.fromVaultIndex < underlyingVaultsLen, "Invalid from vault index");
+            require(swap.toVaultIndex < underlyingVaultsLen, "Invalid to vault index");
 
             if (swap.assets > 0) {
                 // Withdraw assets from underlying vault

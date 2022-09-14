@@ -24,13 +24,13 @@ import {
     IERC20Metadata__factory,
     MockGPv2Settlement__factory,
     MockGPv2VaultRelayer__factory,
-    PeriodicAllocationPerfFeeMetaVault__factory
+    PeriodicAllocationPerfFeeMetaVault__factory,
 } from "types/generated"
 
 import { buildDonateTokensInput, CRV, CVX, DAI, logTxDetails, ThreeCRV, USDC, usdFormatter, USDT } from "../../tasks/utils"
 
 import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
-import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour";
+import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { BigNumber, ContractTransaction, Signer } from "ethers"
 import type {
     Convex3CrvLiquidatorVault,
@@ -43,8 +43,14 @@ import type {
     Nexus,
 } from "types"
 import type { Account, AnyVault } from "types/common"
-import type { AbstractVault, ERC20, IERC20Metadata, InstantProxyAdmin, PeriodicAllocationPerfFeeMetaVault ,
-    SameAssetUnderlyingsAbstractVault} from "types/generated"
+import type {
+    AbstractVault,
+    ERC20,
+    IERC20Metadata,
+    InstantProxyAdmin,
+    PeriodicAllocationPerfFeeMetaVault,
+    SameAssetUnderlyingsAbstractVault,
+} from "types/generated"
 
 const log = logger("test:savePlus")
 
@@ -558,7 +564,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
         const vaultManagerAddres = await periodicAllocationPerfFeeMetaVault.vaultManager()
         console.log("🚀 ~ file: savePlus.spec.ts ~ line 556 ~ setup ~ sa.vaultManager.address", sa.vaultManager.address, vaultManagerAddres)
 
-
         //  3.- 4626 Wrappers of the save plus meta vault
         daiMetaVault = Curve3CrvBasicMetaVault__factory.connect(curve3CrvMetaVaults.dai.proxy.address, deployer)
         usdcMetaVault = Curve3CrvBasicMetaVault__factory.connect(curve3CrvMetaVaults.usdc.proxy.address, deployer)
@@ -837,7 +842,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
-                    }                
+                    }
                 })
                 shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
             })
@@ -902,8 +907,8 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctxSa.vault = periodicAllocationPerfFeeMetaVault as unknown as SameAssetUnderlyingsAbstractVault
                         ctxSa.asset = threeCrvToken
                         ctxSa.sa = sa
-                        ctxSa.amounts = { initialDeposit: simpleToExactAmount(100,ThreeCRV.decimals) }
-                        ctxSa.variances = {  rebalance: 0.04, rebalancebVault0: 60, rebalancebVault1:28}
+                        ctxSa.amounts = { initialDeposit: simpleToExactAmount(100, ThreeCRV.decimals) }
+                        ctxSa.variances = { rebalance: 0.04, rebalancebVault0: 210, rebalancebVault1: 28 }
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
                         await assertVaultDeposit(
@@ -926,14 +931,12 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             curve3CrvBasicMetaVaults,
                             settlements,
                             staker1,
-                        )                        
-
-                    }                    
+                        )
+                    }
                 })
                 shouldBehaveLikeSameAssetUnderlyingsAbstractVault(() => ctxSa as SameAssetUnderlyingsAbstractVaultBehaviourContext)
             })
         })
-
     })
     context.skip("PeriodicAllocationPerfFeeMetaVault", async () => {
         let vaultsDataBefore
