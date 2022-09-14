@@ -35,6 +35,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     IERC4626Vault[] public underlyingVaults;
 
     event AddedVault(uint256 indexed vaultIndex, address indexed vault);
+    event RemovedVault(uint256 indexed vaultIndex, address indexed vault);
 
     /**
      * @param _underlyingVaults  The underlying vaults address to invest into.
@@ -159,5 +160,38 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         _asset.safeApprove(_underlyingVault, type(uint256).max);
 
         emit AddedVault(vaultIndex, _underlyingVault);
+    }
+
+    /**
+     * @notice  Removes an underlying ERC-4626 compliant vault.
+     * All underlying shares are redeemed with the assets transferred to this vault.
+     *
+     * WARNING any underlying vaults after the removed vault will have their index reduced by one.
+     * Off-chain processes that use underlying vault indexes will need to be updated.
+     *
+     * @param vaultIndex Index position of the underlying vault starting at position 0.
+     */
+    function removeVault(uint256 vaultIndex) external onlyGovernor {
+        uint256 underlyingVaultsLen = underlyingVaults.length;
+        require(vaultIndex < underlyingVaultsLen, "Invalid from vault index");
+
+        // Withdraw all assets from the underlying vault being removed.
+        uint256 underlyingShares = underlyingVaults[vaultIndex].maxRedeem(address(this));
+        if (underlyingShares > 0) {
+            underlyingVaults[vaultIndex].redeem(underlyingShares, address(this), address(this));
+        }
+
+        address underlyingVault = address(underlyingVaults[vaultIndex]);
+
+        // move all vaults to the left after the vault being removed
+        for (uint256 i = vaultIndex; i < underlyingVaultsLen - 1; ) {
+            underlyingVaults[i] = underlyingVaults[i + 1];
+            unchecked {
+                ++i;
+            }
+        }
+        underlyingVaults.pop(); // delete the last item
+
+        emit RemovedVault(vaultIndex, underlyingVault);
     }
 }

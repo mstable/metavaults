@@ -11,10 +11,18 @@ import { ethers } from "hardhat"
 import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "types/generated"
 
 import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
-import type { SameAssetUnderlyingsAbstractVaultBehaviourContext} from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour";
+import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { TokenContext, TokenERC20 } from "@test/shared/Token.behaviour"
 import type { Account } from "types"
-import type { AbstractVault, BasicVault, MockERC20, MockNexus, SameAssetUnderlyingsAbstractVault,SameAssetUnderlyingsBasicVault, VaultManagerRole } from "types/generated"
+import type {
+    AbstractVault,
+    BasicVault,
+    MockERC20,
+    MockNexus,
+    SameAssetUnderlyingsAbstractVault,
+    SameAssetUnderlyingsBasicVault,
+    VaultManagerRole,
+} from "types/generated"
 
 describe("SameAssetUnderlyingsBasicVault", async () => {
     /* -- Declare shared variables -- */
@@ -164,10 +172,10 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
                     ctx.vault = vault as unknown as SameAssetUnderlyingsAbstractVault
                     ctx.asset = asset
                     ctx.sa = sa
-                    ctx.amounts = { initialDeposit : simpleToExactAmount(100,  await asset.decimals())}
+                    ctx.amounts = { initialDeposit: simpleToExactAmount(100, await asset.decimals()) }
                 }
             })
             shouldBehaveLikeSameAssetUnderlyingsAbstractVault(() => ctx as SameAssetUnderlyingsAbstractVaultBehaviourContext)
-        })        
+        })
     })
 })
