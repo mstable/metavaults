@@ -1115,6 +1115,12 @@ describe("PeriodicAllocationBasicVault", async () => {
                     expect(await pabVault.assetPerShareUpdateThreshold()).to.be.eq(1)
                 })
             })
+            context("assetPerShare update", async () => {
+                it("should revert with non-vaultmanager call", async () => {
+                    const tx = pabVault.updateAssetPerShare()
+                    await expect(tx).to.be.revertedWith("Only vault manager can execute")
+                })
+            })
         })
     })
 })
