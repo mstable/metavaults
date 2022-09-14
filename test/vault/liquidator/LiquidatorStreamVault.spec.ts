@@ -45,9 +45,9 @@ describe("Streamed Liquidator Vault", async () => {
         lastTxTimestamp: BigNumberish,
         txShares: BigNumberish,
         streamedSharesBefore: BigNumberish,
-        investorSharesBefore: BigNumberish,
+        stakerSharesBefore: BigNumberish,
     ): Promise<{ streamedShares: BN; lastTxTimestamp: BN }> => {
-        const totalSharesBefore = BN.from(streamedSharesBefore).add(investorSharesBefore)
+        const totalSharesBefore = BN.from(streamedSharesBefore).add(stakerSharesBefore)
 
         const currentTxTimestamp = await getTimestampFromTx(tx)
         const periodTime = currentTxTimestamp.sub(lastTxTimestamp)
@@ -64,7 +64,7 @@ describe("Streamed Liquidator Vault", async () => {
 
         expect(await vault.streamedShares(), "streamed shares").to.eq(BN.from(streamedSharesBefore).sub(burntShares))
 
-        expect(await vault.balanceOf(sa.default.address), "investor shares after").to.eq(BN.from(investorSharesBefore).add(txShares))
+        expect(await vault.balanceOf(sa.default.address), "staker shares after").to.eq(BN.from(stakerSharesBefore).add(txShares))
         expect(await vault.balanceOf(vault.address), "stream shares after").to.eq(BN.from(streamedSharesBefore).sub(burntShares))
         expect(await vault.totalSupply(), "total shares after").to.eq(totalSharesBefore.add(txShares).sub(burntShares))
 
@@ -77,7 +77,7 @@ describe("Streamed Liquidator Vault", async () => {
     const assertDonation = async (
         lastTxTimestamp: BigNumberish,
         txAmount: BigNumberish,
-        investorSharesBefore: BigNumberish,
+        stakerSharesBefore: BigNumberish,
         streamedSharesBefore: BigNumberish,
         totalAssetsBefore: BigNumberish,
     ) => {
@@ -91,7 +91,7 @@ describe("Streamed Liquidator Vault", async () => {
         const remainingStreamShares = remainingStreamSeconds.mul(streamedSharesBefore).div(ONE_DAY)
 
         const newStreamedShares = BN.from(totalAssetsBefore).gt(0)
-            ? BN.from(txAmount).mul(investorSharesBefore).div(totalAssetsBefore)
+            ? BN.from(txAmount).mul(stakerSharesBefore).div(totalAssetsBefore)
             : BN.from(txAmount)
         const streamedSharesAfter = BN.from(remainingStreamShares).add(newStreamedShares)
 
@@ -115,10 +115,10 @@ describe("Streamed Liquidator Vault", async () => {
         // expect(await vault.streamedShares(), "streamed shares after").to.eq(streamedSharesAfter)
         assertBNClose(await vault.streamedShares(), streamedSharesAfter, 3)
 
-        expect(await vault.balanceOf(sa.default.address), "investor shares after").to.eq(investorSharesBefore)
+        expect(await vault.balanceOf(sa.default.address), "staker shares after").to.eq(stakerSharesBefore)
         // expect(await vault.balanceOf(vault.address), "stream shares after").to.eq(streamedSharesAfter)
         assertBNClose(await vault.balanceOf(vault.address), streamedSharesAfter, 3)
-        assertBNClose(await vault.totalSupply(), BN.from(investorSharesBefore).add(streamedSharesAfter), 3)
+        assertBNClose(await vault.totalSupply(), BN.from(stakerSharesBefore).add(streamedSharesAfter), 3)
         expect(await vault.totalAssets(), "total assets after").to.eq(BN.from(totalAssetsBefore).add(txAmount))
     }
 
@@ -287,33 +287,33 @@ describe("Streamed Liquidator Vault", async () => {
             await increaseTime(ONE_WEEK)
         }
         beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
-        it("before investor shares", async () => {
+        it("before staker shares", async () => {
             const txAmount = simpleToExactAmount(300)
 
             await assertDonation(0, txAmount, 0, 0, 0)
         })
-        it("after investor shares", async () => {
-            const investorSharesBefore = simpleToExactAmount(11111)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+        it("after staker shares", async () => {
+            const stakerSharesBefore = simpleToExactAmount(11111)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(60)
             const txAmount = simpleToExactAmount(500)
 
-            await assertDonation(0, txAmount, investorSharesBefore, 0, investorSharesBefore)
+            await assertDonation(0, txAmount, stakerSharesBefore, 0, stakerSharesBefore)
         })
-        it("after appreciation of investor shares", async () => {
-            const investorSharesBefore = simpleToExactAmount(1000)
-            const totalAssetsBefore = investorSharesBefore.mul(11).div(10)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+        it("after appreciation of staker shares", async () => {
+            const stakerSharesBefore = simpleToExactAmount(1000)
+            const totalAssetsBefore = stakerSharesBefore.mul(11).div(10)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(60)
             // Appreciate the assets per share by 10%
-            await asset.transfer(vault.address, investorSharesBefore.div(10))
+            await asset.transfer(vault.address, stakerSharesBefore.div(10))
             const txAmount = simpleToExactAmount(500)
 
-            await assertDonation(0, txAmount, investorSharesBefore, 0, totalAssetsBefore)
+            await assertDonation(0, txAmount, stakerSharesBefore, 0, totalAssetsBefore)
         })
         it("second donation near start of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -327,14 +327,14 @@ describe("Streamed Liquidator Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount,
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation near end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -348,14 +348,14 @@ describe("Streamed Liquidator Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount,
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation at end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -369,14 +369,14 @@ describe("Streamed Liquidator Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount,
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation after end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -390,9 +390,9 @@ describe("Streamed Liquidator Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount,
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
     })

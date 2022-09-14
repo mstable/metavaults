@@ -19,8 +19,8 @@ const feeScale = simpleToExactAmount(1, 6)
 const performanceFee = simpleToExactAmount(4, 2)
 
 interface CheckData {
-    investor: string
-    investorShares: BigNumberish
+    staker: string
+    stakerShares: BigNumberish
     totalShares: BigNumberish
     totalAssets: BigNumberish
     perfFeesAssetsPerShare?: BigNumberish
@@ -44,7 +44,7 @@ describe("Performance Fees", async () => {
         checkAndSetDefaultAssetPerShare(data)
         const totalVaultAssets = await vault.totalAssets()
         const totalVaultShares = await vault.totalSupply()
-        expect(await vault.balanceOf(data.investor), `investor shares ${test}`).to.eq(data.investorShares)
+        expect(await vault.balanceOf(data.staker), `staker shares ${test}`).to.eq(data.stakerShares)
         expect(totalVaultShares, `total shares ${test}`).to.eq(data.totalShares)
         expect(totalVaultAssets, `total assets ${test}`).to.eq(data.totalAssets)
         expect(await vault.perfFeesAssetPerShare(), `perfFees assets/share ${test}`).to.eq(data.perfFeesAssetsPerShare)
@@ -84,8 +84,8 @@ describe("Performance Fees", async () => {
         expect(await vault.balanceOf(feeReceiver.address), "fee shares after").to.eq(feeSharesBefore.add(feeShares))
 
         const dataAfter = {
-            investor: data.investor,
-            investorShares: data.investorShares,
+            staker: data.staker,
+            stakerShares: data.stakerShares,
             totalShares: feeShares.add(data.totalShares),
             totalAssets: data.totalAssets,
             perfFeesAssetsPerShare: assetsPerShareAfter,
@@ -200,8 +200,8 @@ describe("Performance Fees", async () => {
             beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
             it("on same asset/share", async () => {
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: depositAmt,
                 }
@@ -215,8 +215,8 @@ describe("Performance Fees", async () => {
                 await asset.transfer(vault.address, transferAmt)
 
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: totalAssets,
                 }
@@ -230,8 +230,8 @@ describe("Performance Fees", async () => {
                 await asset.burnForce(vault.address, burnAmount)
 
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: totalAssets,
                 }
@@ -248,8 +248,8 @@ describe("Performance Fees", async () => {
             })
             it("on initial asset/share", async () => {
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: depositAmt,
                 }
@@ -265,8 +265,8 @@ describe("Performance Fees", async () => {
                 await asset.transfer(vault.address, transferAmt)
 
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt.add(feeShares),
                     totalAssets: totalAssets,
                     perfFeesAssetsPerShare: await vault.perfFeesAssetPerShare(),
@@ -301,8 +301,8 @@ describe("Performance Fees", async () => {
                 await asset.transfer(vault.address, transferAmt)
 
                 const data = {
-                    investor: user.address,
-                    investorShares: depositAmt,
+                    staker: user.address,
+                    stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: totalAssets,
                 }
