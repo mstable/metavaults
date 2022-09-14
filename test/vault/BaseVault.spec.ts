@@ -1,24 +1,25 @@
+import { ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
-import { ZERO_ADDRESS } from "@utils/constants"
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import { LightBasicVault__factory, BasicVault__factory } from "types/generated"
+import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
 
 import { shouldBehaveLikeBaseVault, testAmounts } from "../shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
-import type { LightAbstractVault, LightBasicVault, BasicVault, AbstractVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated";
+import type { ContractFactory, Signer } from "ethers/lib/ethers"
+import type { BasicVault, LightBasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated"
 
-import type { BaseVaultBehaviourContext } from "../shared/BaseVault.behaviour";
+import type { BaseVaultBehaviourContext } from "../shared/BaseVault.behaviour"
 
 export type BaseVault = LightBasicVault | BasicVault
 
-const BASIC_VAULT = "BasicVault"
-const LIGHT_BASIC_VAULT = "LightBasicVault"
+// const BASIC_VAULT = "BasicVault"
+// const LIGHT_BASIC_VAULT = "LightBasicVault"
 
-const testVault = async (vaultType: String) => {
-    describe(`${vaultType}`, () => {
+const testVault = async <F extends ContractFactory, V extends BaseVault>(factory: { new (signer: Signer): F }) => {
+    describe(factory.name, () => {
         /* -- Declare shared variables -- */
         let sa: StandardAccounts
         let mocks: ContractMocks
@@ -29,7 +30,6 @@ const testVault = async (vaultType: String) => {
         let asset: MockERC20
 
         /* -- Declare shared functions -- */
-
         const setup = async () => {
             const accounts = await ethers.getSigners()
             sa = await new StandardAccounts().initAccounts(accounts)
@@ -37,11 +37,7 @@ const testVault = async (vaultType: String) => {
             nexus = mocks.nexus
             asset = mocks.erc20
             // Deploy test contract.
-            if (vaultType == LIGHT_BASIC_VAULT) {
-                vault = await new LightBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-            } else {
-                vault = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-            }
+            vault = (await new factory(sa.default.signer).deploy(nexus.address, asset.address)) as V
             // Initialize test contract.
             await vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address)
             // set balance or users for the test.
@@ -57,11 +53,7 @@ const testVault = async (vaultType: String) => {
             before("init contract", async () => {
                 ctxVault.fixture = async function fixture() {
                     await setup()
-                    if (vaultType == LIGHT_BASIC_VAULT) {
-                        ctxVault.vault = vault as unknown as LightAbstractVault
-                    } else if (vaultType == BASIC_VAULT) {
-                        ctxVault.vault = vault as unknown as AbstractVault
-                    }
+                    ctxVault.vault = vault
                     ctxVault.asset = asset
                     ctxVault.sa = sa
                     ctxVault.amounts = testAmounts(100, await vault.decimals())
@@ -77,12 +69,8 @@ const testVault = async (vaultType: String) => {
                 expect(await vault.asset(), "asset").to.eq(asset.address)
             })
             it("should fail if asset has zero address", async () => {
-                let tx: Promise<BaseVault>
-                if (vaultType == LIGHT_BASIC_VAULT) {
-                    tx = new LightBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)
-                } else {
-                    tx = new BasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)
-                }
+                const tx = new factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)
+
                 await expect(tx).to.be.revertedWith("Asset is zero")
             })
         })
@@ -129,7 +117,6 @@ const testVault = async (vaultType: String) => {
 }
 
 describe("Base Vaults", async () => {
-    await testVault(BASIC_VAULT)
-    await testVault(LIGHT_BASIC_VAULT)
+    await testVault<BasicVault__factory, BasicVault>(BasicVault__factory)
+    await testVault<LightBasicVault__factory, LightBasicVault>(LightBasicVault__factory)
 })
-
