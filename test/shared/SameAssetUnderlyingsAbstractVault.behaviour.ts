@@ -9,7 +9,7 @@ import { AbstractVault__factory, BasicVault__factory, Convex3CrvLiquidatorVault_
 
 import type { StandardAccounts } from "@utils/machines"
 import type { Account } from "types"
-import type { BasicVault, ERC20, IERC20Metadata, SameAssetUnderlyingsAbstractVault } from "types/generated"
+import type { BasicVault, ERC20, IERC20Metadata, MockNexus, SameAssetUnderlyingsAbstractVault } from "types/generated"
 
 type Variance = BN
 type Variances = {
@@ -209,7 +209,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
                 await asset.connect(alice.signer).approve(vault.address, assetsAmount)
             }
-            await await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
             // simulate settlement to underlying vault
             const vaultSigner = await impersonate(vault.address, true)
 
@@ -410,6 +410,90 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     expect(await bVaultNew.totalAssets(), "bVaultNew totalAssets").to.eq(totalAssetsBefore.add(independentAmount))
                     expect(await bVaultNew.totalSupply(), "bVaultNew totalSupply").to.eq(totalSupplyBefore.add(independentAmount))
                     expect(await bVaultNew.balanceOf(sa.alice.address), "bv3 user shares").to.eq(balanceOfBefore.add(independentAmount))
+                })
+            })
+        })
+        describe("remove vault", async () => {
+            it("should fail if callee is not governor", async () => {
+                const { vault, sa } = ctx()
+                const tx = vault.connect(sa.alice.signer).removeVault(0)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("should fail if index is out of range", async () => {
+                const { vault, sa } = ctx()
+                const underlyingVaultsLength = await vault.underlyingVaultsLength()
+                const tx = vault.connect(sa.governor.signer).removeVault(underlyingVaultsLength)
+                await expect(tx).to.be.revertedWith("Invalid from vault index")
+            })
+            context("success", async () => {
+                let bVault2: BasicVault
+                beforeEach(async () => {
+                    const { asset, fixture, sa, vault } = ctx()
+                    const nexus = mocks.nexus
+
+                    await loadOrExecFixture(fixture)
+
+                    bVault2 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVault2.initialize(`bv2${await asset.name()}`, `bv2${await asset.symbol()}`, sa.vaultManager.address)
+
+                    await vault.connect(sa.vaultManager.signer).addVault(bVault2.address)
+
+                    expect(await vault.underlyingVaults(0), "#0 vault before").to.eq(bVault0.address)
+                    expect(await vault.underlyingVaults(1), "#1 vault before").to.eq(bVault1.address)
+                    expect(await vault.underlyingVaults(2), "#2 vault before").to.eq(bVault2.address)
+                    expect(await vault.underlyingVaultsLength(), "# vaults after").to.eq(3)
+                })
+                it("should be able to remove first vault with zero balance", async () => {
+                    const { vault, sa } = ctx()
+
+                    const tx = vault.connect(sa.governor.signer).removeVault(0)
+
+                    await expect(tx).to.emit(vault, "RemovedVault").withArgs(0, bVault0.address)
+                    expect(await vault.underlyingVaults(0), "#0 vault after").to.eq(bVault1.address)
+                    expect(await vault.underlyingVaults(1), "#1 vault after").to.eq(bVault2.address)
+                    expect(await vault.underlyingVaultsLength(), "# vaults after").to.eq(2)
+                })
+                it("should be able to remove second vault with zero balance", async () => {
+                    const { vault, sa } = ctx()
+
+                    const tx = vault.connect(sa.governor.signer).removeVault(1)
+
+                    await expect(tx).to.emit(vault, "RemovedVault").withArgs(1, bVault1.address)
+                    expect(await vault.underlyingVaults(0), "#0 vault after").to.eq(bVault0.address)
+                    expect(await vault.underlyingVaults(1), "#1 vault after").to.eq(bVault2.address)
+                    expect(await vault.underlyingVaultsLength(), "# vaults after").to.eq(2)
+                })
+                it("should be able to remove last vault with zero balance", async () => {
+                    const { vault, sa } = ctx()
+
+                    const tx = vault.connect(sa.governor.signer).removeVault(2)
+
+                    await expect(tx).to.emit(vault, "RemovedVault").withArgs(2, bVault2.address)
+                    expect(await vault.underlyingVaults(0), "#0 vault after").to.eq(bVault0.address)
+                    expect(await vault.underlyingVaults(1), "#1 vault after").to.eq(bVault1.address)
+                    expect(await vault.underlyingVaultsLength(), "# vaults after").to.eq(2)
+                })
+                it("should be able to remove vault with balance", async () => {
+                    const { amounts, asset, vault, sa } = ctx()
+
+                    await asset.connect(alice.signer).approve(vault.address, amounts.initialDeposit)
+                    await vault.connect(alice.signer)["deposit(uint256,address)"](amounts.initialDeposit, alice.address)
+                    // simulate settlement to underlying vault
+                    const vaultSigner = await impersonate(vault.address, true)
+                    await bVault0.connect(vaultSigner).deposit(amounts.initialDeposit, vault.address)
+
+                    expect(await bVault0.maxWithdraw(vault.address), "assets in underlying vault before").to.eq(amounts.initialDeposit)
+                    expect(await asset.balanceOf(vault.address), "meta vault asset balance before").to.eq(0)
+
+                    const tx = vault.connect(sa.governor.signer).removeVault(0)
+
+                    await expect(tx).to.emit(vault, "RemovedVault").withArgs(0, bVault0.address)
+                    expect(await vault.underlyingVaults(0), "#0 vault after").to.eq(bVault1.address)
+                    expect(await vault.underlyingVaults(1), "#1 vault after").to.eq(bVault2.address)
+                    expect(await vault.underlyingVaultsLength(), "# vaults after").to.eq(2)
+
+                    expect(await bVault0.maxWithdraw(vault.address), "assets in underlying vault after").to.eq(0)
+                    expect(await asset.balanceOf(vault.address), "meta vault asset balance after").to.eq(amounts.initialDeposit)
                 })
             })
         })
