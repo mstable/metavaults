@@ -2,7 +2,7 @@ import { deploy3CrvMetaVaults, deployCommon, deployCore } from "@tasks/deploymen
 import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
@@ -29,7 +29,7 @@ import {
 
 import { buildDonateTokensInput, CRV, CVX, DAI, logTxDetails, ThreeCRV, USDC, usdFormatter, USDT } from "../../tasks/utils"
 
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { BigNumber, ContractTransaction, Signer } from "ethers"
 import type {
@@ -829,7 +829,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
     context("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
-                const ctx: Partial<AbstractVaultBehaviourContext> = {}
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
                     ctx.fixture = async function fixture() {
@@ -841,10 +841,10 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                     }
                 })
-                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
             })
             describe("convex3CrvLiquidatorVault - musd", async () => {
-                const ctx: Partial<AbstractVaultBehaviourContext> = {}
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
                 // 'RewardPool : Cannot stake 0'
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
@@ -867,10 +867,10 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     }
                 })
 
-                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
             })
             describe("curve3CrvBasicMetaVault - dai", async () => {
-                const ctx: Partial<AbstractVaultBehaviourContext> = {}
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
                     ctx.fixture = async function fixture() {
@@ -891,7 +891,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.amounts = testAmounts(1000, DAI.decimals)
                     }
                 })
-                shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
             })
         })
         context("should behave like SameAssetUnderlyingsAbstractVault", async () => {

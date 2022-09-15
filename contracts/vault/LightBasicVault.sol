@@ -1,45 +1,44 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IERC4626Vault } from "../interfaces/IERC4626Vault.sol";
-import { VaultManagerRole } from "../shared/VaultManagerRole.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 import { InitializableToken } from "../tokens/InitializableToken.sol";
+import { VaultManagerRole } from "../shared/VaultManagerRole.sol";
+import { LightAbstractVault } from "./LightAbstractVault.sol";
 
 /**
- * @title   Abstract ERC-4626 Vault.
+ * @title   A minimal implementation of a ERC-4626 vault.
  * @author  mStable
- * @notice  See the following for the full EIP-4626 specification https://eips.ethereum.org/EIPS/eip-4626.
- * Connects to the mStable Nexus to get modules and roles like the `Governor` and `Liquidator`.
- * Creates the `VaultManager` role.
- *
- * The `totalAssets`, `_beforeWithdrawHook` and `_afterDepositHook` functions need to be implemented.
+ * @notice  Basic Implementation predominantly for testing purpose
  *
  * @dev     VERSION: 1.0
- *          DATE:    2022-02-10
- *
- * The constructor of implementing contracts need to call the following:
- * - VaultManagerRole(_nexus)
- * - AbstractVault(_assetArg)
- *
- * The `initialize` function of implementing contracts need to call the following:
- * - InitializableToken._initialize(_name, _symbol, decimals)
- * - VaultManagerRole._initialize(_vaultManager)
+ *          DATE:    2022-08-29
  */
-abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManagerRole {
+contract LightBasicVault is LightAbstractVault, Initializable {
     using SafeERC20 for IERC20;
 
-    /// @notice Address of the vault's underlying asset token.
-    IERC20 internal immutable _asset;
-
     /**
-     * @param _assetArg         Address of the vault's underlying asset.
+     * @param _nexus    Address of the Nexus contract that resolves protocol modules and roles.
+     * @param _asset    Address of the vault's asset.
      */
-    constructor(address _assetArg) {
-        require(_assetArg != address(0), "Asset is zero");
-        _asset = IERC20(_assetArg);
+    constructor(address _nexus, address _asset)
+        LightAbstractVault(_asset)
+        VaultManagerRole(_nexus)
+    {}
+
+    function initialize(
+        string calldata _nameArg,
+        string calldata _symbolArg,
+        address _vaultManager
+    ) external initializer {
+        // Set the vault's decimals to the same as the reference asset.
+        uint8 _decimals = InitializableToken(address(_asset)).decimals();
+        InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
+        VaultManagerRole._initialize(_vaultManager);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -58,7 +57,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     function _deposit(uint256 assets, address receiver) internal virtual returns (uint256 shares) {
         shares = _previewDeposit(assets);
 
-        _transferAndMint(assets, shares, receiver, true);
+        _transferAndMint(assets, shares, receiver);
     }
 
     function previewDeposit(uint256 assets) external view override returns (uint256 shares) {
@@ -67,14 +66,6 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
 
     function _previewDeposit(uint256 assets) internal view virtual returns (uint256 shares) {
         shares = _convertToShares(assets);
-    }
-
-    function maxDeposit(address caller) external view override returns (uint256 maxAssets) {
-        maxAssets = _maxDeposit(caller);
-    }
-
-    function _maxDeposit(address) internal view virtual returns (uint256 maxAssets) {
-        maxAssets = type(uint256).max;
     }
 
     function mint(uint256 shares, address receiver)
@@ -88,7 +79,8 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
 
     function _mint(uint256 shares, address receiver) internal virtual returns (uint256 assets) {
         assets = _previewMint(shares);
-        _transferAndMint(assets, shares, receiver, false);
+
+        _transferAndMint(assets, shares, receiver);
     }
 
     function previewMint(uint256 shares) external view override returns (uint256 assets) {
@@ -99,14 +91,6 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         assets = _convertToAssets(shares);
     }
 
-    function maxMint(address owner) external view override returns (uint256 maxShares) {
-        maxShares = _maxMint(owner);
-    }
-
-    function _maxMint(address) internal view virtual returns (uint256 maxShares) {
-        maxShares = type(uint256).max;
-    }
-
     /*///////////////////////////////////////////////////////////////
                         INTERNAL DEPSOIT/MINT
     //////////////////////////////////////////////////////////////*/
@@ -114,12 +98,10 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     function _transferAndMint(
         uint256 assets,
         uint256 shares,
-        address receiver,
-        bool fromDeposit
+        address receiver
     ) internal virtual {
         _asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        _afterDepositHook(assets, shares, receiver, fromDeposit);
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -144,7 +126,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     ) internal virtual returns (uint256 shares) {
         shares = _previewWithdraw(assets);
 
-        _burnTransfer(assets, shares, receiver, owner, false);
+        _burnTransfer(assets, shares, receiver, owner);
     }
 
     function previewWithdraw(uint256 assets) external view override returns (uint256 shares) {
@@ -177,7 +159,8 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         address owner
     ) internal virtual returns (uint256 assets) {
         assets = _previewRedeem(shares);
-        _burnTransfer(assets, shares, receiver, owner, true);
+
+        _burnTransfer(assets, shares, receiver, owner);
     }
 
     function previewRedeem(uint256 shares) external view override returns (uint256 assets) {
@@ -188,14 +171,6 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         assets = _convertToAssets(shares);
     }
 
-    function maxRedeem(address owner) external view override returns (uint256 maxShares) {
-        maxShares = _maxRedeem(owner);
-    }
-
-    function _maxRedeem(address owner) internal view virtual returns (uint256 maxShares) {
-        maxShares = balanceOf(owner);
-    }
-
     /*///////////////////////////////////////////////////////////////
                         INTERNAL WITHDRAW/REDEEM
     //////////////////////////////////////////////////////////////*/
@@ -204,8 +179,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         uint256 assets,
         uint256 shares,
         address receiver,
-        address owner,
-        bool fromRedeem
+        address owner
     ) internal virtual {
         // If caller is not the owner of the shares
         uint256 allowed = allowance(owner, msg.sender);
@@ -213,7 +187,6 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
             require(shares <= allowed, "Amount exceeds allowance");
             _approve(owner, msg.sender, allowed - shares);
         }
-        _beforeWithdrawHook(assets, shares, owner, fromRedeem);
 
         _burn(owner, shares);
 
@@ -226,16 +199,9 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
                             EXTENRAL ASSETS
     //////////////////////////////////////////////////////////////*/
 
-    function asset() external view virtual override returns (address assetTokenAddress) {
-        assetTokenAddress = address(_asset);
+    function totalAssets() public view override returns (uint256 totalManagedAssets) {
+        totalManagedAssets = _asset.balanceOf(address(this));
     }
-
-    /**
-     * @notice It should include any compounding that occurs from yield. It must be inclusive of any fees that are charged against assets in the Vault. It must not revert.
-     *
-     * Returns the total amount of the underlying asset that is “managed” by vault.
-     */
-    function totalAssets() public view virtual override returns (uint256 totalManagedAssets);
 
     /*///////////////////////////////////////////////////////////////
                             CONVERTIONS
@@ -280,46 +246,4 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
             shares = (assets * totalShares) / totalAssets();
         }
     }
-
-    /*///////////////////////////////////////////////////////////////
-                         INTERNAL HOOKS LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * Called be the `deposit` and `mint` functions after the assets have been transferred into the vault
-     * but before shares are minted.
-     * Typically, the hook implementation deposits the assets into the underlying vaults or platforms.
-     *
-     * @dev the shares returned from `totalSupply` and `balanceOf` have not yet been updated with the minted shares.
-     * The assets returned from `totalAssets` and `assetsOf` are typically updated as part of the `_afterDepositHook` hook but it depends on the implementation.
-     *
-     * If an vault is implementing multiple vault capabilities, the `_afterDepositHook` function that updates the assets amounts should be executed last.
-     *
-     * @param assets the amount of underlying assets to be transferred to the vault.
-     * @param shares the amount of vault shares to be minted.
-     * @param receiver the account that is receiving the minted shares.
-     */
-    function _afterDepositHook(
-        uint256 assets,
-        uint256 shares,
-        address receiver,
-        bool fromDeposit
-    ) internal virtual {}
-
-    /**
-     * Called be the `withdraw` and `redeem` functions before
-     * the assets have been transferred from the vault to the receiver
-     * and before the owner's shares are burnt.
-     * Typically, the hook implementation withdraws the assets from the underlying vaults or platforms.
-     *
-     * @param assets the amount of underlying assets to be withdrawn from the vault.
-     * @param shares the amount of vault shares to be burnt.
-     * @param owner the account that owns the shares that are being burnt.
-     */
-    function _beforeWithdrawHook(
-        uint256 assets,
-        uint256 shares,
-        address owner,
-        bool fromRedeem
-    ) internal virtual {}
 }

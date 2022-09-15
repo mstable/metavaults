@@ -1,9 +1,10 @@
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
+import { loadOrExecFixture } from "@utils/fork"
 import { getTimestampFromTx, increaseTime } from "@utils/time"
 import { expect } from "chai"
 import { ethers } from "hardhat"
@@ -18,7 +19,7 @@ import {
 import { shouldBehaveLikeLiquidatorStreamFeeAbstractVault } from "../../shared/LiquidatorStreamFeeAbstractVault.behaviour"
 
 import type { TransactionResponse } from "@ethersproject/providers"
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type {
     AbstractVault,
@@ -47,9 +48,9 @@ describe("Streamed Liquidator Fee Vault", async () => {
         lastTxTimestamp: BigNumberish,
         txShares: BigNumberish,
         streamedSharesBefore: BigNumberish,
-        investorSharesBefore: BigNumberish,
+        stakerSharesBefore: BigNumberish,
     ): Promise<{ streamedShares: BN; lastTxTimestamp: BN }> => {
-        const totalSharesBefore = BN.from(streamedSharesBefore).add(investorSharesBefore)
+        const totalSharesBefore = BN.from(streamedSharesBefore).add(stakerSharesBefore)
 
         const currentTxTimestamp = await getTimestampFromTx(tx)
         const periodTime = currentTxTimestamp.sub(lastTxTimestamp)
@@ -66,7 +67,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
         expect(await vault.streamedShares(), "streamed shares").to.eq(BN.from(streamedSharesBefore).sub(burntShares))
 
-        expect(await vault.balanceOf(sa.default.address), "investor shares after").to.eq(BN.from(investorSharesBefore).add(txShares))
+        expect(await vault.balanceOf(sa.default.address), "staker shares after").to.eq(BN.from(stakerSharesBefore).add(txShares))
         expect(await vault.balanceOf(vault.address), "stream shares after").to.eq(BN.from(streamedSharesBefore).sub(burntShares))
         expect(await vault.totalSupply(), "total shares after").to.eq(totalSharesBefore.add(txShares).sub(burntShares))
 
@@ -79,7 +80,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
     const assertDonation = async (
         lastTxTimestamp: BigNumberish,
         txAmount: BigNumberish,
-        investorSharesBefore: BigNumberish,
+        stakerSharesBefore: BigNumberish,
         streamedSharesBefore: BigNumberish,
         feeSharesBefore: BigNumberish,
         totalAssetsBefore: BigNumberish,
@@ -94,7 +95,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
         const remainingStreamShares = remainingStreamSeconds.mul(streamedSharesBefore).div(ONE_DAY)
 
         const newShares = BN.from(totalAssetsBefore).gt(0)
-            ? BN.from(txAmount).mul(BN.from(investorSharesBefore).add(feeSharesBefore)).div(totalAssetsBefore)
+            ? BN.from(txAmount).mul(BN.from(stakerSharesBefore).add(feeSharesBefore)).div(totalAssetsBefore)
             : BN.from(txAmount)
         const newFeeShares = newShares.div(100)
         const feeAssets = BN.from(txAmount).div(100)
@@ -127,10 +128,10 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
         assertBNClose(await vault.streamedShares(), streamedSharesAfter, 3)
 
-        expect(await vault.balanceOf(sa.default.address), "investor shares after").to.eq(investorSharesBefore)
+        expect(await vault.balanceOf(sa.default.address), "staker shares after").to.eq(stakerSharesBefore)
         assertBNClose(await vault.balanceOf(vault.address), streamedSharesAfter, 3)
         assertBNClose(await vault.balanceOf(sa.feeReceiver.address), feeSharesAfter, 3)
-        assertBNClose(await vault.totalSupply(), BN.from(investorSharesBefore).add(streamedSharesAfter).add(feeSharesAfter), 3)
+        assertBNClose(await vault.totalSupply(), BN.from(stakerSharesBefore).add(streamedSharesAfter).add(feeSharesAfter), 3)
         expect(await vault.totalAssets(), "total assets after").to.eq(BN.from(totalAssetsBefore).add(txAmount))
     }
 
@@ -210,7 +211,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
 
         describe("should behave like AbstractVaultBehaviourContext", async () => {
-            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
             before(async () => {
                 ctx.fixture = async function fixture() {
                     await setup()
@@ -220,7 +221,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
                     ctx.amounts = testAmounts(100, await asset.decimals())
                 }
             })
-            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
     })
     describe("constructor", async () => {
@@ -288,10 +289,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
         })
     })
     context("no streamed shares", async () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_DAY)
-        })
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
         it("mint", async () => {
             const mintAmount = simpleToExactAmount(1000)
 
@@ -328,37 +330,38 @@ describe("Streamed Liquidator Fee Vault", async () => {
         })
     })
     context("donated shares", () => {
-        beforeEach(async () => {
+        const beforeEachFixture = async function fixture() {
             vault = await setup()
             await increaseTime(ONE_WEEK)
-        })
-        it("before investor shares", async () => {
+        }
+        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+        it("before staker shares", async () => {
             const txAmount = simpleToExactAmount(300)
 
             await assertDonation(0, txAmount, 0, 0, 0, 0)
         })
-        it("after investor shares", async () => {
-            const investorSharesBefore = simpleToExactAmount(11111)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+        it("after staker shares", async () => {
+            const stakerSharesBefore = simpleToExactAmount(11111)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(60)
             const txAmount = simpleToExactAmount(500)
 
-            await assertDonation(0, txAmount, investorSharesBefore, 0, 0, investorSharesBefore)
+            await assertDonation(0, txAmount, stakerSharesBefore, 0, 0, stakerSharesBefore)
         })
-        it("after appreciation of investor shares", async () => {
-            const investorSharesBefore = simpleToExactAmount(1000)
-            const totalAssetsBefore = investorSharesBefore.mul(11).div(10)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+        it("after appreciation of staker shares", async () => {
+            const stakerSharesBefore = simpleToExactAmount(1000)
+            const totalAssetsBefore = stakerSharesBefore.mul(11).div(10)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(60)
             // Appreciate the assets per share by 10%
-            await asset.transfer(vault.address, investorSharesBefore.div(10))
+            await asset.transfer(vault.address, stakerSharesBefore.div(10))
             const txAmount = simpleToExactAmount(500)
 
-            await assertDonation(0, txAmount, investorSharesBefore, 0, 0, totalAssetsBefore)
+            await assertDonation(0, txAmount, stakerSharesBefore, 0, 0, totalAssetsBefore)
         })
         it("second donation near start of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -372,15 +375,15 @@ describe("Streamed Liquidator Fee Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount.mul(99).div(100),
                 firstDonationAmount.div(100),
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation near end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -394,15 +397,15 @@ describe("Streamed Liquidator Fee Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount.mul(99).div(100),
                 firstDonationAmount.div(100),
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation at end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -416,15 +419,15 @@ describe("Streamed Liquidator Fee Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount.mul(99).div(100),
                 firstDonationAmount.div(100),
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
         it("second donation after end of first stream", async () => {
-            const investorSharesBefore = simpleToExactAmount(100)
-            await vault.deposit(investorSharesBefore, sa.default.address)
+            const stakerSharesBefore = simpleToExactAmount(100)
+            await vault.deposit(stakerSharesBefore, sa.default.address)
             await increaseTime(ONE_WEEK)
             const firstDonationAmount = simpleToExactAmount(24)
 
@@ -438,10 +441,10 @@ describe("Streamed Liquidator Fee Vault", async () => {
             await assertDonation(
                 lastTxTimestamp,
                 secondDonationAmount,
-                investorSharesBefore,
+                stakerSharesBefore,
                 firstDonationAmount.mul(99).div(100),
                 firstDonationAmount.div(100),
-                investorSharesBefore.add(firstDonationAmount),
+                stakerSharesBefore.add(firstDonationAmount),
             )
         })
     })

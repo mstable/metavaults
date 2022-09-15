@@ -9,7 +9,9 @@ import type { StandardAccounts } from "@utils/machines"
 import type { BN } from "@utils/math"
 import type { ContractTransaction } from "ethers"
 import type { Account } from "types"
-import type { AbstractVault, ERC20, IERC20Metadata } from "types/generated"
+import type { AbstractVault, ERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
+
+export type BaseAbstractVault = AbstractVault | LightAbstractVault
 
 type Variance = number | string
 type Variances = {
@@ -29,8 +31,8 @@ type Amounts = {
     withdraw: BN
     redeem: BN
 }
-export interface AbstractVaultBehaviourContext {
-    vault: AbstractVault
+export interface BaseVaultBehaviourContext {
+    vault: BaseAbstractVault
     asset: ERC20 | IERC20Metadata
     sa: StandardAccounts
     fixture: () => Promise<void>
@@ -59,7 +61,7 @@ const defaultVariances: Variances = {
     maxRedeem: 0,
 }
 
-const snapshotData = async (ctx: AbstractVaultBehaviourContext, sender: Account, receiver: Account, owner: Account): Promise<Data> => {
+const snapshotData = async (ctx: BaseVaultBehaviourContext, sender: Account, receiver: Account, owner: Account): Promise<Data> => {
     return {
         callerAssetBalance: await ctx.asset.balanceOf(sender.address),
         callerSharesBalance: await ctx.vault.balanceOf(sender.address),
@@ -113,7 +115,7 @@ async function expectDepositEvent(
 }
 
 async function expectRedeem(
-    ctx: AbstractVaultBehaviourContext,
+    ctx: BaseVaultBehaviourContext,
     sender: Account,
     receiver: Account,
     owner: Account,
@@ -143,7 +145,7 @@ async function expectRedeem(
 }
 
 async function expectWithdraw(
-    ctx: AbstractVaultBehaviourContext,
+    ctx: BaseVaultBehaviourContext,
     sender: Account,
     receiver: Account,
     owner: Account,
@@ -171,7 +173,7 @@ async function expectWithdraw(
     assertBNClosePercent(data.receiverAssetBalance, dataBefore.receiverAssetBalance.add(assets), ctx.variances.withdraw, "receiver assets")
 }
 
-export function shouldBehaveLikeAbstractVault(ctx: () => AbstractVaultBehaviourContext): void {
+export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext): void {
     let alice: Account
     let bob: Account
     let aliceAssetBalance = ZERO
@@ -568,4 +570,4 @@ export const testAmounts = (amount: number, decimals = 18): Amounts => {
     }
 }
 
-export default shouldBehaveLikeAbstractVault
+export default shouldBehaveLikeBaseVault

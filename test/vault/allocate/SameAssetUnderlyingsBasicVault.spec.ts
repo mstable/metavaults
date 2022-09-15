@@ -1,4 +1,4 @@
-import { shouldBehaveLikeAbstractVault, testAmounts } from "@test/shared/AbstractVault.behaviour"
+import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeModule } from "@test/shared/Module.behaviour"
 import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { shouldBehaveLikeToken } from "@test/shared/Token.behaviour"
@@ -10,7 +10,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "types/generated"
 
-import type { AbstractVaultBehaviourContext } from "@test/shared/AbstractVault.behaviour"
+import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { TokenContext, TokenERC20 } from "@test/shared/Token.behaviour"
 import type { Account } from "types"
@@ -152,7 +152,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             shouldBehaveLikeToken(() => tokenContext as TokenContext)
         })
         describe("should behave like AbstractVaultBehaviourContext", async () => {
-            const ctx: Partial<AbstractVaultBehaviourContext> = {}
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
             before(async () => {
                 ctx.fixture = async function fixture() {
                     await setup()
@@ -162,7 +162,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
                     ctx.amounts = testAmounts(100, await asset.decimals())
                 }
             })
-            shouldBehaveLikeAbstractVault(() => ctx as AbstractVaultBehaviourContext)
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
         describe("should behave like SameAssetUnderlyingsAbstractVaultBehaviourContext", async () => {
             const ctx: Partial<SameAssetUnderlyingsAbstractVaultBehaviourContext> = {}
