@@ -1,5 +1,6 @@
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeModule } from "@test/shared/Module.behaviour"
+import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { shouldBehaveLikeToken } from "@test/shared/Token.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { MAX_UINT256, ZERO_ADDRESS } from "@utils/constants"
@@ -9,46 +10,19 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "types/generated"
 
-import { impersonate } from "../../../test-utils/fork"
-
 import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
+import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { TokenContext, TokenERC20 } from "@test/shared/Token.behaviour"
-import type { BN } from "@utils/math"
-import type { BigNumberish, ContractTransaction } from "ethers"
 import type { Account } from "types"
-import type { AbstractVault, BasicVault, MockERC20, MockNexus, SameAssetUnderlyingsBasicVault, VaultManagerRole } from "types/generated"
-
-interface VaultData {
-    totalAssets: BN
-    totalSupply: BN
-    bVault1Shares: BN
-    bVault2Shares: BN
-    userShares: BN
-}
-
-interface BasicVaultData {
-    totalAssets: BN
-    totalSupply: BN
-}
-
-interface SnapVaultData {
-    vaultData: VaultData
-    bVault1Data: BasicVaultData
-    bVault2Data: BasicVaultData
-}
-
-interface Balances {
-    totalAssets: BigNumberish
-    totalSupply: BigNumberish
-    bVault1Shares: BigNumberish
-    bVault2Shares: BigNumberish
-    bv1TotalAssets: BigNumberish
-    bv1TotalSupply: BigNumberish
-    bv2TotalAssets: BigNumberish
-    bv2TotalSupply: BigNumberish
-}
-
-const oneMil = simpleToExactAmount(1000000)
+import type {
+    AbstractVault,
+    BasicVault,
+    MockERC20,
+    MockNexus,
+    SameAssetUnderlyingsAbstractVault,
+    SameAssetUnderlyingsBasicVault,
+    VaultManagerRole,
+} from "types/generated"
 
 describe("SameAssetUnderlyingsBasicVault", async () => {
     /* -- Declare shared variables -- */
@@ -98,40 +72,6 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         const assetBalance = await asset.balanceOf(sa.default.address)
         asset.transfer(sa.alice.address, assetBalance.div(2))
     }
-
-    const snapVault = async (): Promise<SnapVaultData> => {
-        return {
-            vaultData: {
-                totalAssets: await vault.totalAssets(),
-                totalSupply: await vault.totalSupply(),
-                bVault1Shares: await bVault1.balanceOf(vault.address),
-                bVault2Shares: await bVault2.balanceOf(vault.address),
-                userShares: await vault.balanceOf(user.address),
-            },
-            bVault1Data: {
-                totalAssets: await bVault1.totalAssets(),
-                totalSupply: await bVault1.totalSupply(),
-            },
-            bVault2Data: {
-                totalAssets: await bVault2.totalAssets(),
-                totalSupply: await bVault2.totalSupply(),
-            },
-        }
-    }
-
-    const assertVaultBalances = async (data: SnapVaultData, balances: Balances) => {
-        expect(data.vaultData.totalAssets, "totalAssets").to.eq(balances.totalAssets)
-        expect(data.vaultData.totalSupply, "totalSupply").to.eq(balances.totalSupply)
-        expect(data.vaultData.bVault1Shares, "bVault1Shares").to.eq(balances.bVault1Shares)
-        expect(data.vaultData.bVault2Shares, "bVault2Shares").to.eq(balances.bVault2Shares)
-
-        expect(data.bVault1Data.totalAssets, "bv1 totalAssets").to.eq(balances.bv1TotalAssets)
-        expect(data.bVault1Data.totalSupply, "bv1 totalSupply").to.eq(balances.bv1TotalSupply)
-
-        expect(data.bVault2Data.totalAssets, "bv2 totalAssets").to.eq(balances.bv2TotalAssets)
-        expect(data.bVault2Data.totalSupply, "bv2 totalSupply").to.eq(balances.bv2TotalSupply)
-    }
-
     before("init contract", async () => {
         await setup()
     })
@@ -224,316 +164,18 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             })
             shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
-    })
-    describe("Vault operations", async () => {
-        before("init contract", async () => {
-            await setup()
-        })
-
-        const initialDepositAmount = oneMil.mul(10)
-
-        describe("rebalance", async () => {
+        describe("should behave like SameAssetUnderlyingsAbstractVaultBehaviourContext", async () => {
+            const ctx: Partial<SameAssetUnderlyingsAbstractVaultBehaviourContext> = {}
             before(async () => {
-                await vault.connect(user.signer).deposit(initialDepositAmount, user.address)
-                const vaultSigner = await impersonate(vault.address, true)
-                await bVault1.connect(vaultSigner).deposit(initialDepositAmount, vault.address)
-            })
-            it("should fail if callee is not vaultManager", async () => {
-                const swap = {
-                    fromVaultIndex: 3,
-                    toVaultIndex: 0,
-                    assets: oneMil,
-                    shares: 0,
+                ctx.fixture = async function fixture() {
+                    await setup()
+                    ctx.vault = vault as unknown as SameAssetUnderlyingsAbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = { initialDeposit: simpleToExactAmount(100, await asset.decimals()) }
                 }
-                const tx = vault.connect(user.signer).rebalance([swap])
-                await expect(tx).to.be.revertedWith("Only vault manager can execute")
             })
-            it("should fail on invalid fromVaultIndex", async () => {
-                const swap = {
-                    fromVaultIndex: 3,
-                    toVaultIndex: 0,
-                    assets: oneMil,
-                    shares: 0,
-                }
-                const tx = vault.connect(sa.vaultManager.signer).rebalance([swap])
-                await expect(tx).to.be.revertedWith("Invalid from vault index")
-            })
-            it("should fail on invalid toVaultIndex", async () => {
-                const swap = {
-                    fromVaultIndex: 0,
-                    toVaultIndex: 3,
-                    assets: oneMil,
-                    shares: 0,
-                }
-                const tx = vault.connect(sa.vaultManager.signer).rebalance([swap])
-                await expect(tx).to.be.revertedWith("Invalid to vault index")
-            })
-            it("initial vault state have correct params", async () => {
-                const data = await snapVault()
-
-                const balances = {
-                    totalAssets: initialDepositAmount,
-                    totalSupply: initialDepositAmount,
-                    bVault1Shares: initialDepositAmount,
-                    bVault2Shares: 0,
-                    bv1TotalAssets: initialDepositAmount,
-                    bv1TotalSupply: initialDepositAmount,
-                    bv2TotalAssets: 0,
-                    bv2TotalSupply: 0,
-                }
-                await assertVaultBalances(data, balances)
-                expect(data.vaultData.userShares, "userShares").to.eq(initialDepositAmount)
-            })
-            context("using assets", async () => {
-                it("100% from vault1 to vault2", async () => {
-                    const swap = {
-                        fromVaultIndex: 0,
-                        toVaultIndex: 1,
-                        assets: initialDepositAmount,
-                        shares: 0,
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: initialDepositAmount,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: initialDepositAmount,
-                        bv2TotalSupply: initialDepositAmount,
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-                it("50% from vault2 to vault1", async () => {
-                    const transferAmount = initialDepositAmount.div(2)
-                    const swap = {
-                        fromVaultIndex: 1,
-                        toVaultIndex: 0,
-                        assets: transferAmount,
-                        shares: 0,
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: transferAmount,
-                        bVault2Shares: initialDepositAmount.sub(transferAmount),
-                        bv1TotalAssets: transferAmount,
-                        bv1TotalSupply: transferAmount,
-                        bv2TotalAssets: initialDepositAmount.sub(transferAmount),
-                        bv2TotalSupply: initialDepositAmount.sub(transferAmount),
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-            })
-            context("using shares", async () => {
-                it("100% from vault1 to vault2", async () => {
-                    const swap = {
-                        fromVaultIndex: 0,
-                        toVaultIndex: 1,
-                        assets: 0,
-                        shares: await bVault1.balanceOf(vault.address),
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: initialDepositAmount,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: initialDepositAmount,
-                        bv2TotalSupply: initialDepositAmount,
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-                it("50% from vault2 to vault1", async () => {
-                    const transferAmount = (await bVault2.balanceOf(vault.address)).div(2)
-                    const swap = {
-                        fromVaultIndex: 1,
-                        toVaultIndex: 0,
-                        assets: 0,
-                        shares: transferAmount,
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: transferAmount,
-                        bVault2Shares: initialDepositAmount.sub(transferAmount),
-                        bv1TotalAssets: transferAmount,
-                        bv1TotalSupply: transferAmount,
-                        bv2TotalAssets: initialDepositAmount.sub(transferAmount),
-                        bv2TotalSupply: initialDepositAmount.sub(transferAmount),
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-            })
-            context("using assets and shares both", async () => {
-                it("100% from vault1 to vault2", async () => {
-                    const transferAmount = (await bVault1.balanceOf(vault.address)).div(2)
-                    const swap = {
-                        fromVaultIndex: 0,
-                        toVaultIndex: 1,
-                        assets: transferAmount,
-                        shares: transferAmount,
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: initialDepositAmount,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: initialDepositAmount,
-                        bv2TotalSupply: initialDepositAmount,
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-                it("50% vault2 to vault1", async () => {
-                    const transferAmount = (await bVault2.balanceOf(vault.address)).div(4)
-                    const swap = {
-                        fromVaultIndex: 1,
-                        toVaultIndex: 0,
-                        assets: transferAmount,
-                        shares: transferAmount,
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: transferAmount.mul(2),
-                        bVault2Shares: transferAmount.mul(2),
-                        bv1TotalAssets: transferAmount.mul(2),
-                        bv1TotalSupply: transferAmount.mul(2),
-                        bv2TotalAssets: transferAmount.mul(2),
-                        bv2TotalSupply: transferAmount.mul(2),
-                    }
-                    await assertVaultBalances(data, balances)
-                })
-            })
-        })
-        describe("add vault", async () => {
-            it("should fail if callee is not vault manger", async () => {
-                const assetNew = mocks.dai
-                const bVault3 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                await bVault3.initialize(`bv3${await asset.name()}`, `bv3${await assetNew.symbol()}`, sa.vaultManager.address)
-
-                const tx = vault.addVault(bVault3.address)
-                await expect(tx).to.be.revertedWith("Only vault manager can execute")
-            })
-            it("should fail on mismatching asset", async () => {
-                const assetNew = mocks.dai
-                const bVault3 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, assetNew.address)
-                await bVault3.initialize(`bv3${await assetNew.name()}`, `bv3${await assetNew.symbol()}`, sa.vaultManager.address)
-
-                const tx = vault.connect(sa.vaultManager.signer).addVault(bVault3.address)
-                await expect(tx).to.be.revertedWith("Invalid vault asset")
-            })
-            context("success", async () => {
-                let tx: Promise<ContractTransaction>
-                let bVault3: BasicVault
-                before(async () => {
-                    bVault3 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                    await bVault3.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
-
-                    tx = vault.connect(sa.vaultManager.signer).addVault(bVault3.address)
-                })
-                it("should emit AddedVault event", async () => {
-                    await expect(tx).to.emit(vault, "AddedVault").withArgs(2, bVault3.address)
-                })
-                it("should be able to rebalance to newly added vault", async () => {
-                    const swap1 = {
-                        fromVaultIndex: 0,
-                        toVaultIndex: 2,
-                        assets: 0,
-                        shares: await bVault1.balanceOf(vault.address),
-                    }
-                    const swap2 = {
-                        fromVaultIndex: 1,
-                        toVaultIndex: 2,
-                        assets: 0,
-                        shares: await bVault2.balanceOf(vault.address),
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap1, swap2])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: 0,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: 0,
-                        bv2TotalSupply: 0,
-                    }
-                    await assertVaultBalances(data, balances)
-                    expect(await bVault3.totalAssets(), "bVault3 totalAssets").to.eq(initialDepositAmount)
-                    expect(await bVault3.totalSupply(), "bVault3 totalSupply").to.eq(initialDepositAmount)
-                    expect(await bVault3.balanceOf(vault.address), "bv3 shares").to.eq(initialDepositAmount)
-                })
-                it("should be able to rebalance from newly added vault", async () => {
-                    const swap = {
-                        fromVaultIndex: 2,
-                        toVaultIndex: 1,
-                        assets: 0,
-                        shares: await bVault3.balanceOf(vault.address),
-                    }
-                    await vault.connect(sa.vaultManager.signer).rebalance([swap])
-                    const data = await snapVault()
-
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: initialDepositAmount,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: initialDepositAmount,
-                        bv2TotalSupply: initialDepositAmount,
-                    }
-                    await assertVaultBalances(data, balances)
-                    expect(await bVault3.totalAssets(), "bVault3 totalAssets").to.eq(0)
-                    expect(await bVault3.totalSupply(), "bVault3 totalSupply").to.eq(0)
-                    expect(await bVault3.balanceOf(vault.address), "bv3 shares").to.eq(0)
-                })
-                it("should be able to independently deposit to new vault", async () => {
-                    const independentAmount = oneMil
-                    await asset.connect(user.signer).approve(bVault3.address, ethers.constants.MaxUint256)
-                    await bVault3.connect(user.signer).deposit(independentAmount, user.address)
-
-                    const data = await snapVault()
-                    const balances = {
-                        totalAssets: initialDepositAmount,
-                        totalSupply: initialDepositAmount,
-                        bVault1Shares: 0,
-                        bVault2Shares: initialDepositAmount,
-                        bv1TotalAssets: 0,
-                        bv1TotalSupply: 0,
-                        bv2TotalAssets: initialDepositAmount,
-                        bv2TotalSupply: initialDepositAmount,
-                    }
-                    await assertVaultBalances(data, balances)
-                    expect(await bVault3.totalAssets(), "bVault3 totalAssets").to.eq(independentAmount)
-                    expect(await bVault3.totalSupply(), "bVault3 totalSupply").to.eq(independentAmount)
-                    expect(await bVault3.balanceOf(user.address), "bv3 user shares").to.eq(independentAmount)
-                })
-            })
+            shouldBehaveLikeSameAssetUnderlyingsAbstractVault(() => ctx as SameAssetUnderlyingsAbstractVaultBehaviourContext)
         })
     })
 })

@@ -213,7 +213,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
                 await asset.connect(alice.signer).approve(vault.address, assetsAmount)
             }
-            await await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+            await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
         })
         it("deposit assets to the vault, sender = receiver", async () => {
             const { vault, asset, amounts, variances } = ctx()

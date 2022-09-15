@@ -35,6 +35,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     IERC4626Vault[] public underlyingVaults;
 
     event AddedVault(uint256 indexed vaultIndex, address indexed vault);
+    event RemovedVault(uint256 indexed vaultIndex, address indexed vault);
 
     /**
      * @param _underlyingVaults  The underlying vaults address to invest into.
@@ -81,6 +82,15 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     }
 
     /**
+     * @notice Returns the total number of underlying vaults.
+     *
+     * @return  vaultsLen The total number of underlying vaults
+     */
+    function underlyingVaultsLength() external view virtual returns (uint256 vaultsLen) {
+        vaultsLen = underlyingVaults.length;
+    }
+
+    /**
      * @notice `VaultManager` rebalances the assets in the underlying vaults.
      * This can be moving assets between underlying vaults, moving assets in underlying
      * vaults back to this vault, or moving assets in this vault to underlying vaults.
@@ -88,11 +98,11 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     function rebalance(Swap[] calldata swaps) external virtual onlyVaultManager {
         // For each swap
         Swap memory swap;
-        uint256 underlyingVaultsLength = underlyingVaults.length;
+        uint256 underlyingVaultsLen = underlyingVaults.length;
         for (uint256 i = 0; i < swaps.length; ) {
             swap = swaps[i];
-            require(swap.fromVaultIndex < underlyingVaultsLength, "Invalid from vault index");
-            require(swap.toVaultIndex < underlyingVaultsLength, "Invalid to vault index");
+            require(swap.fromVaultIndex < underlyingVaultsLen, "Invalid from vault index");
+            require(swap.toVaultIndex < underlyingVaultsLen, "Invalid to vault index");
 
             if (swap.assets > 0) {
                 // Withdraw assets from underlying vault
@@ -149,5 +159,38 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         _asset.safeApprove(_underlyingVault, type(uint256).max);
 
         emit AddedVault(vaultIndex, _underlyingVault);
+    }
+
+    /**
+     * @notice  Removes an underlying ERC-4626 compliant vault.
+     * All underlying shares are redeemed with the assets transferred to this vault.
+     *
+     * WARNING any underlying vaults after the removed vault will have their index reduced by one.
+     * Off-chain processes that use underlying vault indexes will need to be updated.
+     *
+     * @param vaultIndex Index position of the underlying vault starting at position 0.
+     */
+    function removeVault(uint256 vaultIndex) external onlyGovernor {
+        uint256 underlyingVaultsLen = underlyingVaults.length;
+        require(vaultIndex < underlyingVaultsLen, "Invalid from vault index");
+
+        // Withdraw all assets from the underlying vault being removed.
+        uint256 underlyingShares = underlyingVaults[vaultIndex].maxRedeem(address(this));
+        if (underlyingShares > 0) {
+            underlyingVaults[vaultIndex].redeem(underlyingShares, address(this), address(this));
+        }
+
+        address underlyingVault = address(underlyingVaults[vaultIndex]);
+
+        // move all vaults to the left after the vault being removed
+        for (uint256 i = vaultIndex; i < underlyingVaultsLen - 1; ) {
+            underlyingVaults[i] = underlyingVaults[i + 1];
+            unchecked {
+                ++i;
+            }
+        }
+        underlyingVaults.pop(); // delete the last item
+
+        emit RemovedVault(vaultIndex, underlyingVault);
     }
 }

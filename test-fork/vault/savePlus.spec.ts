@@ -3,6 +3,7 @@ import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
+import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
 import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture, setBalancesToAccount } from "@utils/fork"
@@ -29,6 +30,7 @@ import {
 import { buildDonateTokensInput, CRV, CVX, DAI, logTxDetails, ThreeCRV, USDC, usdFormatter, USDT } from "../../tasks/utils"
 
 import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
+import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { BigNumber, ContractTransaction, Signer } from "ethers"
 import type {
     Convex3CrvLiquidatorVault,
@@ -41,13 +43,19 @@ import type {
     Nexus,
 } from "types"
 import type { Account, AnyVault } from "types/common"
-import type { AbstractVault, ERC20, IERC20Metadata, InstantProxyAdmin, PeriodicAllocationPerfFeeMetaVault } from "types/generated"
+import type {
+    AbstractVault,
+    ERC20,
+    IERC20Metadata,
+    InstantProxyAdmin,
+    PeriodicAllocationPerfFeeMetaVault,
+    SameAssetUnderlyingsAbstractVault,
+} from "types/generated"
 
 const log = logger("test:savePlus")
 
 const governorAddress = resolveAddress("Governor")
 const feeReceiver = resolveAddress("mStableDAO")
-const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf" //Coinbase 6
 const usdtWhaleAddress = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 const staker1Address = "0xA86e412109f77c45a3BC1c5870b880492Fb86A14" // Tokemak: Manager
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
@@ -506,6 +514,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
         const accounts = await ethers.getSigners()
         sa = await new StandardAccounts().initAccounts(accounts)
         governor = await impersonateAccount(governorAddress)
+        sa.governor = governor
         deployer = governor.signer
 
         staker1 = await impersonateAccount(staker1Address)
@@ -514,7 +523,8 @@ describe("Save+ Basic and Meta Vaults", async () => {
         sa.bob = staker2
 
         rewardsWhale = await impersonateAccount(rewardsWhaleAddress)
-        vaultManager = await impersonateAccount(vaultManagerAddress)
+        vaultManager = sa.vaultManager
+
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
         // Deploy core contracts  (nexus, proxy admin)
@@ -537,7 +547,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             convex3CrvVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curve3CrvMetaVaults,
-        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManagerAddress)
+        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManager.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)
@@ -882,6 +892,51 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     }
                 })
                 shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+        })
+        context("should behave like SameAssetUnderlyingsAbstractVault", async () => {
+            describe("periodicAllocationPerfFeeMetaVault", async () => {
+                const ctxSa: Partial<SameAssetUnderlyingsAbstractVaultBehaviourContext> = {}
+                before(async () => {
+                    ctxSa.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+
+                        ctxSa.vault = periodicAllocationPerfFeeMetaVault as unknown as SameAssetUnderlyingsAbstractVault
+                        ctxSa.asset = threeCrvToken
+                        ctxSa.sa = sa
+                        ctxSa.amounts = { initialDeposit: simpleToExactAmount(100, ThreeCRV.decimals) }
+                        ctxSa.variances = {
+                            totalAssets: simpleToExactAmount(21, 18),
+                            totalSupply: simpleToExactAmount(1, 1),
+                            bVault0: simpleToExactAmount(2, 20),
+                            bVault1: simpleToExactAmount(4, 20),
+                        }
+                        // underlying vaults are empty even after an initial deposit with this implementation.
+                        // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
+                        await assertVaultDeposit(
+                            staker1,
+                            threeCrvToken,
+                            periodicAllocationPerfFeeMetaVault,
+                            simpleToExactAmount(50000, ThreeCRV.decimals),
+                        )
+                        const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
+                        // Settle evenly to underlying assets
+                        const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(4) }
+                        const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(4) }
+                        const lusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(4) }
+                        const busdSettlement = { vaultIndex: BN.from(3), assets: totalAssets.div(4) }
+                        const settlements = { musd: musdSettlement, frax: fraxSettlement, lusd: lusdSettlement, busd: busdSettlement }
+                        await assertVaultSettle(
+                            vaultManager,
+                            convex3CrvLiquidatorVaults,
+                            periodicAllocationPerfFeeMetaVault,
+                            curve3CrvBasicMetaVaults,
+                            settlements,
+                            staker1,
+                        )
+                    }
+                })
+                shouldBehaveLikeSameAssetUnderlyingsAbstractVault(() => ctxSa as SameAssetUnderlyingsAbstractVaultBehaviourContext)
             })
         })
     })
