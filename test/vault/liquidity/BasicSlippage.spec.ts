@@ -53,7 +53,7 @@ describe("BasicSlippage", () => {
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("should fail if invalid value", async () => {
-            const tx = slippage.setMintSlippage((await slippage.BASIS_SCALE()).add(1))
+            const tx = slippage.connect(sa.governor.signer).setMintSlippage((await slippage.BASIS_SCALE()).add(1))
             await expect(tx).to.be.revertedWith("Invalid mint slippage")
         })
         it("should correctly update", async () => {
@@ -69,8 +69,8 @@ describe("BasicSlippage", () => {
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("should fail if invalid value", async () => {
-            const tx = slippage.setDepositSlippage((await slippage.BASIS_SCALE()).add(1))
-            await expect(tx).to.be.revertedWith("Invalid deposit slippage")
+            const tx = slippage.connect(sa.governor.signer).setDepositSlippage((await slippage.BASIS_SCALE()).add(1))
+            await expect(tx).to.be.revertedWith("Invalid deposit Slippage")
         })
         it("should correctly update", async () => {
             expect(await slippage.depositSlippage(), "deposit").to.not.eq(89)
@@ -85,8 +85,8 @@ describe("BasicSlippage", () => {
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("should fail if invalid value", async () => {
-            const tx = slippage.setWithdrawSlippage((await slippage.BASIS_SCALE()).add(1))
-            await expect(tx).to.be.revertedWith("Invalid withdraw slippage")
+            const tx = slippage.connect(sa.governor.signer).setWithdrawSlippage((await slippage.BASIS_SCALE()).add(1))
+            await expect(tx).to.be.revertedWith("Invalid withdraw Slippage")
         })
         it("should correctly update", async () => {
             expect(await slippage.withdrawSlippage(), "withdraw").to.not.eq(90)
@@ -101,7 +101,7 @@ describe("BasicSlippage", () => {
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("should fail if invalid value", async () => {
-            const tx = slippage.setRedeemSlippage((await slippage.BASIS_SCALE()).add(1))
+            const tx = slippage.connect(sa.governor.signer).setRedeemSlippage((await slippage.BASIS_SCALE()).add(1))
             await expect(tx).to.be.revertedWith("Invalid redeem slippage")
         })
         it("should correctly update", async () => {
