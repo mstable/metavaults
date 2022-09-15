@@ -72,13 +72,15 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         const assetBalance = await asset.balanceOf(sa.default.address)
         asset.transfer(sa.alice.address, assetBalance.div(2))
     }
-    before("init contract", async () => {
-        await setup()
-    })
     describe("constructor", async () => {
+        let vaultDeployed: SameAssetUnderlyingsBasicVault
+        before("init contract", async () => {
+            await setup()
+            vaultDeployed = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+        })
         it("should properly store valid arguments", async () => {
-            expect(await vault.nexus(), "nexus").to.eq(nexus.address)
-            expect(await vault.asset(), "asset").to.eq(asset.address)
+            expect(await vaultDeployed.nexus(), "nexus").to.eq(nexus.address)
+            expect(await vaultDeployed.asset(), "asset").to.eq(asset.address)
         })
         it("should fail if arguments are wrong", async () => {
             await expect(
@@ -87,29 +89,32 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         })
     })
     describe("initialize", async () => {
+        let vaultInitialised: SameAssetUnderlyingsBasicVault
         before("init contract", async () => {
             await setup()
+            vaultInitialised = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
         })
         it("should properly store valid arguments", async () => {
-            // Basic vaults
-            expect(await bVault1.symbol(), "bv1 symbol").to.eq("bv1ERC20")
-            expect(await bVault2.symbol(), "bv2 symbol").to.eq("bv2ERC20")
-            expect(await bVault1.name(), "bv1 name").to.eq("bv1ERC20 Mock")
-            expect(await bVault2.name(), "bv2 name").to.eq("bv2ERC20 Mock")
-            expect(await bVault1.decimals(), "bv1 decimals").to.eq(await asset.decimals())
-            expect(await bVault2.decimals(), "bv2 decimals").to.eq(await asset.decimals())
+            await vaultInitialised.initialize(
+                `saub${await asset.name()}`,
+                `saub${await asset.symbol()}`,
+                sa.vaultManager.address,
+                underlyingVaults,
+            )
 
-            // saub Vault
-            expect(await vault.symbol(), "saub symbol").to.eq("saubERC20")
-            expect(await vault.name(), "saub name").to.eq("saubERC20 Mock")
-            expect(await vault.decimals(), "saub decimals").to.eq(18)
+            expect(await vaultInitialised.symbol(), "saub symbol").to.eq("saubERC20")
+            expect(await vaultInitialised.name(), "saub name").to.eq("saubERC20 Mock")
+            expect(await vaultInitialised.decimals(), "saub decimals").to.eq(18)
 
-            expect(await vault.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
-            expect(await vault.totalSupply(), "totalSupply").to.eq(0)
-            expect(await vault.totalAssets(), "totalAssets").to.eq(0)
+            expect(await vaultInitialised.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
+            expect(await vaultInitialised.totalSupply(), "totalSupply").to.eq(0)
+            expect(await vaultInitialised.totalAssets(), "totalAssets").to.eq(0)
 
-            expect(await vault.underlyingVaults(0)).to.eq(bVault1.address)
-            expect(await vault.underlyingVaults(1)).to.eq(bVault2.address)
+            expect(await vaultInitialised.resolveVaultIndex(0), "vault index 0").to.eq(bVault1.address)
+            expect(await vaultInitialised.resolveVaultIndex(1), "vault index 1").to.eq(bVault2.address)
+
+            expect(await vaultInitialised.activeUnderlyingVaults(), "active underlying vaults").to.eq(2)
+            expect(await vaultInitialised.totalUnderlyingVaults(), "total underlying vaults").to.eq(2)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(
@@ -126,6 +131,9 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         })
     })
     describe("behaviors", async () => {
+        before("init contract", async () => {
+            await setup()
+        })
         it("should behave like ImmutableModule ", async () => {
             shouldBehaveLikeModule({ module: vault, sa })
         })
