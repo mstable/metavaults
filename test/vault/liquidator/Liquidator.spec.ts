@@ -1,4 +1,4 @@
-import { ZERO } from "@utils/constants"
+import { SAFE_INFINITY, ZERO } from "@utils/constants"
 import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -1295,6 +1295,30 @@ describe("Liquidator", async () => {
 
             await rewards4.transfer(vault1.address, simpleToExactAmount(100, 24))
             await liquidator.collectRewards([vault3.address])
+        })
+    })
+    describe("BasicDexSwap syncSwapper failed as", async () => {
+        before(async () => {
+            await setup()
+        })
+        it("initialize is called more than once", async () => {
+            await expect(syncSwapper.initialize([])).to.be.revertedWith("Initializable: contract is already initialized")
+        })
+        it("setRate is called by non keeper or governor", async () => {
+            const tx = syncSwapper.connect(sa.dummy1.signer)
+                .setRate({ from: asset2.address, to: asset1.address, rate: simpleToExactAmount(2, 18) })
+            await expect(tx).to.be.revertedWith("Only keeper or governor")
+        })
+        it("user doesn't have enough from assets", async () => {
+            const insufficientfromAssetAmountSwapData: DexSwapData = {
+                fromAsset: rewards1.address,
+                fromAssetAmount: SAFE_INFINITY,
+                toAsset: asset1.address,
+                minToAssetAmount: ZERO,
+                data: "0x",
+            }
+            const tx = syncSwapper.swap(insufficientfromAssetAmountSwapData)
+            await expect(tx).to.be.revertedWith("not enough from assets")
         })
     })
 })
