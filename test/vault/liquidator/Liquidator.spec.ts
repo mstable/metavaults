@@ -1,4 +1,4 @@
-import { ZERO } from "@utils/constants"
+import { SAFE_INFINITY, ZERO } from "@utils/constants"
 import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"

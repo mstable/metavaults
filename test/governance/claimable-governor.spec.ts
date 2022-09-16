@@ -6,6 +6,7 @@ import { ClaimableGovernor__factory } from "types/generated"
 import {shouldBehaveLikeClaimable } from "./ClaimableGovernor.behaviour"
 
 import type { IClaimableGovernableBehaviourContext} from "./ClaimableGovernor.behaviour";
+import { Account } from "types"
 
 describe("ClaimableGovernable", () => {
     const ctx: Partial<IClaimableGovernableBehaviourContext> = {}
@@ -22,7 +23,7 @@ describe("ClaimableGovernable", () => {
     shouldBehaveLikeClaimable(ctx as Required<typeof ctx>)
 
     describe("after initiating a transfer", () => {
-        let newOwner
+        let newOwner: Account
 
         beforeEach(async () => {
             const accounts = await ethers.getSigners()
