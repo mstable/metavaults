@@ -8,6 +8,8 @@ import { IERC4626Vault } from "../interfaces/IERC4626Vault.sol";
 import { VaultManagerRole } from "../shared/VaultManagerRole.sol";
 import { InitializableToken } from "../tokens/InitializableToken.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title   Abstract ERC-4626 Vault.
  * @author  mStable
@@ -219,6 +221,11 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
 
         _asset.safeTransfer(receiver, assets);
 
+        console.log("msg.sender:", msg.sender);
+        console.log("receiver:", receiver);
+        console.log("owner:", owner);
+        console.log("assets:", assets);
+        console.log("shares:", shares);
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 

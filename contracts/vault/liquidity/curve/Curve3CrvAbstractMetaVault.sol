@@ -14,6 +14,8 @@ import { LightAbstractVault, IERC20 } from "../../LightAbstractVault.sol";
 import { IERC4626Vault } from "../../../interfaces/IERC4626Vault.sol";
 import { Curve3PoolCalculatorLibrary } from "../../../peripheral/Curve/Curve3PoolCalculatorLibrary.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title  Abstract ERC-4626 vault with one of DAI/USDC/USDT asset invested in 3Pool, and then deposited in Meta Vault.
  * @notice One of DAI/USDC/USDT token is deposited in 3Pool to get a 3Pool LP token,
@@ -528,6 +530,11 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             // Transfer this vault's asssets (DAI, USDC or USDT) to the receiver.
             _asset.safeTransfer(_receiver, assets);
 
+            console.log("msg.sender:", msg.sender);
+            console.log("_receiver:", _receiver);
+            console.log("_owner:", _owner);
+            console.log("assets:", assets);
+            console.log("_shares:", _shares);
             emit Withdraw(msg.sender, _receiver, _owner, assets, _shares);
         }
     }
