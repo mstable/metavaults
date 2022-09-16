@@ -86,6 +86,12 @@ export function shouldBehaveLikeClaimable(ctx: IClaimableGovernableBehaviourCont
         )
     })
 
+    it("should prevent non-governors from change governor", async () => {
+        await expect(ctx.claimable.connect(ctx.default.signer).changeGovernor(ctx.other.address)).to.be.revertedWith(
+            "GOV: caller is not the Governor",
+        )
+    })
+
     it("should prevent direct change governor", async () => {
         await expect(ctx.claimable.connect(ctx.governor.signer).changeGovernor(ctx.other.address)).to.be.revertedWith(
             "Direct change not allowed",
