@@ -176,9 +176,17 @@ abstract contract PeriodicAllocationAbstractVault is
     ) internal virtual override returns (uint256 assets) {
         _checkAndUpdateAssetPerShare(_convertToAssets(shares));
         assets = _previewRedeem(shares);
-        uint256 availableAssets = _sourceAssets(assets, shares);
-        // take the smaller asset amount.
-        assets = assets < availableAssets ? assets : availableAssets;
+        uint256 availableAssets;
+        availableAssets = _sourceAssets(assets, shares);
+
+        // outdated assetPerShare - update and re-source assets
+        // @dev - as long as we have close assetPerShare the if block should not run
+        if (assets > availableAssets) {
+            _updateAssetPerShare();
+            assets = _previewRedeem(shares);
+            availableAssets = _sourceAssets(assets, shares);
+        }
+        assert(availableAssets >= assets);
 
         _burnTransfer(assets, shares, receiver, owner, true);
     }
