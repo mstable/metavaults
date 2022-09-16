@@ -181,7 +181,7 @@ abstract contract PeriodicAllocationAbstractVault is
 
         // outdated assetPerShare - update and re-source assets
         // @dev - as long as we have close assetPerShare the if block should not run
-        if (assets > availableAssets) {
+        if (availableAssets < assets) {
             _updateAssetPerShare();
             assets = _previewRedeem(shares);
             availableAssets = _sourceAssets(assets, shares);
