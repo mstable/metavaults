@@ -251,7 +251,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     shares: 0,
                 }
                 const tx = vault.connect(sa.vaultManager.signer).rebalance([swap])
-                await expect(tx).to.be.revertedWith("Inactive vault")
+                await expect(tx).to.be.revertedWith("Inactive from vault")
             })
             it("should fail on invalid toVaultIndex", async () => {
                 const { vault, sa } = ctx()
@@ -263,7 +263,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     shares: 0,
                 }
                 const tx = vault.connect(sa.vaultManager.signer).rebalance([swap])
-                await expect(tx).to.be.revertedWith("Inactive vault")
+                await expect(tx).to.be.revertedWith("Inactive to vault")
             })
             context("using assets", async () => {
                 it("100% from vault0 to vault1", async () => {

@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 // Libs
+import { SingleSlotMapper } from "../../shared/SingleSlotMapper.sol";
 import { SameAssetUnderlyingsAbstractVault } from "./SameAssetUnderlyingsAbstractVault.sol";
 import { AssetPerShareAbstractVault } from "./AssetPerShareAbstractVault.sol";
 import { AbstractVault } from "../AbstractVault.sol";
@@ -17,6 +18,8 @@ abstract contract PeriodicAllocationAbstractVault is
     SameAssetUnderlyingsAbstractVault,
     AssetPerShareAbstractVault
 {
+    using SingleSlotMapper for uint256;
+
     // Structure to have settlement data
     struct Settlement {
         uint256 vaultIndex;
@@ -82,10 +85,9 @@ abstract contract PeriodicAllocationAbstractVault is
             settlement = settlements[i];
 
             if (settlement.assets > 0) {
-                uint256 vaultIndex = _resolveUnderlyingVaultIndex(
-                    settlement.vaultIndex,
-                    vaultIndexMapMem
-                );
+                uint256 vaultIndex = vaultIndexMapMem.map(settlement.vaultIndex);
+                require(vaultIndex < 0xF, "Inactive underlying vault");
+
                 // Deposit assets in underlying vault
                 _activeUnderlyingVaults[vaultIndex].deposit(settlement.assets, address(this));
             }
@@ -226,10 +228,10 @@ abstract contract PeriodicAllocationAbstractVault is
 
             /// Source assets from a single vault
             if (sharesRatio <= assetSourcingParams.singleVaultSharesThreshold) {
-                uint256 singleSourceVaultIndex = _resolveUnderlyingVaultIndex(
-                    assetSourcingParams.singleSourceVaultIndex,
-                    vaultIndexMap
+                uint256 singleSourceVaultIndex = vaultIndexMap.map(
+                    assetSourcingParams.singleSourceVaultIndex
                 );
+                require(singleSourceVaultIndex < 0xF, "Inactive underlying vault");
                 IERC4626Vault underlyingVault = _activeUnderlyingVaults[singleSourceVaultIndex];
 
                 // Underlying vault has sufficient assets to cover the sourcing
@@ -339,8 +341,8 @@ abstract contract PeriodicAllocationAbstractVault is
     /// @notice `Governor` sets the underlying vault that small withdrawls are redeemed from.
     /// @param _singleSourceVaultIndex the underlying vault's index position in `underlyingVaults`. This starts from index 0.
     function setSingleSourceVaultIndex(uint32 _singleSourceVaultIndex) external onlyGovernor {
-        /// The following will fail if the _singleSourceVaultIndex is invalid
-        _resolveUnderlyingVaultIndex(_singleSourceVaultIndex, vaultIndexMap);
+        // Check the single source vault is active.
+        require(vaultIndexMap.map(_singleSourceVaultIndex) < 0xF, "Inactive underlying vault");
         sourceParams.singleSourceVaultIndex = _singleSourceVaultIndex;
     }
 
