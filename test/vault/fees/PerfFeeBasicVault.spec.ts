@@ -188,17 +188,30 @@ describe("Performance Fees", async () => {
             ).to.be.revertedWith("Initializable: contract is already initialized")
         })
     })
-    describe("charge performance fees correctly", async () => {
+    describe("charge performance fees", async () => {
         context("18 decimal asset", async () => {
             const depositAmt = simpleToExactAmount(1000000)
             const beforeEachFixture = async function fixture() {
                 vault = await setup()
                 await asset.transfer(user.address, simpleToExactAmount(20000000))
                 await asset.connect(user.signer).approve(vault.address, ethers.constants.MaxUint256)
-                await vault.connect(user.signer).deposit(depositAmt, user.address)
             }
             beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+            it("should fail for non-vaultManager call", async () => {
+                const tx = vault.connect(sa.dummy1.signer).chargePerformanceFee()
+                await expect(tx).to.be.revertedWith("Only vault manager can execute")
+            })
+            it("on totalSupply = 0", async () => {
+                const data = {
+                    staker: user.address,
+                    stakerShares: 0,
+                    totalShares: 0,
+                    totalAssets: 0,
+                }
+                await assertChargeFee(data)
+            })
             it("on same asset/share", async () => {
+                await vault.connect(user.signer).deposit(depositAmt, user.address)
                 const data = {
                     staker: user.address,
                     stakerShares: depositAmt,
@@ -208,6 +221,7 @@ describe("Performance Fees", async () => {
                 await assertChargeFee(data)
             })
             it("on 10% increased assets/share", async () => {
+                await vault.connect(user.signer).deposit(depositAmt, user.address)
                 const transferAmt = depositAmt.div(10)
                 const totalAssets = depositAmt.add(transferAmt)
 
@@ -223,6 +237,7 @@ describe("Performance Fees", async () => {
                 await assertChargeFee(data)
             })
             it("on 10% decreased assets/share", async () => {
+                await vault.connect(user.signer).deposit(depositAmt, user.address)
                 const burnAmount = depositAmt.div(10)
                 const totalAssets = depositAmt.sub(burnAmount)
 
