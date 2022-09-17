@@ -93,6 +93,7 @@ library SingleSlotMapper {
 
         mapData_ = _mapData;
         uint256 indexCount = _mapData >> 248;
+        bool found = false;
 
         // For each index
         for (uint256 i = 0; i < indexCount; ) {
@@ -102,6 +103,7 @@ library SingleSlotMapper {
             uint256 value = (_mapData >> offset) & 0xF;
             if (value == removedValue) {
                 mapData_ |= 0xF << offset;
+                found = true;
             } else if (value < 0xF && value > removedValue) {
                 // Clear the mapped underlying vault index
                 mapData_ &= ~(0xF << offset);
@@ -113,6 +115,7 @@ library SingleSlotMapper {
                 ++i;
             }
         }
+        require(found == true, "value not found");
     }
 
     /**

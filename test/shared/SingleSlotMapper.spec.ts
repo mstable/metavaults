@@ -122,4 +122,48 @@ describe("SingleSlotMapper", () => {
         }
         await expect(mapper.addValue(mapData, 1)).to.rejectedWith("map full")
     })
+    describe("remove vault", () => {
+        let mapData: BN
+        const indexes = [...Array(15).keys()]
+        beforeEach(async () => {
+            mapData = await mapper.init()
+            for (const index of indexes) {
+                const result = await mapper.addValue(mapData, index)
+                mapData = result.mapData_
+            }
+            expect(await mapper.indexes(mapData), "index before").to.eq(15)
+        })
+        describe("should remove value", () => {
+            const testValues = [0, 1, 2, 13, 14]
+            testValues.forEach((value) => {
+                it(`${value}`, async () => {
+                    // Add first value
+                    mapData = await mapper.removeValue(mapData, value)
+                    expect(await mapper.map(mapData, 15)).to.eq(0xf)
+                    expect(await mapper.map(mapData, 16)).to.eq(0xf)
+                    expect(await mapper.map(mapData, 61)).to.eq(0xf)
+                    expect(await mapper.indexes(mapData), "index after").to.eq(15)
+
+                    for (const index of indexes) {
+                        if (index === value) {
+                            expect(await mapper.map(mapData, index)).to.eq(0xf)
+                        } else {
+                            expect(await mapper.map(mapData, index)).to.eq(index > value ? index - 1 : index)
+                        }
+                    }
+                })
+            })
+        })
+        it("fail to remove invalid value", async () => {
+            await expect(mapper.removeValue(mapData, 0xf)).to.rejectedWith("value out of bounds")
+            await expect(mapper.removeValue(mapData, 0x10)).to.rejectedWith("value out of bounds")
+            await expect(mapper.removeValue(mapData, 0xf0)).to.rejectedWith("value out of bounds")
+            await expect(mapper.removeValue(mapData, 0x100)).to.rejectedWith("value out of bounds")
+            await expect(mapper.removeValue(mapData, 0xf00)).to.rejectedWith("value out of bounds")
+        })
+        it("fail to find value", async () => {
+            mapData = await mapper.removeValue(mapData, 0)
+            await expect(mapper.removeValue(mapData, 14)).to.rejectedWith("value not found")
+        })
+    })
 })
