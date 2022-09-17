@@ -427,7 +427,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     assets: oneMil,
                 }
                 const tx = pabVault.connect(sa.vaultManager.signer).settle([settlement])
-                await expect(tx).to.be.revertedWith("Inactive underlying vault")
+                await expect(tx).to.be.revertedWith("Inactive vault")
             })
             it("only vaultManager can settle", async () => {
                 const settlement = {
@@ -1124,7 +1124,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 })
                 it("should revert if invalid value", async () => {
                     const tx = pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
-                    await expect(tx).to.be.revertedWith("Inactive underlying vault")
+                    await expect(tx).to.be.revertedWith("Inactive vault")
                 })
                 it("should correctly update", async () => {
                     await pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(1)

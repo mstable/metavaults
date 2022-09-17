@@ -135,11 +135,11 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @param   vaultIndex External vault index used to identify the underlying vault.
      * @return  vault Address of the underlying vault.
      */
-    function resolveVaultIndex(uint256 vaultIndex) external view virtual returns (address vault) {
+    function resolveVaultIndex(uint256 vaultIndex) public view virtual returns (IERC4626Vault vault) {
         // resolve the external vault index to the internal underlying vaults
         uint256 activeUnderlyingVaultsIndex = vaultIndexMap.map(vaultIndex);
         require(activeUnderlyingVaultsIndex < 0xF, "Inactive vault");
-        vault = address(_activeUnderlyingVaults[activeUnderlyingVaultsIndex]);
+        vault = _activeUnderlyingVaults[activeUnderlyingVaultsIndex];
     }
 
     /**
