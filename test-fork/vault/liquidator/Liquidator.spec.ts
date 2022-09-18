@@ -1,6 +1,6 @@
 // Add fork test to liquidate
 // TODO - add fork tests
-describe("sync swap (one inch) rewards for assets", () => {
+describe.skip("sync swap (one inch) rewards for assets", () => {
     it("before rewards are collected", async () => {})
     it("from single vault with single reward", async () => {})
     context("from multiple vaults with multiple rewards", async () => {

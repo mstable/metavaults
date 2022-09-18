@@ -1,5 +1,5 @@
 import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
-import { ONE_DAY, ZERO } from "@utils/constants"
+import { ONE_DAY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { BN } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
 import { Liquidator__factory } from "types/generated"
@@ -175,7 +175,7 @@ subtask("liq-sync-swap", "Calls sync swap on liquidator to swap rewards to asset
         // TODO - investigate and encode swaps
         // TODO - add slippage to minAssets
         const { encodeOneInchSwap } = await import("@utils/peripheral/oneInch")
-        const data = encodeOneInchSwap("data")
+        const data = encodeOneInchSwap(ZERO_ADDRESS, liquidator.address, "0x")
         const tx = await liquidator.swap(fromAssetAddress, toAssetAddress, minAssets, data)
         await logTxDetails(tx, `liquidator.swap(${fromAssetAddress},${toAssetAddress}, ${minAssets})`)
     })
