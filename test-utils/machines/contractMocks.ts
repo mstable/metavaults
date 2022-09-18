@@ -1,5 +1,12 @@
 import { simpleToExactAmount } from "@utils/math"
-import { MockERC20__factory, MockGPv2Settlement__factory, MockGPv2VaultRelayer__factory, MockNexus__factory } from "types/generated"
+import {
+    MockAggregationRouterV4,
+    MockAggregationRouterV4__factory,
+    MockERC20__factory,
+    MockGPv2Settlement__factory,
+    MockGPv2VaultRelayer__factory,
+    MockNexus__factory,
+} from "types/generated"
 
 import { DEAD_ADDRESS } from "../constants"
 
@@ -84,6 +91,10 @@ export class ContractMocks {
             gpv2Settlement,
             gpv2VaultRelayer,
         }
+    }
+
+    static async mockOneInchRouter(signer: Signer): Promise<MockAggregationRouterV4> {
+        return new MockAggregationRouterV4__factory(signer).deploy()
     }
 }
 export default ContractMocks

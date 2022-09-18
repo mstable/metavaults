@@ -2,11 +2,13 @@
 pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/** @dev Struct to store information one inch swaps*/
 struct SwapDescription {
-    IERC20 srcToken;
-    IERC20 dstToken;
+    IERC20 srcToken; // contract address of a token to sell
+    IERC20 dstToken; // contract address of a token to buy
     address payable srcReceiver;
-    address payable dstReceiver;
+    address payable dstReceiver; // Receiver of destination currency. default: fromAddress
     uint256 amount;
     uint256 minReturnAmount;
     uint256 flags;
@@ -15,7 +17,7 @@ struct SwapDescription {
 
 /// @title Interface for making arbitrary calls during swap
 interface IAggregationExecutor {
-    function callBytes(address msgSender, bytes calldata data) external payable; // 0x2636f7f8
+    function callBytes(address msgSender, bytes calldata data) external payable;
 }
 
 interface IAggregationRouterV4 {

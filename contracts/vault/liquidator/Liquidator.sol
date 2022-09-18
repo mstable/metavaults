@@ -224,12 +224,10 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
             purchaseToken = purchaseTokens[i];
             batch = pairs[rewardTokens[i]][purchaseToken].length;
             // if vault changes or purchase token changes trigger a donation to the vault.
-            if (i > 0) {
-                if (vault != previousVault || purchaseToken != previousPurchaseToken) {
-                    _donateTokensToVault(previousPurchaseToken, previousVault, assets[donations]);
-                    unchecked {
-                        ++donations;
-                    }
+            if (i > 0 && (vault != previousVault || purchaseToken != previousPurchaseToken)) {
+                _donateTokensToVault(previousPurchaseToken, previousVault, assets[donations]);
+                unchecked {
+                    ++donations;
                 }
             }
             previousVault = vault;

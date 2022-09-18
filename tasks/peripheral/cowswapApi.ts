@@ -7,6 +7,7 @@ import { Chain } from "../utils/tokens"
 
 const log = logger("cowswap")
 
+// TODO - generate one for mstable
 export const DEFAULT_APP_DATA_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 export interface CowSwapContext {

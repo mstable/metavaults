@@ -4,7 +4,8 @@ import { BN } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
 import { Liquidator__factory } from "types/generated"
 
-import { getOrderDetails, placeSellOrder } from "./cowswap/api"
+import { getOrderDetails, placeSellOrder } from "./peripheral/cowswapApi"
+import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { buildDonateTokensInput } from "./utils/liquidatorUtil"
 import { logger } from "./utils/logger"
@@ -15,7 +16,7 @@ import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { Liquidator } from "types/generated"
 
-import type { CowSwapContext } from "./cowswap/api"
+import type { CowSwapContext } from "./peripheral/cowswapApi"
 
 const log = logger("liq")
 const resolveMultipleAddress = async (chain, vaultsStr: string) =>
@@ -144,6 +145,41 @@ subtask("liq-settle-swap", "Calls settleSwap on liquidator to account for the sw
         await logTxDetails(tx, `liquidator.settleSwap${fromAssetAddress},${toAssetAddress},${toAssetAmount})`)
     })
 task("liq-settle-swap").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
+
+subtask("liq-sync-swap", "Calls sync swap on liquidator to swap rewards to asset")
+    .addParam("reward", "Name of the reward to sell", undefined, types.string)
+    .addParam("asset", "Name of the asset to buy", undefined, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, taskArgs.speed)
+        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const fromAssetAddress = await resolveAddress(taskArgs.reward, chain)
+        const toAssetAddress = await resolveAddress(taskArgs.asset, chain)
+
+        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
+
+        // Get Pending rewards
+        const { batch, rewards } = await liquidator.pendingRewards(fromAssetAddress, toAssetAddress)
+        log(`batch: ${batch.toString()}, rewards: ${rewards.toString()}`)
+        // Get quote
+        const router = new OneInchRouter(chain)
+        const minAssets = await router.getQuote({
+            fromTokenAddress: taskArgs.fromAsset,
+            toTokenAddress: taskArgs.toAsset,
+            amount: taskArgs.fromAssetAmount,
+        })
+
+        // TODO - investigate and encode swaps
+        // TODO - add slippage to minAssets
+        const { encodeOneInchSwap } = await import("@utils/peripheral/oneInch")
+        const data = encodeOneInchSwap("data")
+        const tx = await liquidator.swap(fromAssetAddress, toAssetAddress, minAssets, data)
+        await logTxDetails(tx, `liquidator.swap(${fromAssetAddress},${toAssetAddress}, ${minAssets})`)
+    })
+task("liq-sync-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 

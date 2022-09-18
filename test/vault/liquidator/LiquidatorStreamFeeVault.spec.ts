@@ -2,9 +2,9 @@ import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.b
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
+import { loadOrExecFixture } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
-import { loadOrExecFixture } from "@utils/fork"
 import { getTimestampFromTx, increaseTime } from "@utils/time"
 import { expect } from "chai"
 import { ethers } from "hardhat"
@@ -293,7 +293,9 @@ describe("Streamed Liquidator Fee Vault", async () => {
             vault = await setup()
             await increaseTime(ONE_DAY)
         }
-        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+        beforeEach(async () => {
+            await loadOrExecFixture(beforeEachFixture)
+        })
         it("mint", async () => {
             const mintAmount = simpleToExactAmount(1000)
 
@@ -334,7 +336,9 @@ describe("Streamed Liquidator Fee Vault", async () => {
             vault = await setup()
             await increaseTime(ONE_WEEK)
         }
-        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+        beforeEach(async () => {
+            await loadOrExecFixture(beforeEachFixture)
+        })
         it("before staker shares", async () => {
             const txAmount = simpleToExactAmount(300)
 
