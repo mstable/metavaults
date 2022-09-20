@@ -12,7 +12,6 @@ import type { MockAggregationRouterV4, MockERC20, OneInchDexSwap } from "types/g
 describe("OneInchDexSwap", () => {
     /* -- Declare shared variables -- */
     let sa: StandardAccounts
-    let mocks: ContractMocks
     let aggregationRouterV4: MockAggregationRouterV4
     let asset1: MockERC20
     let asset2: MockERC20
@@ -37,7 +36,6 @@ describe("OneInchDexSwap", () => {
     const setup = async () => {
         const accounts = await ethers.getSigners()
         sa = await new StandardAccounts().initAccounts(accounts)
-        mocks = await new ContractMocks().init(sa)
         // Deploy mock assets
         asset1 = await new MockERC20__factory(sa.default.signer).deploy("Asset 1", "A1", 18, sa.keeper.address, asset1Total)
         asset2 = await new MockERC20__factory(sa.default.signer).deploy("Asset 2", "A2", 6, sa.keeper.address, asset2Total)
