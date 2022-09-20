@@ -1,10 +1,11 @@
 import { assertBNClose } from "@utils/assertions"
 import { DEAD_ADDRESS } from "@utils/constants"
-import { impersonate, loadOrExecFixture } from "@utils/fork"
+import { impersonate, loadOrExecFixture, stopImpersonate } from "@utils/fork"
 import { ContractMocks } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "ethers"
+import { network } from "hardhat"
 import { AbstractVault__factory, BasicVault__factory, Convex3CrvLiquidatorVault__factory } from "types/generated"
 
 import type { StandardAccounts } from "@utils/machines"
@@ -189,9 +190,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
         bVault0 = BasicVault__factory.connect(underlyingVault0Address, sa.default.signer)
         bVault1 = BasicVault__factory.connect(underlyingVault1Address, sa.default.signer)
         mocks = await new ContractMocks().init(sa)
-    })
-    beforeEach("init", async () => {
-        const { sa } = ctx()
+
         alice = sa.alice
         ctx().variances = { ...defaultVariances, ...ctx().variances }
     })
@@ -213,8 +212,10 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
             // simulate settlement to underlying vault
             const vaultSigner = await impersonate(vault.address, true)
-
             await bVault0.connect(vaultSigner).deposit(assetsAmount, vault.address)
+            if (network.name == "anvil") {
+                await stopImpersonate(vault.address)
+            }
         })
         it("totalAssets", async () => {
             const { vault, asset, sa } = ctx()
@@ -520,6 +521,9 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     // simulate settlement to underlying vault
                     const vaultSigner = await impersonate(vault.address, true)
                     await bVault0.connect(vaultSigner).deposit(amounts.initialDeposit, vault.address)
+                    if (network.name == "anvil") {
+                        await stopImpersonate(vault.address)
+                    }
 
                     const bVault0MaxWithdrawAfter = await bVault0.maxWithdraw(vault.address)
                     assertBNClose(

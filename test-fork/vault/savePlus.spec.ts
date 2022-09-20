@@ -114,7 +114,8 @@ async function proposeAcceptNexusModule(nexus: Nexus, governor: Account, moduleN
     const moduleKey = keccak256(toUtf8Bytes(moduleName))
 
     await nexus.connect(governor.signer).proposeModule(moduleKey, moduleAddress)
-    await increaseTime(ONE_WEEK)
+    // Adding another minute to the week as Anvil doesn't always increased by the correct number of seconds.
+    await increaseTime(ONE_WEEK.add(60))
     await nexus.connect(governor.signer).acceptProposedModule(moduleKey)
 }
 
