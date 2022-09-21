@@ -50,6 +50,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 shares)
     {
         shares = _deposit(assets, receiver);
@@ -81,6 +82,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 assets)
     {
         assets = _mint(shares, receiver);
@@ -133,7 +135,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         uint256 assets,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 shares) {
+    ) external virtual override whenNotPaused returns (uint256 shares) {
         shares = _withdraw(assets, receiver, owner);
     }
 
@@ -167,7 +169,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 assets) {
+    ) external virtual override whenNotPaused returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner);
     }
 

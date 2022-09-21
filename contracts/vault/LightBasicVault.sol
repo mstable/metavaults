@@ -49,6 +49,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 shares)
     {
         shares = _deposit(assets, receiver);
@@ -72,6 +73,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 assets)
     {
         assets = _mint(shares, receiver);
@@ -115,7 +117,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         uint256 assets,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 shares) {
+    ) external virtual override whenNotPaused returns (uint256 shares) {
         shares = _withdraw(assets, receiver, owner);
     }
 
@@ -149,7 +151,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 assets) {
+    ) external virtual override whenNotPaused returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner);
     }
 

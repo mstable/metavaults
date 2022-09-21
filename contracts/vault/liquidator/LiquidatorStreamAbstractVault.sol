@@ -207,6 +207,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
         external
         virtual
         override
+        whenNotPaused
         streamRewards
         returns (uint256 shares)
     {
@@ -217,6 +218,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
         external
         virtual
         override
+        whenNotPaused
         streamRewards
         returns (uint256 assets)
     {
@@ -227,7 +229,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual override streamRewards returns (uint256 assets) {
+    ) external virtual override whenNotPaused streamRewards returns (uint256 assets) {
         assets = _redeem(shares, receiver, owner);
     }
 
@@ -235,7 +237,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
         uint256 assets,
         address receiver,
         address owner
-    ) external virtual override streamRewards returns (uint256 shares) {
+    ) external virtual override whenNotPaused streamRewards returns (uint256 shares) {
         shares = _withdraw(assets, receiver, owner);
     }
 }
