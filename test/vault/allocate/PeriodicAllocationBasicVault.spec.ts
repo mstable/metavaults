@@ -317,6 +317,12 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                 await assertVaultBalances(data, balances)
             })
+            it("redeem should fail with assetsWithdrawn > vaultBalance", async () => {
+                const totalShares = await pabVault.totalSupply()
+                const highRedeemAmount = totalShares.add(1)
+                const tx = pabVault.connect(user.signer).redeem(highRedeemAmount, user.address, user.address)
+                await expect(tx).to.be.revertedWith("not enough assets")
+            })
             it("redeem", async () => {
                 const userSharesBefore = await pabVault.balanceOf(user.address)
                 const userAssetsBefore = await asset.balanceOf(user.address)
