@@ -425,6 +425,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
      * @return maxAssets The maximum amount of underlying assets the owner can withdraw.
      */
     function maxWithdraw(address owner) external view virtual override returns (uint256 maxAssets) {
+        if (paused()) {
+            return 0;
+        }
+        
         maxAssets = _previewRedeem(balanceOf(owner));
     }
 

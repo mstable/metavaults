@@ -75,6 +75,10 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _maxDeposit(address) internal view virtual returns (uint256 maxAssets) {
+        if (paused()) {
+            return 0;
+        }
+
         maxAssets = type(uint256).max;
     }
 
@@ -106,6 +110,10 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _maxMint(address) internal view virtual returns (uint256 maxShares) {
+        if (paused()) {
+            return 0;
+        }
+
         maxShares = type(uint256).max;
     }
 
@@ -162,6 +170,10 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _maxWithdraw(address owner) internal view virtual returns (uint256 maxAssets) {
+        if (paused()) {
+            return 0;
+        }
+
         maxAssets = _previewRedeem(balanceOf(owner));
     }
 
@@ -195,6 +207,10 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _maxRedeem(address owner) internal view virtual returns (uint256 maxShares) {
+        if (paused()) {
+            return 0;
+        }
+        
         maxShares = balanceOf(owner);
     }
 

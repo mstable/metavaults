@@ -49,7 +49,11 @@ abstract contract LightAbstractVault is IERC4626Vault, InitializableToken, Vault
      * @param caller Account that the assets will be transferred from.
      * @return maxAssets The maximum amount of underlying assets the caller can deposit.
      */
-    function maxDeposit(address caller) external pure override returns (uint256 maxAssets) {
+    function maxDeposit(address caller) external view override returns (uint256 maxAssets) {
+        if (paused()) {
+            return 0;
+        }
+
         maxAssets = type(uint256).max;
     }
 
@@ -58,7 +62,11 @@ abstract contract LightAbstractVault is IERC4626Vault, InitializableToken, Vault
      * @param caller Account that the underlying assets will be transferred from.
      * @return maxShares The maximum amount of vault shares the caller can mint.
      */
-    function maxMint(address caller) external pure override returns (uint256 maxShares) {
+    function maxMint(address caller) external view override returns (uint256 maxShares) {
+        if (paused()) {
+            return 0;
+        }
+
         maxShares = type(uint256).max;
     }
 
@@ -68,6 +76,10 @@ abstract contract LightAbstractVault is IERC4626Vault, InitializableToken, Vault
      * @return maxShares The maximum amount of shares the owner can redeem.
      */
     function maxRedeem(address owner) external view override returns (uint256 maxShares) {
+        if (paused()) {
+            return 0;
+        }
+
         maxShares = balanceOf(owner);
     }
 }
