@@ -120,7 +120,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 assets,
         address receiver,
         uint256 slippage
-    ) external virtual returns (uint256 shares) {
+    ) external virtual whenNotPaused returns (uint256 shares) {
         shares = _depositInternal(assets, receiver, slippage);
     }
 
@@ -137,6 +137,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 shares)
     {
         shares = _depositInternal(assets, receiver, depositSlippage);
@@ -227,6 +228,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         external
         virtual
         override
+        whenNotPaused
         returns (uint256 assets)
     {
         // Get the total underlying Meta Vault shares held by this vault.
@@ -317,7 +319,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 assets,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 shares) {
+    ) external virtual override whenNotPaused returns (uint256 shares) {
         if (assets > 0) {
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultSharesBefore = metaVault.balanceOf(address(this));
@@ -443,7 +445,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 shares,
         address receiver,
         address owner
-    ) external virtual override returns (uint256 assets) {
+    ) external virtual override whenNotPaused returns (uint256 assets) {
         assets = _redeemInternal(shares, receiver, owner, redeemSlippage);
     }
 
@@ -462,7 +464,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         address receiver,
         address owner,
         uint256 customRedeemSlippage
-    ) external virtual returns (uint256 assets) {
+    ) external virtual whenNotPaused returns (uint256 assets) {
         assets = _redeemInternal(shares, receiver, owner, customRedeemSlippage);
     }
 

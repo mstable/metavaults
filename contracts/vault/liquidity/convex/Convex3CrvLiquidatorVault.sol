@@ -222,6 +222,7 @@ contract Convex3CrvLiquidatorVault is
         external
         virtual
         override(AbstractVault, LiquidatorStreamAbstractVault)
+        whenNotPaused
         streamRewards
         returns (uint256 shares)
     {
@@ -239,6 +240,7 @@ contract Convex3CrvLiquidatorVault is
         external
         virtual
         override(AbstractVault, LiquidatorStreamAbstractVault)
+        whenNotPaused
         streamRewards
         returns (uint256 assets)
     {
@@ -261,6 +263,7 @@ contract Convex3CrvLiquidatorVault is
         external
         virtual
         override(AbstractVault, LiquidatorStreamAbstractVault)
+        whenNotPaused
         streamRewards
         returns (uint256 assets)
     {
@@ -283,6 +286,7 @@ contract Convex3CrvLiquidatorVault is
         external
         virtual
         override(AbstractVault, LiquidatorStreamAbstractVault)
+        whenNotPaused
         streamRewards
         returns (uint256 shares)
     {

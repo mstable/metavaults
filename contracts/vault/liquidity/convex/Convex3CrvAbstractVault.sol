@@ -131,7 +131,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 assets,
         address receiver,
         uint256 customDepositSlippage
-    ) external virtual returns (uint256 shares) {
+    ) external virtual whenNotPaused returns (uint256 shares) {
         shares = _depositInternal(assets, receiver, customDepositSlippage);
     }
 
@@ -369,7 +369,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         address receiver,
         address owner,
         uint256 customRedeemSlippage
-    ) external virtual returns (uint256 assets) {
+    ) external virtual whenNotPaused returns (uint256 assets) {
         assets = _redeemInternal(shares, receiver, owner, customRedeemSlippage);
     }
 
