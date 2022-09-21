@@ -125,8 +125,8 @@ abstract contract PeriodicAllocationAbstractVault is
         override
         returns (uint256 assets)
     {
-        _checkAndUpdateAssetPerShare(_convertToAssets(shares));
         assets = _previewMint(shares);
+        _checkAndUpdateAssetPerShare(assets);
         _transferAndMint(assets, shares, receiver, false);
     }
 
@@ -174,8 +174,8 @@ abstract contract PeriodicAllocationAbstractVault is
         address receiver,
         address owner
     ) internal virtual override returns (uint256 assets) {
-        _checkAndUpdateAssetPerShare(_convertToAssets(shares));
         assets = _previewRedeem(shares);
+        _checkAndUpdateAssetPerShare(assets);
 
         uint256 availableAssets = _sourceAssets(assets, shares);
         require(assets <= availableAssets, "not enough assets");
