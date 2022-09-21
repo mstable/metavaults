@@ -45,7 +45,7 @@ sol2uml ../contracts -d 0 -b AbstractMultiAssetVault
 sol2uml .. -hv -hf -he -hs -hi -hl -b MultiAssetVault -i artifacts,types,_flat,build -o MultiAssetVaultHierarchyHierarchy.svg
 
 # contracts/vault/allocate
-sol2uml ../ -hv -hf -he -hs -hl -b PeriodicAllocationAbstractVault  -i abis,artifacts,types,_flat,build -o PeriodicAllocationAbstractVaultHierarchy.svg
+sol2uml ../ -hv -hf -he -hs -b PeriodicAllocationAbstractVault  -i abis,artifacts,types,_flat,build -o PeriodicAllocationAbstractVaultHierarchy.svg
 sol2uml .. -hl -hi -d 1 -b PeriodicAllocationAbstractVault -i abis,artifacts,types,_flat,build
 sol2uml storage .. -c PeriodicAllocationAbstractVault -i abis,artifacts,types,_flat,build -o PeriodicAllocationAbstractVaultStorage.svg
 

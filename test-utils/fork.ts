@@ -40,6 +40,15 @@ export const impersonateAccount = async (address: string, fund = true): Promise<
     }
 }
 
+// Used for testing against an Anvil node
+export const stopImpersonate = async (addr: string) => {
+    const { network } = await import("hardhat")
+    await network.provider.request({
+        method: "hardhat_stopImpersonateAccount",
+        params: [addr],
+    })
+}
+
 export const toBytes32 = (bn: BN): string => utils.hexlify(utils.zeroPad(bn.toHexString(), 32))
 
 export const setStorageAt = async (address: string, index: string, value: string): Promise<void> => {

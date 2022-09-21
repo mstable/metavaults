@@ -4,6 +4,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Libs
+import { SingleSlotMapper } from "../../shared/SingleSlotMapper.sol";
 import { AbstractVault } from "../AbstractVault.sol";
 import { IERC4626Vault } from "../../interfaces/IERC4626Vault.sol";
 
@@ -23,6 +24,7 @@ import { IERC4626Vault } from "../../interfaces/IERC4626Vault.sol";
  */
 abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     using SafeERC20 for IERC20;
+    using SingleSlotMapper for uint256;
 
     struct Swap {
         uint256 fromVaultIndex;
@@ -31,8 +33,22 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         uint256 assets;
     }
 
-    /// @notice The underlying vaults this vault invests into.
-    IERC4626Vault[] public underlyingVaults;
+    /// @dev List of active underlying vaults this vault invests into.
+    IERC4626Vault[] internal _activeUnderlyingVaults;
+    /// @dev bit map of external vault indexes to active underlying vault indexes.
+    /// This bit map only uses one slot read.
+    ///
+    /// The first byte from the left is the total number of vaults that have been used.
+    /// If a new vault is added, the total number of vaults will be it's vault index.
+    ///
+    /// There are 62, 4 bit numbers going from right to left that hold the index to the internal
+    /// active underlying vaults. This is 62 * 4 = 248 bits.
+    /// 248 bits plus the 1 byte (8 bits) for the number of vaults gives 256 bits in the slot.
+    /// By default, all external vault indexes are mapped to 0xF (15) which is an invalid index.
+    /// When a vault is removed, it's mapped active underlying vault index is set back to 0xF.
+    /// This means there is a maximum of 15 active underlying vaults.
+    /// There is also a limit of 62 vaults that can be used over the life of this vault.
+    uint256 internal vaultIndexMap;
 
     event AddedVault(uint256 indexed vaultIndex, address indexed vault);
     event RemovedVault(uint256 indexed vaultIndex, address indexed vault);
@@ -44,14 +60,23 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         uint256 vaultsLen = _underlyingVaults.length;
         require(vaultsLen > 0, "No underlying vaults");
 
+        // Initialised all 62 vault indexes to 0xF which is an invalid underlying vault index.
+        // The last byte (8 bits) from the left is reserved for the number of vault indexes that have been issued
+        /// which is initialized to 0 hence there is 62 and not 64 Fs.
+        uint256 vaultIndexMapMem = SingleSlotMapper.initialize();
+
         // For each underlying vault
         for (uint256 i = 0; i < vaultsLen; ) {
-            _addVault(_underlyingVaults[i]);
+            vaultIndexMapMem = _addVault(_underlyingVaults[i], vaultIndexMapMem);
             unchecked {
                 ++i;
             }
         }
+        // Store the vaultIndexMap in storage
+        vaultIndexMap = vaultIndexMapMem;
     }
+
+    // 0000001011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100010000
 
     /**
      * @notice Includes all the assets in this vault plus all the underlying vaults.
@@ -70,11 +95,11 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @return  totalUnderlyingAssets The total assets held in underlying vaults
      */
     function _totalUnderlyingAssets() internal view returns (uint256 totalUnderlyingAssets) {
-        // Get the assets held by this vault in each of in the underlying vaults
-        uint256 len = underlyingVaults.length;
+        // Get the assets held by this vault in each of in the active underlying vaults
+        uint256 len = _activeUnderlyingVaults.length;
 
         for (uint256 i = 0; i < len; ) {
-            totalUnderlyingAssets += underlyingVaults[i].maxWithdraw(address(this));
+            totalUnderlyingAssets += _activeUnderlyingVaults[i].maxWithdraw(address(this));
             unchecked {
                 ++i;
             }
@@ -82,12 +107,39 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     }
 
     /**
-     * @notice Returns the total number of underlying vaults.
+     * @notice Returns the active number of underlying vaults.
+     * This excludes any vaults that have been removed.
      *
-     * @return  vaultsLen The total number of underlying vaults
+     * @return  activeVaults The number of active underlying vaults.
      */
-    function underlyingVaultsLength() external view virtual returns (uint256 vaultsLen) {
-        vaultsLen = underlyingVaults.length;
+    function activeUnderlyingVaults() external view virtual returns (uint256 activeVaults) {
+        activeVaults = _activeUnderlyingVaults.length;
+    }
+
+    /**
+     * @notice Returns the total number of underlying vaults, both active and inactive.
+     * The next vault added will have a vault index of this value.
+     *
+     * @return  totalVaults The number of active and inactive underlying vaults.
+     */
+    function totalUnderlyingVaults() external view virtual returns (uint256 totalVaults) {
+        totalVaults = vaultIndexMap.indexes();
+    }
+
+    /**
+     * @notice Resolves a vault index to an active underlying vault address.
+     * This only works for active vaults.
+     * A `Inactive vault` error will be thrown if the vault index has not been used
+     * or the underlying vault is now inactive.s
+     *
+     * @param   vaultIndex External vault index used to identify the underlying vault.
+     * @return  vault Address of the underlying vault.
+     */
+    function resolveVaultIndex(uint256 vaultIndex) public view virtual returns (IERC4626Vault vault) {
+        // resolve the external vault index to the internal underlying vaults
+        uint256 activeUnderlyingVaultsIndex = vaultIndexMap.map(vaultIndex);
+        require(activeUnderlyingVaultsIndex < 0xF, "Inactive vault");
+        vault = _activeUnderlyingVaults[activeUnderlyingVaultsIndex];
     }
 
     /**
@@ -98,33 +150,39 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     function rebalance(Swap[] calldata swaps) external virtual onlyVaultManager {
         // For each swap
         Swap memory swap;
-        uint256 underlyingVaultsLen = underlyingVaults.length;
+        uint256 vaultIndexMapMem = vaultIndexMap;
+        uint256 fromVaultIndex;
+        uint256 toVaultIndex;
         for (uint256 i = 0; i < swaps.length; ) {
             swap = swaps[i];
-            require(swap.fromVaultIndex < underlyingVaultsLen, "Invalid from vault index");
-            require(swap.toVaultIndex < underlyingVaultsLen, "Invalid to vault index");
+
+            // Map the external vault index to the internal active underlying vaults.
+            fromVaultIndex = vaultIndexMapMem.map(swap.fromVaultIndex);
+            require(fromVaultIndex < 0xF, "Inactive from vault");
+            toVaultIndex = vaultIndexMapMem.map(swap.toVaultIndex);
+            require(toVaultIndex < 0xF, "Inactive to vault");
 
             if (swap.assets > 0) {
                 // Withdraw assets from underlying vault
-                underlyingVaults[swap.fromVaultIndex].withdraw(
+                _activeUnderlyingVaults[fromVaultIndex].withdraw(
                     swap.assets,
                     address(this),
                     address(this)
                 );
 
                 // Deposits withdrawn assets in underlying vault
-                underlyingVaults[swap.toVaultIndex].deposit(swap.assets, address(this));
+                _activeUnderlyingVaults[toVaultIndex].deposit(swap.assets, address(this));
             }
             if (swap.shares > 0) {
                 // Redeem shares from underlying vault
-                uint256 redeemedAssets = underlyingVaults[swap.fromVaultIndex].redeem(
+                uint256 redeemedAssets = _activeUnderlyingVaults[fromVaultIndex].redeem(
                     swap.shares,
                     address(this),
                     address(this)
                 );
 
                 // Deposits withdrawn assets in underlying vault
-                underlyingVaults[swap.toVaultIndex].deposit(redeemedAssets, address(this));
+                _activeUnderlyingVaults[toVaultIndex].deposit(redeemedAssets, address(this));
             }
 
             unchecked {
@@ -140,20 +198,35 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     /**
      * @notice  Adds a new underlying ERC-4626 compliant vault.
      * This Meta Vault approves the new underlying vault to transfer max assets.
+     * There is a limit of 15 active underlying vaults. If more vaults are needed,
+     * another active vaults will need to be removed first.
+     * There is also a limit of 62 underlying vaults that can be used by this Meta Vault
+     * over its lifetime. That's both active and inactive vaults.
+     *
      * @param _underlyingVault Address of a ERC-4626 compliant vault.
      */
     function addVault(address _underlyingVault) external onlyVaultManager {
-        _addVault(_underlyingVault);
+        vaultIndexMap = _addVault(_underlyingVault, vaultIndexMap);
     }
 
-    function _addVault(address _underlyingVault) internal virtual {
+    /**
+     * @param _underlyingVault Address of the new underlying vault.
+     * @param _vaultIndexMap   The map of external to internal vault indexes.
+     * @return vaultIndexMap_  The updated map of vault indexes.
+     */
+    function _addVault(address _underlyingVault, uint256 _vaultIndexMap)
+        internal
+        virtual
+        returns (uint256 vaultIndexMap_)
+    {
         require(IERC4626Vault(_underlyingVault).asset() == address(_asset), "Invalid vault asset");
 
-        // Get the index of the vault that is about to be added.
-        uint256 vaultIndex = underlyingVaults.length;
-
         // Store new underlying vault in the contract.
-        underlyingVaults.push(IERC4626Vault(_underlyingVault));
+        _activeUnderlyingVaults.push(IERC4626Vault(_underlyingVault));
+
+        // Map the external vault index to the index of the internal active underlying vaults.
+        uint256 vaultIndex;
+        (vaultIndexMap_, vaultIndex) = _vaultIndexMap.addValue(_activeUnderlyingVaults.length - 1);
 
         // Approve the underlying vaults to transfer assets from this Meta Vault.
         _asset.safeApprove(_underlyingVault, type(uint256).max);
@@ -165,31 +238,42 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @notice  Removes an underlying ERC-4626 compliant vault.
      * All underlying shares are redeemed with the assets transferred to this vault.
      *
-     * WARNING any underlying vaults after the removed vault will have their index reduced by one.
-     * Off-chain processes that use underlying vault indexes will need to be updated.
-     *
-     * @param vaultIndex Index position of the underlying vault starting at position 0.
+     * @param vaultIndex Index of the underlying vault starting from 0.
      */
     function removeVault(uint256 vaultIndex) external onlyGovernor {
-        uint256 underlyingVaultsLen = underlyingVaults.length;
-        require(vaultIndex < underlyingVaultsLen, "Invalid from vault index");
+        uint256 newUnderlyingVaultsLen = _activeUnderlyingVaults.length - 1;
+        require(vaultIndex <= newUnderlyingVaultsLen, "Invalid from vault index");
+
+        // Resolve the external vault index to the index in the internal active underlying vaults.
+        uint256 vaultIndexMapMem = vaultIndexMap;
+        uint256 underlyingVaultIndex = vaultIndexMapMem.map(vaultIndex);
+        require(underlyingVaultIndex < 0xF, "Inactive vault");
 
         // Withdraw all assets from the underlying vault being removed.
-        uint256 underlyingShares = underlyingVaults[vaultIndex].maxRedeem(address(this));
+        uint256 underlyingShares = _activeUnderlyingVaults[underlyingVaultIndex].maxRedeem(
+            address(this)
+        );
         if (underlyingShares > 0) {
-            underlyingVaults[vaultIndex].redeem(underlyingShares, address(this), address(this));
+            _activeUnderlyingVaults[vaultIndex].redeem(
+                underlyingShares,
+                address(this),
+                address(this)
+            );
         }
 
-        address underlyingVault = address(underlyingVaults[vaultIndex]);
+        address underlyingVault = address(_activeUnderlyingVaults[underlyingVaultIndex]);
 
         // move all vaults to the left after the vault being removed
-        for (uint256 i = vaultIndex; i < underlyingVaultsLen - 1; ) {
-            underlyingVaults[i] = underlyingVaults[i + 1];
+        for (uint256 i = underlyingVaultIndex; i < newUnderlyingVaultsLen; ) {
+            _activeUnderlyingVaults[i] = _activeUnderlyingVaults[i + 1];
             unchecked {
                 ++i;
             }
         }
-        underlyingVaults.pop(); // delete the last item
+        _activeUnderlyingVaults.pop(); // delete the last underlying vault
+
+        // Remove the underlying vault from the vault index map.
+        vaultIndexMap = vaultIndexMapMem.removeValue(underlyingVaultIndex);
 
         emit RemovedVault(vaultIndex, underlyingVault);
     }

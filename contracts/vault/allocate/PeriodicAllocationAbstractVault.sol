@@ -75,15 +75,13 @@ abstract contract PeriodicAllocationAbstractVault is
      */
     function settle(Settlement[] calldata settlements) external virtual onlyVaultManager {
         Settlement memory settlement;
-        uint256 underlyingVaultsLen = underlyingVaults.length;
 
         for (uint256 i = 0; i < settlements.length; ) {
             settlement = settlements[i];
-            require(settlement.vaultIndex < underlyingVaultsLen, "Invalid Vault Index");
 
             if (settlement.assets > 0) {
                 // Deposit assets in underlying vault
-                underlyingVaults[settlement.vaultIndex].deposit(settlement.assets, address(this));
+                resolveVaultIndex(settlement.vaultIndex).deposit(settlement.assets, address(this));
             }
 
             unchecked {
@@ -222,9 +220,7 @@ abstract contract PeriodicAllocationAbstractVault is
 
             /// Source assets from a single vault
             if (sharesRatio <= assetSourcingParams.singleVaultSharesThreshold) {
-                IERC4626Vault underlyingVault = underlyingVaults[
-                    assetSourcingParams.singleSourceVaultIndex
-                ];
+                IERC4626Vault underlyingVault = resolveVaultIndex(assetSourcingParams.singleSourceVaultIndex);
 
                 // Underlying vault has sufficient assets to cover the sourcing
                 if (requiredAssets <= underlyingVault.maxWithdraw(address(this))) {
@@ -240,14 +236,16 @@ abstract contract PeriodicAllocationAbstractVault is
                 !sourceFromSingleVaultComplete
             ) {
                 uint256 i;
-                uint256 len = underlyingVaults.length;
+                uint256 len = _activeUnderlyingVaults.length;
                 uint256 totalUnderlyingAssets;
 
                 uint256[] memory underlyingVaultAssets = new uint256[](len);
 
                 // Compute max assets held by each underlying vault and total for the Meta Vault.
                 for (i = 0; i < len; ) {
-                    underlyingVaultAssets[i] = underlyingVaults[i].maxWithdraw(address(this));
+                    underlyingVaultAssets[i] = _activeUnderlyingVaults[i].maxWithdraw(
+                        address(this)
+                    );
                     // Increment total underlying assets
                     totalUnderlyingAssets += underlyingVaultAssets[i];
 
@@ -275,7 +273,7 @@ abstract contract PeriodicAllocationAbstractVault is
                                 : underlyingAssetsToWithdraw;
 
                             // withdraw assets proportionally to this vault
-                            underlyingVaults[i].withdraw(
+                            _activeUnderlyingVaults[i].withdraw(
                                 underlyingAssetsToWithdraw,
                                 address(this),
                                 address(this)
@@ -331,7 +329,8 @@ abstract contract PeriodicAllocationAbstractVault is
     /// @notice `Governor` sets the underlying vault that small withdrawls are redeemed from.
     /// @param _singleSourceVaultIndex the underlying vault's index position in `underlyingVaults`. This starts from index 0.
     function setSingleSourceVaultIndex(uint32 _singleSourceVaultIndex) external onlyGovernor {
-        require(_singleSourceVaultIndex < underlyingVaults.length, "Invalid source vault index");
+        // Check the single source vault is active.
+        resolveVaultIndex(_singleSourceVaultIndex);
         sourceParams.singleSourceVaultIndex = _singleSourceVaultIndex;
     }
 

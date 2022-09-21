@@ -114,7 +114,8 @@ async function proposeAcceptNexusModule(nexus: Nexus, governor: Account, moduleN
     const moduleKey = keccak256(toUtf8Bytes(moduleName))
 
     await nexus.connect(governor.signer).proposeModule(moduleKey, moduleAddress)
-    await increaseTime(ONE_WEEK)
+    // Adding another minute to the week as Anvil doesn't always increased by the correct number of seconds.
+    await increaseTime(ONE_WEEK.add(60))
     await nexus.connect(governor.signer).acceptProposedModule(moduleKey)
 }
 
@@ -797,10 +798,18 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 )
                 expect(await periodicAllocationPerfFeeMetaVault.feeReceiver(), "feeReceiver").to.equal(feeReceiver)
 
-                expect(await periodicAllocationPerfFeeMetaVault.underlyingVaults(0), "underlyingVaults 0").to.equal(musdConvexVault.address)
-                expect(await periodicAllocationPerfFeeMetaVault.underlyingVaults(1), "underlyingVaults 1").to.equal(fraxConvexVault.address)
-                expect(await periodicAllocationPerfFeeMetaVault.underlyingVaults(2), "underlyingVaults 2").to.equal(lusdConvexVault.address)
-                expect(await periodicAllocationPerfFeeMetaVault.underlyingVaults(3), "underlyingVaults 3").to.equal(busdConvexVault.address)
+                expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(0), "underlying vault 0").to.equal(
+                    musdConvexVault.address,
+                )
+                expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(1), "underlying vault 1").to.equal(
+                    fraxConvexVault.address,
+                )
+                expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(2), "underlying vault 2").to.equal(
+                    lusdConvexVault.address,
+                )
+                expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(3), "underlying vault 3").to.equal(
+                    busdConvexVault.address,
+                )
                 expect(await periodicAllocationPerfFeeMetaVault.assetPerShareUpdateThreshold(), "assetPerShareUpdateThreshold").to.equal(
                     config.periodicAllocationPerfFeeMetaVault.assetPerShareUpdateThreshold,
                 )

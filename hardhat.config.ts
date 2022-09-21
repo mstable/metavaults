@@ -23,6 +23,7 @@ export const hardhatConfig = {
         local: { url: "http://localhost:8545" },
         // export the NODE_URL environment variable to use remote nodes like Alchemy or Infura. ge
         // export NODE_URL=https://eth-mainnet.alchemyapi.io/v2/yourApiKey
+        anvil: { url: "http://localhost:8545" },
         ropsten: {
             url: process.env.NODE_URL || "",
         },
