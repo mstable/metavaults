@@ -144,6 +144,10 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     }
 
     function _maxWithdraw(address owner) internal view virtual returns (uint256 maxAssets) {
+        if (paused()) {
+            return 0;
+        }
+        
         maxAssets = _previewRedeem(balanceOf(owner));
     }
 
