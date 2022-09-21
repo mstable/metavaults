@@ -150,8 +150,8 @@ abstract contract PeriodicAllocationAbstractVault is
         _checkAndUpdateAssetPerShare(assets);
         shares = _previewWithdraw(assets);
 
-        uint256 actualAssets = _sourceAssets(assets, shares);
-        require(assets <= actualAssets, "not enough assets");
+        uint256 availableAssets = _sourceAssets(assets, shares);
+        require(assets < availableAssets, "not enough assets");
 
         // Burn this vault's shares and transfer the assets to the receiver.
         _burnTransfer(assets, shares, receiver, owner, false);
@@ -178,7 +178,7 @@ abstract contract PeriodicAllocationAbstractVault is
         _checkAndUpdateAssetPerShare(assets);
 
         uint256 availableAssets = _sourceAssets(assets, shares);
-        require(assets <= availableAssets, "not enough assets");
+        require(assets < availableAssets, "not enough assets");
 
         _burnTransfer(assets, shares, receiver, owner, true);
     }
