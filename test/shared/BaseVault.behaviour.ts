@@ -623,6 +623,11 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
                 expect(await vault.maxWithdraw(alice.address)).to.equal(ZERO)
                 expect(await vault.maxRedeem(alice.address)).to.equal(ZERO)
             })
+            after(async () => {
+                const { vault, sa } = ctx()
+                // Unpause vault
+                await vault.connect(sa.governor.signer).unpause()
+            })
         })
     })
 }
