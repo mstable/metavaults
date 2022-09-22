@@ -75,7 +75,7 @@ const snapshotData = async (ctx: BaseVaultBehaviourContext, sender: Account, rec
 }
 
 async function expectWithdrawEvent(
-    vault: AbstractVault,
+    vault: BaseAbstractVault,
     tx: ContractTransaction,
     sender: Account,
     receiver: Account,
@@ -95,7 +95,7 @@ async function expectWithdrawEvent(
     assertBNClosePercent(withdrawEvent.args.shares, shares, variance, "shares")
 }
 async function expectDepositEvent(
-    vault: AbstractVault,
+    vault: BaseAbstractVault,
     tx: ContractTransaction,
     sender: Account,
     receiver: Account,
@@ -556,6 +556,73 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             const tx = vault.connect(bob.signer)["redeem(uint256,address,address)"](sharesAmount, bob.address, alice.address)
             // Verify events, storage change, balance, etc.
             await expect(tx).to.be.revertedWith("Amount exceeds allowance")
+        })
+    })
+    describe("pausable operations", async () => {
+        it("pause fails on nonGovernor call", async () => {
+            const { vault, sa } = ctx()
+            const tx = vault.connect(sa.dummy1.signer).pause()
+            await expect(tx).to.be.revertedWith("Only governor can execute")
+        })
+        it("pause successfull on governor call", async () => {
+            const { vault, sa } = ctx()
+            expect(await vault.paused()).to.not.equal(true)
+            const tx = vault.connect(sa.governor.signer).pause()
+            await expect(tx).to.emit(vault, "Paused").withArgs(sa.governor.address)
+            expect(await vault.paused()).to.equal(true)
+        })
+        it("unpause fails on nonGovernor call", async () => {
+            const { vault, sa } = ctx()
+            const tx = vault.connect(sa.dummy1.signer).unpause()
+            await expect(tx).to.be.revertedWith("Only governor can execute")
+        })
+        it("unpause successfull on governor call", async () => {
+            const { vault, sa } = ctx()
+            expect(await vault.paused()).to.not.equal(false)
+            const tx = vault.connect(sa.governor.signer).unpause()
+            await expect(tx).to.emit(vault, "Unpaused").withArgs(sa.governor.address)
+            expect(await vault.paused()).to.equal(false)
+        })
+        context("vault paused", async () => {
+            before(async () => {
+                const { vault, asset, amounts, sa } = ctx()
+                const assetsAmount = amounts.initialDeposit
+
+                // initial deposit so that maxFunctions do not return ZERO by default
+                if ((await asset.allowance(alice.address, vault.address)).lt(assetsAmount)) {
+                    await asset.connect(alice.signer).approve(vault.address, assetsAmount)
+                }
+                await vault.connect(alice.signer)["deposit(uint256,address)"](assetsAmount, alice.address)
+
+                // Pause vault
+                await vault.connect(sa.governor.signer).pause()
+            })
+            it("should revert on deposit, mint, redeem and withdraw calls", async () => {
+                const { vault, amounts } = ctx()
+                expect(await vault.paused()).to.equal(true)
+
+                const depositTx = vault.connect(alice.signer)["deposit(uint256,address)"](amounts.deposit, alice.address)
+                await expect(depositTx).to.be.revertedWith("Pausable: paused")
+
+                const mintTx = vault.connect(alice.signer)["mint(uint256,address)"](amounts.mint, alice.address)
+                await expect(mintTx).to.be.revertedWith("Pausable: paused")
+
+                const withdrawTx = vault.connect(alice.signer)["withdraw(uint256,address,address)"](amounts.withdraw, alice.address, alice.address)
+                await expect(withdrawTx).to.be.revertedWith("Pausable: paused")
+
+                const redeemTx = vault.connect(alice.signer)["redeem(uint256,address,address)"](amounts.redeem, alice.address, alice.address)
+                await expect(redeemTx).to.be.revertedWith("Pausable: paused")
+            })
+            it("should return 0 on max 4626 functions", async () => {
+                const { vault } = ctx()
+                expect(await vault.paused()).to.equal(true)
+                expect(await vault.balanceOf(alice.address)).to.not.equal(ZERO)
+
+                expect(await vault.maxDeposit(alice.address)).to.equal(ZERO)
+                expect(await vault.maxMint(alice.address)).to.equal(ZERO)
+                expect(await vault.maxWithdraw(alice.address)).to.equal(ZERO)
+                expect(await vault.maxRedeem(alice.address)).to.equal(ZERO)
+            })
         })
     })
 }
