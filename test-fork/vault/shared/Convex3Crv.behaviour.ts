@@ -20,6 +20,7 @@ import type {
     ICurveMetapool,
     IERC20,
 } from "types/generated"
+import shouldBehaveLikeBaseVault, { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 
 const log = logger("test:Convex3CrvVault")
 
@@ -124,6 +125,7 @@ export interface Convex3CrvContext {
         withdraw: BigNumber
         redeem: BigNumber
     }
+    baseCtx: Partial<BaseVaultBehaviourContext>
 }
 export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void => {
     const getAssetsFromTokens = async (tokens: BN): Promise<BN> => {
@@ -591,5 +593,8 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const assetsSlippage = basisPointDiff(assetsWithdrawn, totalAssetsDiff)
             expect(assetsSlippage, "total assets diff to assets withdrawn").lte(50).gte(-50)
         })
+    })
+    describe("should behave like AbstractVault", async () => {
+        shouldBehaveLikeBaseVault(() => ctx().baseCtx as BaseVaultBehaviourContext)
     })
 }

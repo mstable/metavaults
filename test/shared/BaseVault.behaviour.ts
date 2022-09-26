@@ -9,7 +9,7 @@ import type { StandardAccounts } from "@utils/machines"
 import type { BN } from "@utils/math"
 import type { ContractTransaction } from "ethers"
 import type { Account } from "types"
-import type { AbstractVault, ERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
+import type { AbstractVault, IERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
 
 export type BaseAbstractVault = AbstractVault | LightAbstractVault
 
@@ -33,7 +33,7 @@ type Amounts = {
 }
 export interface BaseVaultBehaviourContext {
     vault: BaseAbstractVault
-    asset: ERC20 | IERC20Metadata
+    asset: IERC20 | IERC20Metadata
     sa: StandardAccounts
     fixture: () => Promise<void>
     amounts: Amounts
@@ -561,7 +561,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
     describe("pausable operations", async () => {
         it("pause fails on nonGovernor call", async () => {
             const { vault, sa } = ctx()
-            const tx = vault.connect(sa.dummy1.signer).pause()
+            const tx = vault.connect(sa.alice.signer).pause()
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("pause successfull on governor call", async () => {
@@ -573,7 +573,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
         })
         it("unpause fails on nonGovernor call", async () => {
             const { vault, sa } = ctx()
-            const tx = vault.connect(sa.dummy1.signer).unpause()
+            const tx = vault.connect(sa.alice.signer).unpause()
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
         it("unpause successfull on governor call", async () => {
