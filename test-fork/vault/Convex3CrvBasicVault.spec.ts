@@ -34,7 +34,7 @@ import type {
 } from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
-import { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
+import shouldBehaveLikeBaseVault, { BaseVaultBehaviourContext, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { StandardAccounts } from "@utils/machines"
 
 const governorAddress = resolveAddress("Governor")
@@ -105,12 +105,18 @@ describe("Convex 3Crv Basic Vault", async () => {
         return vault
     }
 
-    const createBaseContext = async (constructorData: Convex3CrvConstructorData, slippageData: Convex3CrvPool["slippageData"], initialDeposit: BN): Promise<Partial<BaseVaultBehaviourContext>> => {
+    const createBaseContext = async (
+        constructorData: Convex3CrvConstructorData,
+        slippageData: Convex3CrvPool["slippageData"],
+        initialDeposit: BN,
+        name: string,
+        symbol: string
+    ): Promise<Partial<BaseVaultBehaviourContext>> => {
         const baseCtx: Partial<BaseVaultBehaviourContext> = {}
         baseCtx.fixture = async function fixture() {
             await setup(normalBlock)
             const vault = await deployVault(constructorData)
-            await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, slippageData)
+            await vault.initialize(name, symbol, vaultManagerAddress, slippageData)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -125,28 +131,21 @@ describe("Convex 3Crv Basic Vault", async () => {
             sa.governor = governor
             sa.dummy1 = bob
 
-            // TODO - check acceptable levels
             const variances = {
-                deposit: "0.02",
-                mint: "0.02",
-                withdraw: "0.02",
-                redeem: "0.02",
-                convertToShares: "0.05",
-                convertToAssets: "0.05",
-                maxWithdraw: "0.02",
-                maxRedeem: "0.02",
+                deposit: "2",
+                mint: "2",
+                withdraw: "2",
+                redeem: "2",
+                convertToShares: "2",
+                convertToAssets: "2",
+                maxWithdraw: "2",
+                maxRedeem: "2",
             }
 
             baseCtx.vault = vault as unknown as AbstractVault
             baseCtx.asset = threeCrvToken
             baseCtx.sa = sa
-            baseCtx.amounts = {
-                initialDeposit,
-                deposit: initialDeposit.div(4),
-                mint: initialDeposit.div(5),
-                withdraw: initialDeposit.div(3),
-                redeem: initialDeposit.div(6),
-            }
+            baseCtx.amounts = testAmounts(100, 18)
             baseCtx.variances = variances
         }
         return baseCtx
@@ -195,38 +194,53 @@ describe("Convex 3Crv Basic Vault", async () => {
     })
     describe("mUSD Convex Vault", () => {
         const initialDeposit = simpleToExactAmount(400000, 18)
-        let ctx: Convex3CrvContext
-        before(async () => {
-            await setup(normalBlock)
-            const vault = await deployVault(config.convex3CrvConstructors.musd)
-            await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, config.convex3CrvPools.musd.slippageData)
+        describe("should behave like Convex3Crv Vault", async () => {
+            let ctx: Convex3CrvContext
+            before(async () => {
+                await setup(normalBlock)
+                const vault = await deployVault(config.convex3CrvConstructors.musd)
+                await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, config.convex3CrvPools.musd.slippageData)
 
-            threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
-            metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
-            baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
-            await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
+                await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+                await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
 
-            ctx = {
-                vault: vault.connect(owner.signer),
-                owner,
-                threePool,
-                threeCrvToken,
-                metapool,
-                baseRewardsPool,
-                dataEmitter,
-                amounts: {
-                    initialDeposit,
-                    deposit: initialDeposit.div(4),
-                    mint: initialDeposit.div(5),
-                    withdraw: initialDeposit.div(3),
-                    redeem: initialDeposit.div(6),
-                },
-                baseCtx: await createBaseContext(config.convex3CrvConstructors.musd, config.convex3CrvPools.musd.slippageData, initialDeposit)
-            }
+                ctx = {
+                    vault: vault.connect(owner.signer),
+                    owner,
+                    threePool,
+                    threeCrvToken,
+                    metapool,
+                    baseRewardsPool,
+                    dataEmitter,
+                    amounts: {
+                        initialDeposit,
+                        deposit: initialDeposit.div(4),
+                        mint: initialDeposit.div(5),
+                        withdraw: initialDeposit.div(3),
+                        redeem: initialDeposit.div(6),
+                    },
+                }
+            })
+            behaveLikeConvex3CrvVault(() => ctx)
         })
-        behaveLikeConvex3CrvVault(() => ctx)
+
+        describe("should behave like BaseVault", async () => {
+            let baseCtx: Partial<BaseVaultBehaviourContext>
+            before(async () => {
+                baseCtx = await createBaseContext(
+                    config.convex3CrvConstructors.musd,
+                    config.convex3CrvPools.musd.slippageData,
+                    initialDeposit,
+                    "Vault Convex mUSD/3CRV",
+                    "vcvxmusd3CRV"
+                )
+            })
+            shouldBehaveLikeBaseVault(() => baseCtx as BaseVaultBehaviourContext)
+        })
     })
     describe("USDP Convex Vault", () => {
         let ctx: Convex3CrvContext
@@ -257,7 +271,6 @@ describe("Convex 3Crv Basic Vault", async () => {
                     withdraw: initialDeposit.div(3),
                     redeem: initialDeposit.div(6),
                 },
-                baseCtx: await createBaseContext(config.convex3CrvConstructors.usdp, config.convex3CrvPools.usdp.slippageData, initialDeposit)
             }
         })
         behaveLikeConvex3CrvVault(() => ctx)
@@ -291,7 +304,6 @@ describe("Convex 3Crv Basic Vault", async () => {
                     withdraw: initialDeposit.div(3),
                     redeem: initialDeposit.div(6),
                 },
-                baseCtx: await createBaseContext(config.convex3CrvConstructors.frax, config.convex3CrvPools.frax.slippageData, initialDeposit)
             }
         })
         behaveLikeConvex3CrvVault(() => ctx)
@@ -325,7 +337,6 @@ describe("Convex 3Crv Basic Vault", async () => {
                     withdraw: initialDeposit.div(3),
                     redeem: initialDeposit.div(6),
                 },
-                baseCtx: await createBaseContext(config.convex3CrvConstructors.busd, config.convex3CrvPools.busd.slippageData, initialDeposit)
             }
         })
         behaveLikeConvex3CrvVault(() => ctx)
@@ -359,7 +370,6 @@ describe("Convex 3Crv Basic Vault", async () => {
                     withdraw: initialDeposit.div(3),
                     redeem: initialDeposit.div(6),
                 },
-                baseCtx: await createBaseContext(config.convex3CrvConstructors.lusd, config.convex3CrvPools.lusd.slippageData, initialDeposit)
             }
         })
         behaveLikeConvex3CrvVault(() => ctx)
