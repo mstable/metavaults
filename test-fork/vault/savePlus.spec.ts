@@ -533,12 +533,12 @@ describe("Save+ Basic and Meta Vaults", async () => {
         nexus = core.nexus
         proxyAdmin = core.proxyAdmin as InstantProxyAdmin
 
-        // Deploy mocked contracts
-        ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
+            // Deploy mocked contracts
+            ; ({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
         const syncSwapper = await deployMockSyncSwapper(deployer, nexus)
 
-        // Deploy common /  utilities  contracts
-        ;({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
+            // Deploy common /  utilities  contracts
+            ; ({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
 
         await proposeAcceptNexusModule(nexus, governor, "Liquidator", liquidator.address)
         liquidator = liquidator.connect(governor.signer)
@@ -871,6 +871,84 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             convertToShares: 0.04,
                             maxWithdraw: 0.0007,
                             maxRedeem: 0.02,
+                        }
+                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                    }
+                })
+
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+            describe("convex3CrvLiquidatorVault - frax", async () => {
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
+                // 'RewardPool : Cannot stake 0'
+                before(async () => {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = fraxConvexVault as unknown as AbstractVault
+                        ctx.asset = threeCrvToken
+                        ctx.sa = sa
+                        ctx.variances = {
+                            deposit: 2,
+                            mint: 2,
+                            withdraw: 2,
+                            redeem: 2,
+                            convertToAssets: 2,
+                            convertToShares: 2,
+                            maxWithdraw: 2,
+                            maxRedeem: 2,
+                        }
+                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                    }
+                })
+
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+            describe("convex3CrvLiquidatorVault - busd", async () => {
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
+                // 'RewardPool : Cannot stake 0'
+                before(async () => {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = busdConvexVault as unknown as AbstractVault
+                        ctx.asset = threeCrvToken
+                        ctx.sa = sa
+                        ctx.variances = {
+                            deposit: 2,
+                            mint: 2,
+                            withdraw: 2,
+                            redeem: 2,
+                            convertToAssets: 2,
+                            convertToShares: 2,
+                            maxWithdraw: 2,
+                            maxRedeem: 2,
+                        }
+                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                    }
+                })
+
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+            describe("convex3CrvLiquidatorVault - lusd", async () => {
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
+                // 'RewardPool : Cannot stake 0'
+                before(async () => {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = lusdConvexVault as unknown as AbstractVault
+                        ctx.asset = threeCrvToken
+                        ctx.sa = sa
+                        ctx.variances = {
+                            deposit: 2,
+                            mint: 2,
+                            withdraw: 2,
+                            redeem: 2,
+                            convertToAssets: 2,
+                            convertToShares: 2,
+                            maxWithdraw: 2,
+                            maxRedeem: 2,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                     }
