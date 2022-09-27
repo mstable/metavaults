@@ -1,9 +1,7 @@
 module.exports = {
     skipFiles: [
         "integrations",
-        "oracles",
         "peripheral",
-        "shared",
         "upgradability",
         "z_mocks",
     ],
