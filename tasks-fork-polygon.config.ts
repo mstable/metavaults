@@ -7,5 +7,6 @@ import "./tasks/token"
 import "./tasks/vault"
 import "./tasks/liquidator"
 import "./tasks/dex"
+import "./tasks/metaVaultManage"
 
 export default config

@@ -9,5 +9,6 @@ import "./tasks/proxyAdmin"
 import "./tasks/vault"
 import "./tasks/token"
 import "./tasks/deployment/localhost"
+import "./tasks/metaVaultManage"
 
 export default config
