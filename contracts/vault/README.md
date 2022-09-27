@@ -16,7 +16,7 @@ The vaults follow the Open Zeppelin pattern of all the external function calling
 
 ### Abstract EIP-4626 Vault
 
-[AbstractVault](./AbstractVault.sol) implements the [IERC4626Vault](../interfaces/IERC4626Vault.sol) interface.
+[AbstractVault](./AbstractVault.sol) implements the [IERC4626Vault](../interfaces/IERC4626Vault.sol) interface with Pausable flow methods - deposit, mint, redeem and withdraw.
 
 The following functions need to be implemented:
 
@@ -34,3 +34,5 @@ The following functions need to be implemented:
 -   [Liquidity Vaults](./liquidity/README.md) provide liquidity to Automated Market Makers (AMM) to earn yield. For example, [Uniswap](https://docs.uniswap.org/), [Curve](https://curve.readthedocs.io/) or [Convex](https://docs.convexfinance.com/convexfinance/).
 -   [Swap Vaults](./swap/README.md) can swap underlying assets in a Meta Vault. This is used for rebalancing a vault's underlying assets. Swaps can be done via aggregators like 1Inch or AMMs like Uniswap.
 -   [Meta Vaults](./meta/) vaults that invest in underlying ERC-4626 vaults.
+
+Note: All vaults have deposit, mint, redeem, withdraw as pausable.
