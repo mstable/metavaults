@@ -4,7 +4,8 @@ import { BN } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, IERC20__factory, OneInchDexSwap__factory } from "types/generated"
 
-import { getFeeAndQuote, getQuote, placeSellOrder } from "./cowswap/api"
+import { getFeeAndQuote, getQuote, placeSellOrder } from "./peripheral/cowswapApi"
+import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
 import { getChain, resolveAddress } from "./utils/networkAddressFactory"
@@ -14,7 +15,7 @@ import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { CowSwapDex, OneInchDexSwap } from "types/generated"
 
-import type { CowSwapContext } from "./cowswap/api"
+import type { CowSwapContext } from "./peripheral/cowswapApi"
 
 const log = logger("dex")
 const DEX_SWAP_DATA = "(address,uint256,address,uint256,bytes)"
@@ -49,7 +50,6 @@ export async function deployOneInchDex(hre: HardhatRuntimeEnvironment, signer: S
 }
 
 /// Utility tasks to call directly cow swap API
-
 task("cowswap-fee-quote", "@deprecated Calls CowSwap api to get the fee and quote of an order ")
     .addParam("fromAsset", "Address of the asset to sell", undefined, types.string)
     .addParam("toAsset", "Address of the asset to buy", undefined, types.string)
@@ -174,3 +174,19 @@ subtask("one-inch-dex-deploy", "Deploys a new CowSwapDex contract")
 task("one-inch-dex-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
+
+task("one-inch-quote", "Calls OneInch api to get the fee and quote of an order")
+    .addParam("fromAsset", "Address of the asset to sell", undefined, types.string)
+    .addParam("toAsset", "Address of the asset to buy", undefined, types.string)
+    .addParam("fromAssetAmount", "Amount of the asset to sell", ZERO, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const router = new OneInchRouter(chain)
+        const toAssetAmount = await router.getQuote({
+            fromTokenAddress: taskArgs.fromAsset,
+            toTokenAddress: taskArgs.toAsset,
+            amount: taskArgs.fromAssetAmount,
+        })
+        log(`one-inch-fee-quote fromAsset:${taskArgs.fromAsset}     toAsset:${taskArgs.toAsset}  toAssetAmount:${toAssetAmount} `)
+    })

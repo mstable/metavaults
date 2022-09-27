@@ -83,6 +83,7 @@ export const contractNames = [
     "CRVRewardsPool",
     "ConvexBooster",
     "OneInchAggregationRouterV4",
+    "OneInchAggregationExecutor",
 ] as const
 export type ContractNames = typeof contractNames[number]
 
@@ -133,7 +134,8 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
             case "OneInchAggregationRouterV4":
                 return "0x1111111254fb6c44bAC0beD2854e76F90643097d"
-
+            case "OneInchAggregationExecutor":
+                return "0xF2F400C138F9fb900576263af0BC7fCde2B1b8a8"
             default:
         }
     } else if (chain === Chain.polygon) {

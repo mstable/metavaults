@@ -32,7 +32,13 @@ const ERROR = {
     INVALID_BATCH: "invalid batch",
     INVALID_SWAP: "invalid swap pair",
     ONLY_KEEPER_GOVERNOR: "Only keeper or governor",
+    ONLY_GOVERNOR: "Only governor can execute",
     NO_PENDING_REWARDS: "no pending rewards",
+    NOT_ENOUGH_ASSETS: "to asset < min",
+    NOTHING_TO_DONATE: "nothing to donate",
+    NOT_SWAPPED: "not swapped",
+    ALREADY_DONATED: "already donated",
+    DONATE_TOKEN_WRONG_INPUT: "Wrong input",
 }
 
 describe("Liquidator", async () => {
@@ -225,7 +231,9 @@ describe("Liquidator", async () => {
             await vault2.deposit(asset2Deposit, sa.default.address)
             await vault3.deposit(asset1Deposit.mul(2), sa.default.address)
         }
-        beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+        beforeEach(async () => {
+            await loadOrExecFixture(beforeEachFixture)
+        })
         it("from a single vault with single reward", async () => {
             await rewards1.transfer(vault3.address, vault3reward1)
 
@@ -296,8 +304,8 @@ describe("Liquidator", async () => {
             // Transfers to vault 3
             await expect(tx).to.emit(rewards1, "Transfer").withArgs(vault3.address, liquidator.address, vault3reward1)
         })
-        it("twice in a batch", async () => { })
-        it("for a second batch", async () => { })
+        it("twice in a batch", async () => {})
+        it("for a second batch", async () => {})
         it("no rewards in any vault", async () => {
             const tx = await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
 
@@ -581,7 +589,7 @@ describe("Liquidator", async () => {
             it("not enough assets", async () => {
                 // this error is coming from BasicDexSwap but testing the min is passed to the IDexSwap
                 const tx = liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, asset1Amount.add(1), "0x")
-                await expect(tx).to.revertedWith("to asset < min")
+                await expect(tx).to.revertedWith(ERROR.NOT_ENOUGH_ASSETS)
             })
             it("invalid reward", async () => {
                 const tx = liquidator.connect(sa.keeper.signer).swap(asset1.address, asset2.address, asset1Amount, "0x")
@@ -937,10 +945,13 @@ describe("Liquidator", async () => {
 
             before(async () => {
                 await setup()
+                // Transfer reward 1, 2, 3 to vault1
+                // rewards1 is swapped for asset 1, rewards2,3 are swapped for asset 1
                 await rewards1.transfer(vault1.address, vault1reward1)
                 await rewards2.transfer(vault1.address, vault1reward2)
                 await rewards3.transfer(vault1.address, vault1reward3)
 
+                // Transfer reward 1, 3 to vault2
                 await rewards1.transfer(vault2.address, vault2reward1)
                 await rewards3.transfer(vault2.address, vault2reward3)
 
@@ -950,14 +961,15 @@ describe("Liquidator", async () => {
 
                 // Supply assets for the swaps
                 const asset1Amount = vault1Asset1Amount.add(vault3reward1.mul(2))
-                await asset1.transfer(syncSwapper.address, asset1Amount)
                 const asset2Amount = vault2reward1.mul(2).div(1e13).add(vault2reward3.mul(4).div(1e7))
 
+                await asset1.transfer(syncSwapper.address, asset1Amount)
                 await asset2.transfer(syncSwapper.address, asset2Amount)
 
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 await liquidator.connect(sa.keeper.signer).swap(rewards2.address, asset1.address, 0, "0x")
                 await liquidator.connect(sa.keeper.signer).swap(rewards3.address, asset1.address, 0, "0x")
+
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset2.address, 0, "0x")
                 await liquidator.connect(sa.keeper.signer).swap(rewards3.address, asset2.address, 0, "0x")
             })
@@ -994,16 +1006,18 @@ describe("Liquidator", async () => {
                 purchaseTokens = input.purchaseTokens
                 vaults = input.vaults
             }
-            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+            beforeEach(async () => {
+                await loadOrExecFixture(beforeEachFixture)
+            })
             it("no rewards collected for vault", async () => {
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
-                await expect(tx).to.revertedWith("nothing to donate")
+                await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("not swapped for pair", async () => {
                 await liquidator.collectRewards([vault3.address])
 
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
-                await expect(tx).to.revertedWith("nothing to donate")
+                await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("already donated for pair", async () => {
                 await liquidator.collectRewards([vault3.address])
@@ -1012,7 +1026,7 @@ describe("Liquidator", async () => {
                 await assertDonateTokens([asset1], [asset1Amount], [vault3.address])
 
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
-                await expect(tx).to.revertedWith("nothing to donate")
+                await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("not keep or governor", async () => {
                 await liquidator.collectRewards([vault3.address])
@@ -1021,6 +1035,17 @@ describe("Liquidator", async () => {
                 const tx = liquidator.connect(sa.default.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
 
                 await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
+            })
+            it("wrong input pair on reward tokens or purchase tokens", async () => {
+                await expect(liquidator.connect(sa.keeper.signer).donateTokens([], purchaseTokens, vaults)).to.revertedWith(
+                    ERROR.DONATE_TOKEN_WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, [], vaults)).to.revertedWith(
+                    ERROR.DONATE_TOKEN_WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, [])).to.revertedWith(
+                    ERROR.DONATE_TOKEN_WRONG_INPUT,
+                )
             })
         })
         context("after two batch swapped", async () => {
@@ -1047,7 +1072,7 @@ describe("Liquidator", async () => {
             it("second batch - nothing to donate", async () => {
                 const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(sa.default.signer, [vault3.address])
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
-                await expect(tx).to.revertedWith("nothing to donate")
+                await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
         })
         context("after two batch add new reward", async () => {
@@ -1093,10 +1118,9 @@ describe("Liquidator", async () => {
             it("second batch - nothing to donate", async () => {
                 const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(sa.default.signer, [vault3.address])
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
-                await expect(tx).to.revertedWith("nothing to donate")
+                await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
         })
-        // TODO - add test in the case one reward is no longer available within a vault.
     })
     describe("claim assets", () => {
         it("fails if invalid batch", async () => {
@@ -1189,7 +1213,9 @@ describe("Liquidator", async () => {
                 await setup()
                 await rewards1.transfer(vault3.address, reward1Amount)
             }
-            beforeEach(async () => { await loadOrExecFixture(beforeEachFixture) })
+            beforeEach(async () => {
+                await loadOrExecFixture(beforeEachFixture)
+            })
             it("no rewards collected for pair", async () => {
                 const tx = liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
                 await expect(tx).to.revertedWith(ERROR.INVALID_BATCH)
@@ -1197,7 +1223,7 @@ describe("Liquidator", async () => {
             it("not swapped for pair", async () => {
                 await liquidator.collectRewards([vault3.address])
                 const tx = liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
-                await expect(tx).to.revertedWith("not swapped")
+                await expect(tx).to.revertedWith(ERROR.NOT_SWAPPED)
             })
             it("already donated for pair", async () => {
                 await liquidator.collectRewards([vault3.address])
@@ -1206,7 +1232,7 @@ describe("Liquidator", async () => {
                 await liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
 
                 const tx = liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
-                await expect(tx).to.revertedWith("already donated")
+                await expect(tx).to.revertedWith(ERROR.ALREADY_DONATED)
             })
             it("not the correct vault", async () => {
                 await liquidator.collectRewards([vault3.address])
@@ -1214,7 +1240,7 @@ describe("Liquidator", async () => {
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 const tx = liquidator.connect(await impersonate(vault2.address)).claimAssets(0, rewards1.address, asset1.address)
 
-                await expect(tx).to.revertedWith("already donated")
+                await expect(tx).to.revertedWith(ERROR.ALREADY_DONATED)
             })
         })
         context("after two batch swapped", async () => {
@@ -1259,7 +1285,7 @@ describe("Liquidator", async () => {
         })
         it("keeper fails to set new syncSwapper", async () => {
             const tx = liquidator.connect(sa.keeper.signer).setSyncSwapper(sa.dummy1.address)
-            await expect(tx).to.revertedWith("Only governor can execute")
+            await expect(tx).to.revertedWith(ERROR.ONLY_GOVERNOR)
         })
     })
     describe("set asyncSwapper", async () => {
@@ -1273,7 +1299,7 @@ describe("Liquidator", async () => {
         })
         it("keeper fails to set new asyncSwapper", async () => {
             const tx = liquidator.connect(sa.keeper.signer).setAsyncSwapper(sa.dummy1.address)
-            await expect(tx).to.revertedWith("Only governor can execute")
+            await expect(tx).to.revertedWith(ERROR.ONLY_GOVERNOR)
         })
     })
     describe("add reward with 24 decimals", () => {
