@@ -40,9 +40,15 @@ sol2uml .. -hl -hi -hs -hp -b VaultProxy -i artifacts,types,_flat,build
 # contracts/vault
 sol2uml ../contracts -b IERC4626Vault
 sol2uml ../contracts -b IMultiAssetVault
+
+sol2uml ../ -hv -hf -he -hs -b AbstractVault  -i abis,artifacts,types,_flat,build -o AbstractVaultHierarchy.svg
 sol2uml ../contracts -d 0 -b AbstractVault
+
 sol2uml ../contracts -d 0 -b AbstractMultiAssetVault
 sol2uml .. -hv -hf -he -hs -hi -hl -b MultiAssetVault -i artifacts,types,_flat,build -o MultiAssetVaultHierarchyHierarchy.svg
+
+sol2uml ../ -hv -hf -he -hs -b LightAbstractVault  -i abis,artifacts,types,_flat,build -o LightAbstractVaultHierarchy.svg
+sol2uml ../contracts -d 0 -b LightAbstractVault
 
 # contracts/vault/allocate
 sol2uml ../ -hv -hf -he -hs -b PeriodicAllocationAbstractVault  -i abis,artifacts,types,_flat,build -o PeriodicAllocationAbstractVaultHierarchy.svg
@@ -57,18 +63,6 @@ sol2uml storage .. -c WeightedAbstractVault -i abis,artifacts,types,_flat,build 
 sol2uml ../ -hv -hf -he -hs -hi -hl -b PerfFeeAbstractVault  -i abis,artifacts,types,_flat,build -o PerfFeeAbstractVaultHierarchy.svg
 sol2uml .. -hl -hi -d 1 -b PerfFeeAbstractVault -i abis,artifacts,types,_flat,build
 sol2uml storage .. -c PerfFeeAbstractVault -i abis,artifacts,types,_flat,build -o PerfFeeAbstractVaultStorage.svg
-
-sol2uml ../ -hv -hf -he -hs -hi -hl -b PerfFeeVolatilityAbstractVault  -i abis,artifacts,types,_flat,build -o PerfFeeVolatilityAbstractVaultHierarchy.svg
-sol2uml .. -hl -hi -d 1 -b PerfFeeVolatilityAbstractVault -i abis,artifacts,types,_flat,build
-sol2uml storage .. -c PerfFeeVolatilityAbstractVault -i abis,artifacts,types,_flat,build -o PerfFeeVolatilityAbstractVaultStorage.svg
-
-sol2uml ../ -hv -hf -he -hs -hi -hl -b ManFeeAbstractVault  -i abis,artifacts,types,_flat,build -o ManFeeAbstractVaultHierarchy.svg
-sol2uml .. -hl -hi -d 1 -b ManFeeAbstractVault -i artifacts,types,_flat,build
-sol2uml storage .. -c ManFeeAbstractVault -i abis,artifacts,types,_flat,build -o ManFeeAbstractVaultStorage.svg
-
-sol2uml ../ -hv -hf -he -hs -hi -hl -b TxFeeAbstractVault  -i abis,artifacts,types,_flat,build -o TxFeeAbstractVaultHierarchy.svg
-sol2uml .. -hl -hi -d 1 -b TxFeeAbstractVault -i artifacts,types,_flat,build
-sol2uml storage .. -c TxFeeAbstractVault -i abis,artifacts,types,_flat,build -o TxFeeAbstractVaultStorage.svg
 
 # contracts/vault/liquidator
 sol2uml ../ -hv -hf -he -hs -hl -hi -b Liquidator  -i artifacts,types,_flat,build -o LiquidatorHierarchy.svg
@@ -91,12 +85,6 @@ sol2uml ../contracts -d 1 -hi -ha -hs -b Convex3CrvLiquidatorVault
 sol2uml storage .. -c Convex3CrvLiquidatorVault -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle -o Convex3CrvLiquidatorVaultStorage.svg
 sol2uml ../contracts -d 1 -hi -hs -b Convex3CrvAbstractVault
 
-## FRAX
-sol2uml .. -hv -hf -he -hs -b ConvexFraxBpLiquidatorVault -o ConvexFraxBpLiquidatorVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
-sol2uml ../contracts -d 1 -hi -ha -hs -b ConvexFraxBpLiquidatorVault
-sol2uml storage .. -c ConvexFraxBpLiquidatorVault -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle -o ConvexFraxBpLiquidatorVaultStorage.svg
-sol2uml ../contracts -d 1 -hi -hs -b ConvexFraxBpAbstractVault
-
 # contracts/vault/liquidity/curve
 sol2uml .. -hv -hf -he -hs -b Curve3CrvBasicMetaVault -o Curve3CrvBasicMetaVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
 sol2uml ../contracts -d 1 -hi -hs -b Curve3CrvAbstractMetaVault
@@ -106,10 +94,6 @@ sol2uml storage .. -c Curve3CrvBasicMetaVault -i abis,artifacts,types,_flat,solp
 sol2uml .. -hv -hf -he -hs -hl -b PeriodicAllocationPerfFeeMetaVault -o PeriodicAllocationPerfFeeMetaVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
 sol2uml ../contracts -d 1 -hi -hs -b PeriodicAllocationPerfFeeMetaVault 
 sol2uml storage .. -c PeriodicAllocationPerfFeeMetaVault -o PeriodicAllocationPerfFeeMetaVaultStorage.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
-
-sol2uml .. -hv -hf -he -hs -hl -b WeightedMetaPerfFeeVault -o WeightedMetaPerfFeeVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
-sol2uml ../contracts -d 1 -hi -hs -b WeightedMetaPerfFeeVault 
-sol2uml storage .. -c WeightedMetaPerfFeeVault -o WeightedMetaPerfFeeVaultStorage.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
 
 # contracts/vault/swap
 sol2uml .. -hv -hf -he -hs -hi -hl -b CowSwapDex -o CowSwapDexHierarchy.svg -i artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle

@@ -40,9 +40,9 @@
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M446.83,-526.98C411.21,-576.04 355.89,-652.24 313.55,-710.55"/>
 <polygon fill="black" stroke="black" points="310.71,-708.51 307.67,-718.65 316.38,-712.62 310.71,-708.51"/>
 </g>
-<!-- 10 -->
+<!-- 9 -->
 <g id="node3" class="node">
-<title>10</title>
+<title>9</title>
 <polygon fill="#f2f2f2" stroke="black" points="381.06,-676.9 381.06,-911.3 678.17,-911.3 678.17,-676.9 381.06,-676.9"/>
 <text text-anchor="middle" x="529.62" y="-894.7" font-family="Times,serif" font-size="14.00">&lt;&lt;Interface&gt;&gt;</text>
 <text text-anchor="middle" x="529.62" y="-877.9" font-family="Times,serif" font-size="14.00">INexus</text>
@@ -59,9 +59,9 @@
 <text text-anchor="start" x="389.06" y="-701.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&#160;cancelLockModule(_key: bytes32)</text>
 <text text-anchor="start" x="389.06" y="-685.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&#160;lockModule(_key: bytes32)</text>
 </g>
-<!-- 17 -->
+<!-- 13 -->
 <g id="node4" class="node">
-<title>17</title>
+<title>13</title>
 <polygon fill="#f2f2f2" stroke="black" points="675.45,-313.5 675.45,-639.9 931.78,-639.9 931.78,-313.5 675.45,-313.5"/>
 <text text-anchor="middle" x="803.62" y="-623.3" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="803.62" y="-606.5" font-family="Times,serif" font-size="14.00">ImmutableModule</text>
@@ -84,15 +84,15 @@
 <text text-anchor="start" x="683.45" y="-338.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyGovernance()</text>
 <text text-anchor="start" x="683.45" y="-321.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_nexus: address)</text>
 </g>
-<!-- 17&#45;&gt;10 -->
+<!-- 13&#45;&gt;9 -->
 <g id="edge3" class="edge">
-<title>17&#45;&gt;10</title>
+<title>13&#45;&gt;9</title>
 <path fill="none" stroke="black" d="M675.41,-630.25C672.46,-633.67 669.52,-637.06 666.62,-640.4 658.5,-649.73 650.07,-659.34 641.56,-668.98"/>
 <polygon fill="black" stroke="black" points="638.72,-666.91 634.71,-676.72 643.96,-671.55 638.72,-666.91"/>
 </g>
-<!-- 19 -->
+<!-- 15 -->
 <g id="node5" class="node">
-<title>19</title>
+<title>15</title>
 <polygon fill="#f2f2f2" stroke="black" points="696.06,-693.7 696.06,-894.5 911.17,-894.5 911.17,-693.7 696.06,-693.7"/>
 <text text-anchor="middle" x="803.62" y="-877.9" font-family="Times,serif" font-size="14.00">ModuleKeys</text>
 <text text-anchor="middle" x="803.62" y="-861.1" font-family="Times,serif" font-size="14.00">../contracts/shared/ModuleKeys.sol</text>
@@ -107,15 +107,15 @@
 <text text-anchor="start" x="704.06" y="-718.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;KEY_LIQUIDATOR: bytes32</text>
 <text text-anchor="start" x="704.06" y="-701.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;KEY_KEEPER: bytes32</text>
 </g>
-<!-- 17&#45;&gt;19 -->
+<!-- 13&#45;&gt;15 -->
 <g id="edge2" class="edge">
-<title>17&#45;&gt;19</title>
+<title>13&#45;&gt;15</title>
 <path fill="none" stroke="black" d="M803.62,-640.02C803.62,-647.87 803.62,-655.7 803.62,-663.44"/>
 <polygon fill="none" stroke="black" points="793.12,-663.58 803.62,-693.58 814.12,-663.58 793.12,-663.58"/>
 </g>
-<!-- 188 -->
+<!-- 81 -->
 <g id="node6" class="node">
-<title>188</title>
+<title>81</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-418.3 0,-535.1 251.23,-535.1 251.23,-418.3 0,-418.3"/>
 <text text-anchor="middle" x="125.62" y="-518.5" font-family="Times,serif" font-size="14.00">&lt;&lt;Struct&gt;&gt;</text>
 <text text-anchor="middle" x="125.62" y="-501.7" font-family="Times,serif" font-size="14.00">Exchange</text>
@@ -125,9 +125,9 @@
 <text text-anchor="start" x="8" y="-443.3" font-family="Times,serif" font-size="14.00">to: address</text>
 <text text-anchor="start" x="8" y="-426.5" font-family="Times,serif" font-size="14.00">rate: uint256</text>
 </g>
-<!-- 187 -->
+<!-- 80 -->
 <g id="node7" class="node">
-<title>187</title>
+<title>80</title>
 <polygon fill="#f2f2f2" stroke="black" points="179.44,-0.5 179.44,-276.5 785.79,-276.5 785.79,-0.5 179.44,-0.5"/>
 <text text-anchor="middle" x="482.62" y="-259.9" font-family="Times,serif" font-size="14.00">BasicDexSwap</text>
 <text text-anchor="middle" x="482.62" y="-243.1" font-family="Times,serif" font-size="14.00">../contracts/vault/swap/BasicDexSwap.sol</text>
@@ -139,41 +139,41 @@
 <text text-anchor="start" x="187.44" y="-159.9" font-family="Times,serif" font-size="14.00">Internal:</text>
 <text text-anchor="start" x="187.44" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setRate(exchange: Exchange)</text>
 <text text-anchor="start" x="187.44" y="-126.3" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="187.44" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initialize(exchanges: Exchange[])</text>
+<text text-anchor="start" x="187.44" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initialize(exchanges: Exchange[]) &lt;&lt;initializer&gt;&gt;</text>
 <text text-anchor="start" x="187.44" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;swap(_swap: DexSwapData): (toAssetAmount: uint256)</text>
-<text text-anchor="start" x="187.44" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setRate(exchange: Exchange)</text>
+<text text-anchor="start" x="187.44" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setRate(exchange: Exchange) &lt;&lt;onlyKeeperOrGovernor&gt;&gt;</text>
 <text text-anchor="start" x="187.44" y="-59.1" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="187.44" y="-42.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; Swapped(from: address, to: address, fromAssetAmount: uint256, toAssetAmount: uint256)</text>
 <text text-anchor="start" x="187.44" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; RateSet(from: address, to: address, rate: uint256)</text>
 <text text-anchor="start" x="187.44" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_nexus: address)</text>
 </g>
-<!-- 188&#45;&gt;187 -->
+<!-- 81&#45;&gt;80 -->
 <g id="edge4" class="edge">
-<title>188&#45;&gt;187</title>
+<title>81&#45;&gt;80</title>
 <path fill="none" stroke="black" d="M178.71,-418.04C206.11,-385.84 240.69,-345.73 274.62,-313 284.35,-303.61 294.55,-294.2 305,-284.88"/>
 <polygon fill="black" stroke="black" points="305.24,-284.66 307.09,-277.69 314.23,-276.72 312.38,-283.69 305.24,-284.66"/>
 </g>
-<!-- 187&#45;&gt;3 -->
+<!-- 80&#45;&gt;3 -->
 <g id="edge8" class="edge">
-<title>187&#45;&gt;3</title>
+<title>80&#45;&gt;3</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M320.68,-276.54C312.28,-288.19 304.78,-300.37 298.62,-313 281.73,-347.59 265.88,-580.22 258.3,-708.52"/>
 <polygon fill="black" stroke="black" points="254.79,-708.52 257.7,-718.71 261.78,-708.93 254.79,-708.52"/>
 </g>
-<!-- 187&#45;&gt;4 -->
+<!-- 80&#45;&gt;4 -->
 <g id="edge5" class="edge">
-<title>187&#45;&gt;4</title>
+<title>80&#45;&gt;4</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M482.62,-276.73C482.62,-317.43 482.62,-360.62 482.62,-396.33"/>
 <polygon fill="none" stroke="black" points="472.12,-396.43 482.62,-426.43 493.12,-396.43 472.12,-396.43"/>
 </g>
-<!-- 187&#45;&gt;17 -->
+<!-- 80&#45;&gt;13 -->
 <g id="edge6" class="edge">
-<title>187&#45;&gt;17</title>
+<title>80&#45;&gt;13</title>
 <path fill="none" stroke="black" d="M631.21,-276.77C638.42,-283.95 645.57,-291.15 654.38,-300.3"/>
 <polygon fill="none" stroke="black" points="647.12,-307.9 675.4,-322.4 662.34,-293.43 647.12,-307.9"/>
 </g>
-<!-- 187&#45;&gt;188 -->
+<!-- 80&#45;&gt;81 -->
 <g id="edge7" class="edge">
-<title>187&#45;&gt;188</title>
+<title>80&#45;&gt;81</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M296.28,-276.72C282.57,-288.68 269.2,-300.86 256.62,-313 225.47,-343.04 193.77,-379.31 169.28,-409.97"/>
 <polygon fill="black" stroke="black" points="166.35,-408.03 162.89,-418.04 171.84,-412.37 166.35,-408.03"/>
 </g>
