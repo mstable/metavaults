@@ -9,9 +9,9 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 751.4)">
 <title>UmlClassDiagram</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-751.4 603.56,-751.4 603.56,4 -4,4"/>
-<!-- 40 -->
+<!-- 30 -->
 <g id="node1" class="node">
-<title>40</title>
+<title>30</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-0.5 0,-746.9 599.56,-746.9 599.56,-0.5 0,-0.5"/>
 <text text-anchor="middle" x="299.78" y="-730.3" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="299.78" y="-713.5" font-family="Times,serif" font-size="14.00">AbstractVault</text>
@@ -40,16 +40,16 @@
 <text text-anchor="start" x="8" y="-344.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_afterDepositHook(assets: uint256, shares: uint256, receiver: address, fromDeposit: bool)</text>
 <text text-anchor="start" x="8" y="-327.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_beforeWithdrawHook(assets: uint256, shares: uint256, owner: address, fromRedeem: bool)</text>
 <text text-anchor="start" x="8" y="-311.1" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="8" y="-294.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address): (shares: uint256)</text>
+<text text-anchor="start" x="8" y="-294.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address): (shares: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
 <text text-anchor="start" x="8" y="-277.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewDeposit(assets: uint256): (shares: uint256)</text>
 <text text-anchor="start" x="8" y="-260.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxDeposit(caller: address): (maxAssets: uint256)</text>
-<text text-anchor="start" x="8" y="-243.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;mint(shares: uint256, receiver: address): (assets: uint256)</text>
+<text text-anchor="start" x="8" y="-243.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;mint(shares: uint256, receiver: address): (assets: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
 <text text-anchor="start" x="8" y="-227.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewMint(shares: uint256): (assets: uint256)</text>
 <text text-anchor="start" x="8" y="-210.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxMint(owner: address): (maxShares: uint256)</text>
-<text text-anchor="start" x="8" y="-193.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;withdraw(assets: uint256, receiver: address, owner: address): (shares: uint256)</text>
+<text text-anchor="start" x="8" y="-193.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;withdraw(assets: uint256, receiver: address, owner: address): (shares: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
 <text text-anchor="start" x="8" y="-176.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewWithdraw(assets: uint256): (shares: uint256)</text>
 <text text-anchor="start" x="8" y="-159.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxWithdraw(owner: address): (maxAssets: uint256)</text>
-<text text-anchor="start" x="8" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address): (assets: uint256)</text>
+<text text-anchor="start" x="8" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address): (assets: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
 <text text-anchor="start" x="8" y="-126.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewRedeem(shares: uint256): (assets: uint256)</text>
 <text text-anchor="start" x="8" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxRedeem(owner: address): (maxShares: uint256)</text>
 <text text-anchor="start" x="8" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;asset(): (assetTokenAddress: address)</text>

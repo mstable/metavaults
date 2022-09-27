@@ -12,7 +12,7 @@
 
 ## Vault Abstractions
 
-The vaults follow the Open Zeppelin pattern of all the external function calling an internal function that can be overridden by implementing contracts. For examples, the external `deposit` function calls the internal, virtial `_deposit` function that can be overridden with inheritance.
+The vaults follow the Open Zeppelin pattern of all the external functions calling an internal function that can be overridden by implementing contracts. For example, the external `deposit` function calls the internal, virtual `_deposit` function that can be overridden with inheritance.
 
 ### Abstract EIP-4626 Vault
 
@@ -21,10 +21,28 @@ The vaults follow the Open Zeppelin pattern of all the external function calling
 The following functions need to be implemented:
 
 -   `totalAssets` that returns the total amount of the underlying assets that is managed by vault.
--   `_afterDepositHook` called after assets have been transferred into the vault but before shares are minted. Typically, this deposit the assets into the underlying vaults or platforms.
+-   `_afterDepositHook` called after assets have been transferred into the vault but before shares are minted. Typically, this deposits the assets into the underlying vaults or platforms.
 -   `_beforeWithdrawHook` called before shares are burnt and assets are transferred to the receiver. Typically, this withdraws the assets from the underlying vaults or platforms.
 
+`AbstractVault` hierarchy
+
+![Abstract Vault Hierarchy](../../docs/AbstractVaultHierarchy.svg)
+
+`AbstractVault` contract
+
 ![Abstract Vault](../../docs/AbstractVault.svg)
+
+### Light Abstract EIP-4626 Vault
+
+[LightAbstractVault](./LightAbstractVault.sol) is a minimal abstract implementation of an ERC-4626 vault.
+
+`LightAbstractVault` hierarchy
+
+![Light Abstract Vault Hierarchy](../../docs/LightAbstractVaultHierarchy.svg)
+
+`LightAbstractVault` contract
+
+![Light Abstract Vault](../../docs/LightAbstractVault.svg)
 
 ## Vault Capabilities
 
