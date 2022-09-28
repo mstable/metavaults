@@ -223,4 +223,37 @@ task("mv-update-asset-per-share").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
+subtask("mv-settle", "Vault Manager invests the assets sitting in the vault to underlying vaults.")
+    .addParam("vault", "Symbol or address of the meta vault.", undefined, types.string)
+    .addParam(
+        "underlyings",
+        'json array. eg [{"vaultIndex": 3, "assets": 10000},{"vaultIndex": 4, "assets": 20000}]',
+        undefined,
+        types.json,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { speed, underlyings, vault } = taskArgs
+
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+        const signerAddress = await signer.getAddress()
+
+        const vaultAddress = await resolveAddress(vault, chain)
+        const metaVault = PeriodicAllocationAbstractVault__factory.connect(vaultAddress, signer)
+
+        const asset = IERC20Metadata__factory.connect(await metaVault.asset(), signer)
+        const assetDecimals = await asset.decimals()
+        const scaledUnderlyings = underlyings.map((u) => ({
+            vaultIndex: u.vaultIndex,
+            assets: simpleToExactAmount(u.assets, assetDecimals),
+        }))
+
+        const tx = await metaVault.settle(scaledUnderlyings)
+        await logTxDetails(tx, `${signerAddress} settle ${vault} meta vault`)
+    })
+task("mv-settle").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
+
 module.exports = {}
