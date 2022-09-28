@@ -30,6 +30,7 @@
         "copy-types": "cp -R types/generated dist/types",
         "coverage": "node --max_old_space_size=6144 node_modules/.bin/hardhat coverage --testfiles 'test/**/*.spec.ts' --show-stack-traces --typecheck",
         "coverage:fork": "node --max_old_space_size=6144 node_modules/.bin/hardhat coverage --config hardhat-fork.config.ts --testfiles 'test-fork/vault/savePlus.spec.ts' --show-stack-traces --typecheck",
+        "coverage:fork:peripheral": "node --max_old_space_size=6144 node_modules/.bin/hardhat coverage --config hardhat-fork.config.ts --testfiles 'test-fork/peripheral/**/*.spec.ts' --show-stack-traces --typecheck",
         "convertTestFiles": "cd test-utils/validator-data; ts-node ./convertCsvTestFiles.ts",
         "flatten": "npx sol-merger \"./contracts/**/*.sol\" ./_flat",
         "hh:fork": "npx hardhat node --config hardhat-fork.config.ts",
