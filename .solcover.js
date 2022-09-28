@@ -1,10 +1,9 @@
 module.exports = {
     skipFiles: [
         "integrations",
-        "peripheral",
         "upgradability",
-        "Convex3CrvBasicVault.sol",
-        "SafeCastExtended.sol",
+        "./vault/liquidity/convex/Convex3CrvBasicVault.sol",
+        "./shared/SafeCastExtended.sol",
         "z_mocks",
     ],
     mocha: {
