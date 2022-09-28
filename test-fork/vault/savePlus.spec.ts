@@ -525,6 +525,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         rewardsWhale = await impersonateAccount(rewardsWhaleAddress)
         vaultManager = sa.vaultManager
+        log(`Vault Manager: ${vaultManager.address}`)
 
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
@@ -533,12 +534,12 @@ describe("Save+ Basic and Meta Vaults", async () => {
         nexus = core.nexus
         proxyAdmin = core.proxyAdmin as InstantProxyAdmin
 
-            // Deploy mocked contracts
-            ; ({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
+        // Deploy mocked contracts
+        ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
         const syncSwapper = await deployMockSyncSwapper(deployer, nexus)
 
-            // Deploy common /  utilities  contracts
-            ; ({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
+        // Deploy common /  utilities  contracts
+        ;({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
 
         await proposeAcceptNexusModule(nexus, governor, "Liquidator", liquidator.address)
         liquidator = liquidator.connect(governor.signer)
