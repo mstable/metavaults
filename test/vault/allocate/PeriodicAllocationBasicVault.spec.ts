@@ -482,6 +482,16 @@ describe("PeriodicAllocationBasicVault", async () => {
                         await assertVaultBalances(dataAfter, balances)
                         expect(dataAfter.vaultData.userShares, "userShares").to.eq(initialDepositAmount)
                     })
+                    it("redeem should fail when vault1 is paused", async () => {
+                        expect(await bVault1.paused()).to.not.equal(true)
+                        await bVault1.connect(sa.governor.signer).pause()
+                        expect(await bVault1.paused()).to.equal(true)
+
+                        const smallRedeemAmount = initialDepositAmount.div(100)
+                        const redeemTx = pabVault.connect(user.signer).redeem(smallRedeemAmount, user.address, user.address)
+
+                        await expect(redeemTx).to.be.revertedWith("not enough assets")
+                    })
                     context("it should correctly source assets with", async () => {
                         it("sharesRedeemed > singleVaultShareThreshold", async () => {
                             const userSharesBefore = await pabVault.balanceOf(user.address)
@@ -805,9 +815,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                 })
             })
             context("settle partial assets", async () => {
-                const vaultHasEnoughWithdrawAmount = simpleToExactAmount(300000)
+                const vaultHasEnoughWithdrawAmount = initialDepositAmount.mul(3).div(100)
                 describe("4% in metaVault and 48-48 in vault1-vault2", async () => {
-                    const inVaultSettleAmount = simpleToExactAmount(400000)
+                    const inVaultSettleAmount = initialDepositAmount.mul(4).div(100)
                     const bVault1SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
                     const bVault2SettleAmount = initialDepositAmount.sub(inVaultSettleAmount).div(2)
                     const beforeEachFixture = async function fixture() {
