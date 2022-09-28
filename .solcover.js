@@ -3,8 +3,8 @@ module.exports = {
         "integrations",
         "peripheral",
         "upgradability",
-        "Convex3CrvBasicVault",
-        "SafeCastExtended",
+        "Convex3CrvBasicVault.sol",
+        "SafeCastExtended.sol",
         "z_mocks",
     ],
     mocha: {
