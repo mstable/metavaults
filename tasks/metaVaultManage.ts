@@ -6,6 +6,7 @@ import {
     IERC20Metadata__factory,
     PerfFeeAbstractVault__factory,
     PeriodicAllocationAbstractVault__factory,
+    SameAssetUnderlyingsAbstractVault__factory,
 } from "types/generated"
 
 import { logTxDetails } from "./utils/deploy-utils"
@@ -253,6 +254,41 @@ subtask("mv-settle", "Vault Manager invests the assets sitting in the vault to u
         await logTxDetails(tx, `${signerAddress} settle ${vault} meta vault`)
     })
 task("mv-settle").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
+
+subtask("mv-rebalance", "Vault Manager rebalances the assets in the underlying vaults")
+    .addParam("vault", "Symbol or address of the meta vault.", undefined, types.string)
+    .addParam(
+        "swaps",
+        'json array of the underlying vault swaps. eg [{"fromVaultIndex": 1, "toVaultIndex": 2, "assets": 10000, "shares": 200}]',
+        undefined,
+        types.json,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { speed, swaps, vault } = taskArgs
+
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+        const signerAddress = await signer.getAddress()
+
+        const vaultAddress = await resolveAddress(vault, chain)
+        const metaVault = SameAssetUnderlyingsAbstractVault__factory.connect(vaultAddress, signer)
+
+        const asset = IERC20Metadata__factory.connect(await metaVault.asset(), signer)
+        const assetDecimals = await asset.decimals()
+        const scaledSwaps = swaps.map((u) => ({
+            fromVaultIndex: u.fromVaultIndex,
+            toVaultIndex: u.toVaultIndex,
+            assets: simpleToExactAmount(u.assets, assetDecimals),
+            shares: simpleToExactAmount(u.shares),
+        }))
+
+        const tx = await metaVault.rebalance(scaledSwaps)
+        await logTxDetails(tx, `${signerAddress} rebalance ${vault} meta vault`)
+    })
+task("mv-rebalance").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
