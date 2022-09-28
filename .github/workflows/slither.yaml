@@ -31,5 +31,5 @@ jobs:
               continue-on-error: false
               id: slither
               with:
-                  node-version: 16.17.1
+                  node-version: 16
                   slither-config: "slither.config.json"
