@@ -326,7 +326,7 @@ abstract contract PeriodicAllocationAbstractVault is
         sourceParams.singleVaultSharesThreshold = _singleVaultSharesThreshold;
     }
 
-    /// @notice `Governor` sets the underlying vault that small withdrawls are redeemed from.
+    /// @notice `Governor` sets the underlying vault that small withdrawals are redeemed from.
     /// @param _singleSourceVaultIndex the underlying vault's index position in `underlyingVaults`. This starts from index 0.
     function setSingleSourceVaultIndex(uint32 _singleSourceVaultIndex) external onlyGovernor {
         // Check the single source vault is active.
