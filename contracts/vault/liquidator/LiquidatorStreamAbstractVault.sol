@@ -8,7 +8,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 // Libs
 import { AbstractVault, IERC20 } from "../AbstractVault.sol";
 import { LiquidatorAbstractVault } from "./LiquidatorAbstractVault.sol";
-import "hardhat/console.sol";
 
 struct StreamData {
     uint32 last;
@@ -54,13 +53,24 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
         STREAM_DURATION = _streamDuration;
     }
 
+    /// @dev calculates the amount of vault shares that can be burnt to this point in time.
+    function _secondsToBurn(StreamData memory stream) internal view returns (uint256 secondsToBurn_) {
+        // If still burning vault shares
+        if (block.timestamp < stream.end) {
+            secondsToBurn_ = block.timestamp - stream.last;
+        }
+        // If still vault shares to burn since the stream ended.
+        else if (stream.last < stream.end) {
+            secondsToBurn_ = stream.end - stream.last;
+        }
+    }
+
+    /// @dev Burns vault shares to this point of time.
     function _streamRewards() internal {
         StreamData memory stream = shareStream;
 
         if (stream.last < stream.end) {
-            uint256 secondsToBurn = block.timestamp < stream.end
-                ? block.timestamp - stream.last
-                : stream.end - stream.last;
+            uint256 secondsToBurn = _secondsToBurn(stream);
             uint256 sharesToBurn = (secondsToBurn * stream.sharesPerSecond) /
                 STREAM_PER_SECOND_SCALE;
 
@@ -80,20 +90,10 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
      * @dev If shares are being burnt, the `totalSupply` will decrease in every block.
      */
     function totalSupply() public view virtual override(ERC20, IERC20) returns (uint256 shares) {
-        // console.log("sol:LiquidatorStreamAbstractVault.totalSupply");
         StreamData memory stream = shareStream;
-        console.log("sol:LiquidatorStreamAbstractVault.totalSupply block.timestamp %s stream.last %s stream.end %s", block.timestamp, stream.last, stream.end);
-        console.log("sol:LiquidatorStreamAbstractVault.totalSupply block.timestamp < stream.end %s", block.timestamp < stream.end);
-        if(block.timestamp < stream.end){
-            require( block.timestamp >= stream.last, "Stream values wrong block.timestamp  < stream.last");
-        }else{
-            require( stream.end >= stream.last, "Stream values wrong stream.end < stream.last");
-        }
-        uint256 secondsToBurn = block.timestamp < stream.end
-            ? block.timestamp - stream.last
-            : stream.end - stream.last;
+        uint256 secondsToBurn = _secondsToBurn(stream);
         uint256 sharesToBurn = (secondsToBurn * stream.sharesPerSecond) / STREAM_PER_SECOND_SCALE;
-        // console.log("sol:LiquidatorStreamAbstractVault.totalSupply sharesToBurn %s, totalSupply %s, ", sharesToBurn, ERC20.totalSupply(), sharesToBurn <= ERC20.totalSupply());
+        
         shares = ERC20.totalSupply() - sharesToBurn;
     }
 

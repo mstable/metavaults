@@ -754,7 +754,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
     before("reset block number", async () => {
         await loadOrExecFixture(setup)
     })
-    context.skip("deployment check", async () => {
+    context("deployment check", async () => {
         describe("proxy instant admin", async () => {
             it("owner is the multisig governor", async () => {
                 expect(await proxyAdmin.owner(), "owner must be governor").to.be.eq(governorAddress)
@@ -836,7 +836,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context.skip("behaviors", async () => {
+    context("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
@@ -1041,7 +1041,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 staker1,
             )
         })
-        describe.skip("basic flow", () => {
+        describe("basic flow", () => {
             it("deposit 3Crv", async () => {
                 await assertVaultDeposit(
                     staker1,
@@ -1196,10 +1196,8 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.gt(0)
                 })
             })
-            describe("after settlement", () => {   
+            describe("after settlement and burning vault shares", () => {
                 it("partial withdraw", async () => {
-                    console.log("TS: partial withdraw")
-                    await increaseTime(ONE_WEEK)
                     await assertVaultWithdraw(
                         staker1,
                         threeCrvToken,
@@ -1208,7 +1206,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                 })
                 it("partial redeem", async () => {
-                    console.log("TS: partial redeem")
                     await assertVaultRedeem(
                         staker1,
                         threeCrvToken,
@@ -1218,7 +1215,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                 })
                 it("total redeem", async () => {
-                    console.log("TS: total redeem")
                     await assertVaultRedeem(staker1, threeCrvToken, periodicAllocationPerfFeeMetaVault, dataEmitter)
                     const vaultsDataAfter = await snapshotVaults(
                         convex3CrvLiquidatorVaults,
@@ -1239,7 +1235,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context.skip("Curve3CrvBasicMetaVault", async () => {
+    context("Curve3CrvBasicMetaVault", async () => {
         let vaultsDataBefore
 
         before("reset block number", async () => {
