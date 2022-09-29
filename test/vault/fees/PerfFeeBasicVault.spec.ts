@@ -77,7 +77,7 @@ describe("Performance Fees", async () => {
         const feeShares = calculateFeeShares(data, assetsPerShareAfter)
 
         if (feeShares.gt(0)) {
-            await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares)
+            await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, assetsPerShareAfter)
         } else {
             await expect(tx).to.not.emit(vault, "PerformanceFee")
         }
@@ -331,7 +331,7 @@ describe("Performance Fees", async () => {
 
                 expect(await vault.performanceFee(), "PerformaceFees").to.not.eq(newPerfFee)
                 const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
-                await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares)
+                await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, calculateAssetsPerShare(data))
                 expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
                 expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
             })
