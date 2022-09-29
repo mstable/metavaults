@@ -1,4 +1,5 @@
 import { simpleToExactAmount } from "@utils/math"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import {
     AssetPerShareAbstractVault__factory,
@@ -55,6 +56,15 @@ subtask("mv-charge-perf-fee", "Vault Manager charges a performance fee since the
 
         const tx = await metaVault.chargePerformanceFee()
         await logTxDetails(tx, `${signerAddress} charged performance fee for the ${vault} meta vault`)
+
+        const receipt = await tx.wait()
+        const prefFeeEvent = receipt.events?.find((e) => e.event === "PerformanceFee")
+        if (prefFeeEvent) {
+            log(`${prefFeeEvent.args.feeReceiver} received ${prefFeeEvent.args.feeShares} shares as a fee`)
+            log(`Fee assets/share updated to ${formatUnits(prefFeeEvent.args.assetsPerShare)}`)
+        } else {
+            log("No performance fee was charged")
+        }
     })
 task("mv-charge-perf-fee").setAction(async (_, __, runSuper) => {
     await runSuper()
@@ -217,8 +227,15 @@ subtask("mv-update-asset-per-share", "Vault Manager recalculate the meta vault's
         const vaultAddress = await resolveAddress(vault, chain)
         const metaVault = AssetPerShareAbstractVault__factory.connect(vaultAddress, signer)
 
+        log(`old assets/share ${await metaVault.assetsPerShare()}`)
+
         const tx = await metaVault.updateAssetPerShare()
         await logTxDetails(tx, `${signerAddress} updated the assets per share for the ${vault} meta vault`)
+
+        const receipt = await tx.wait()
+        const event = receipt.events?.find((e) => e.event === "AssetsPerShareUpdated")
+        log(`new assets/share ${event.args.assetsPerShare}`)
+        log(`new total assets ${event.args.totalAssets}`)
     })
 task("mv-update-asset-per-share").setAction(async (_, __, runSuper) => {
     await runSuper()

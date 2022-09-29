@@ -42,7 +42,7 @@ abstract contract LiquidatorStreamFeeAbstractVault is LiquidatorStreamAbstractVa
     /// @notice Donation fee scaled to `FEE_SCALE`.
     uint32 public donationFee;
 
-    event FeeReceiverUpdated(address feeReceiver);
+    event FeeReceiverUpdated(address indexed feeReceiver);
 
     /**
      * @param _feeReceiver Account that receives the performance fee as shares.

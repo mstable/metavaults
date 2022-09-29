@@ -36,7 +36,7 @@ contract BasicDexSwap is IDexSwap, ImmutableModule, Initializable {
         uint256 fromAssetAmount,
         uint256 toAssetAmount
     );
-    event RateSet(address from, address to, uint256 rate);
+    event RateSet(address indexed from, address indexed to, uint256 rate);
 
     /**
      * @param _nexus  Address of the Nexus contract that resolves protocol modules and roles.
