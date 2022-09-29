@@ -25,7 +25,7 @@ abstract contract FeeAdminAbstractVault is AbstractVault {
     /// @notice Account that receives the performance fee as shares.
     address public feeReceiver;
 
-    event FeeReceiverUpdated(address feeReceiver);
+    event FeeReceiverUpdated(address indexed feeReceiver);
 
     /**
      * @param _feeReceiver Account that receives the performance fee as shares.

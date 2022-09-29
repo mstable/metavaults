@@ -49,7 +49,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     event DonatedAssets(uint256[] assets);
 
     /// swap events
-    event SwapperUpdated(address oldSwapper, address newSwapper);
+    event SwapperUpdated(address indexed oldSwapper, address indexed newSwapper);
     event Swapped(uint256 batch, uint256 rewards, uint256 assets);
     event SwapInitiated(uint256 batch, uint256 rewards, uint256 assets);
     event SwapSettled(uint256 batch, uint256 rewards, uint256 assets);

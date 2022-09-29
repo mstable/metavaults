@@ -36,7 +36,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
     /// @notice Assets per shares used to calculate performance fees scaled to 26 decimal places.
     uint256 public perfFeesAssetPerShare;
 
-    event PerformanceFee(address feeReceiver, uint256 feeShares);
+    event PerformanceFee(address indexed feeReceiver, uint256 feeShares, uint256 assetsPerShare);
     event PerformanceFeeUpdated(uint256 performanceFee);
 
     /// @param _performanceFee Performance fee scaled to 6 decimal places.
@@ -68,7 +68,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
             if (feeShares > 0) {
                 _mint(feeReceiver, feeShares);
 
-                emit PerformanceFee(feeReceiver, feeShares);
+                emit PerformanceFee(feeReceiver, feeShares, currentAssetsPerShare);
             }
         }
 
