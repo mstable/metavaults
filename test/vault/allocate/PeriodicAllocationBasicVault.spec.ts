@@ -258,6 +258,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 ctx.asset = asset
                 ctx.sa = sa
                 ctx.amounts = testAmounts(100, await asset.decimals())
+                ctx.dataEmitter = mocks.dataEmitter
             }
         })
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: pabVault as VaultManagerRole, sa }))

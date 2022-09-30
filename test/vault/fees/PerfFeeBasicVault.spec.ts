@@ -7,12 +7,12 @@ import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { Wallet } from "ethers"
 import { ethers } from "hardhat"
-import { MockERC20ForceBurnable__factory, MockNexus__factory, PerfFeeBasicVault__factory } from "types/generated"
+import { DataEmitter__factory, MockERC20ForceBurnable__factory, MockNexus__factory, PerfFeeBasicVault__factory } from "types/generated"
 
 import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { BigNumberish } from "ethers"
 import type { Account } from "types"
-import type { AbstractVault, MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault, VaultManagerRole } from "types/generated"
+import type { AbstractVault, DataEmitter, MockERC20ForceBurnable, MockNexus, PerfFeeBasicVault, VaultManagerRole } from "types/generated"
 
 const perfAssetsPerShareScale = simpleToExactAmount(1, 26)
 const feeScale = simpleToExactAmount(1, 6)
@@ -29,6 +29,7 @@ interface CheckData {
 describe("Performance Fees", async () => {
     let sa: StandardAccounts
     let feeReceiver: Account
+    let dataEmitter: DataEmitter
     let nexus: MockNexus
     let asset: MockERC20ForceBurnable
     let vault: PerfFeeBasicVault
@@ -106,6 +107,8 @@ describe("Performance Fees", async () => {
     }
 
     const setup = async (decimals = 18): Promise<PerfFeeBasicVault> => {
+        dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+
         if (!asset) {
             await deployFeeVaultDependencies(decimals)
         }
@@ -155,6 +158,7 @@ describe("Performance Fees", async () => {
                     ctx.asset = asset
                     ctx.sa = sa
                     ctx.amounts = testAmounts(100, await asset.decimals())
+                    ctx.dataEmitter = dataEmitter
                 }
             })
             shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)

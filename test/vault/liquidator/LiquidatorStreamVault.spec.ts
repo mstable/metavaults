@@ -10,6 +10,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import {
     BasicDexSwap__factory,
+    DataEmitter__factory,
     Liquidator__factory,
     LiquidatorStreamBasicVault__factory,
     MockERC20__factory,
@@ -22,6 +23,7 @@ import type { BigNumberish } from "ethers"
 import type {
     AbstractVault,
     BasicDexSwap,
+    DataEmitter,
     Liquidator,
     LiquidatorStreamBasicVault,
     MockERC20,
@@ -31,6 +33,7 @@ import type {
 
 describe("Streamed Liquidator Vault", async () => {
     let sa: StandardAccounts
+    let dataEmitter: DataEmitter
     let nexus: MockNexus
     let asset: MockERC20
     let rewards1: MockERC20
@@ -170,6 +173,8 @@ describe("Streamed Liquidator Vault", async () => {
     }
 
     const setup = async (decimals = 18): Promise<LiquidatorStreamBasicVault> => {
+        dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
 
@@ -203,15 +208,57 @@ describe("Streamed Liquidator Vault", async () => {
     describe("behaviors", async () => {
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
 
-        describe("should behave like AbstractVaultBehaviourContext", async () => {
+        describe("should behave like AbstractVaultBehaviourContext before stream vault shares", async () => {
             const ctx: Partial<BaseVaultBehaviourContext> = {}
             before(async () => {
-                ctx.fixture = async function fixture() {
+                ctx.fixture = async function beforeStream() {
                     await setup()
                     ctx.vault = vault as unknown as AbstractVault
                     ctx.asset = asset
                     ctx.sa = sa
                     ctx.amounts = testAmounts(100, await asset.decimals())
+                    ctx.dataEmitter = dataEmitter
+                }
+            })
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+        })
+        describe("should behave like AbstractVaultBehaviourContext while streaming vault shares", async () => {
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
+            before(async () => {
+                ctx.fixture = async function whileStreaming() {
+                    await setup()
+                    ctx.vault = vault as unknown as AbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(1000, await asset.decimals())
+                    ctx.dataEmitter = dataEmitter
+
+                    await vault.deposit(ctx.amounts.initialDeposit, sa.alice.address)
+
+                    const donatedAssets = simpleToExactAmount(200)
+                    await vault.donate(asset.address, donatedAssets)
+
+                    await increaseTime(ONE_HOUR.mul(3))
+                }
+            })
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+        })
+        describe("should behave like AbstractVaultBehaviourContext after streaming vault shares", async () => {
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
+            before(async () => {
+                ctx.fixture = async function afterStream() {
+                    await setup()
+                    ctx.vault = vault as unknown as AbstractVault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(100000, await asset.decimals())
+                    ctx.dataEmitter = dataEmitter
+
+                    await vault.deposit(ctx.amounts.initialDeposit, sa.alice.address)
+                    await vault.donate(asset.address, simpleToExactAmount(2000))
+                    await increaseTime(ONE_HOUR.mul(3))
+                    await vault.deposit(simpleToExactAmount(2000), sa.bob.address)
+                    await increaseTime(ONE_DAY)
                 }
             })
             shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
@@ -313,15 +360,10 @@ describe("Streamed Liquidator Vault", async () => {
         })
         it("mint", async () => {
             const mintAmount = simpleToExactAmount(3000)
-            // const expectedAssets = await vault.previewMint(mintAmount)
 
             const tx = await vault.mint(mintAmount, sa.default.address)
 
             await assertStreamedShares(tx, lastTxTimestamp, mintAmount, streamSharesBefore, initialShares)
-
-            const receipt = await tx.wait()
-            const actualAssets = await receipt.events.find((e) => e.event === "Deposit").args.assets
-            // expect(actualAssets, "preview assets v actual transfer").to.eq(expectedAssets)
         })
         it.skip("deposit", async () => {
             const depositAmount = simpleToExactAmount(1000)

@@ -836,9 +836,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context("behaviors", async () => {
+    context.only("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
-            describe("periodicAllocationPerfFeeMetaVault", async () => {
+            describe.only("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
@@ -849,6 +849,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
                 shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
@@ -874,6 +875,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxRedeem: 0.02,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
 
@@ -900,6 +902,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxRedeem: 2,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
 
@@ -926,6 +929,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxRedeem: 2,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
 
@@ -952,6 +956,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxRedeem: 2,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
 
@@ -977,6 +982,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxRedeem: 0.007,
                         }
                         ctx.amounts = testAmounts(1000, DAI.decimals)
+                        ctx.dataEmitter = dataEmitter
                     }
                 })
                 shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)

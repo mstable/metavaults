@@ -10,6 +10,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import {
     BasicDexSwap__factory,
+    DataEmitter__factory,
     Liquidator__factory,
     LiquidatorStreamFeeBasicVault__factory,
     MockERC20__factory,
@@ -24,6 +25,7 @@ import type { BigNumberish } from "ethers"
 import type {
     AbstractVault,
     BasicDexSwap,
+    DataEmitter,
     Liquidator,
     LiquidatorStreamFeeBasicVault,
     MockERC20,
@@ -35,6 +37,7 @@ const defaultDonationFee = 10000 // 1%
 
 describe("Streamed Liquidator Fee Vault", async () => {
     let sa: StandardAccounts
+    let dataEmitter: DataEmitter
     let nexus: MockNexus
     let asset: MockERC20
     let rewards1: MockERC20
@@ -180,6 +183,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
     }
 
     const setup = async (decimals = 18): Promise<LiquidatorStreamFeeBasicVault> => {
+        dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
 
@@ -221,6 +225,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
                     ctx.asset = asset
                     ctx.sa = sa
                     ctx.amounts = testAmounts(100, await asset.decimals())
+                    ctx.dataEmitter = dataEmitter
                 }
             })
             shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
