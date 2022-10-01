@@ -836,9 +836,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    context.only("behaviors", async () => {
+    context("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
-            describe.only("periodicAllocationPerfFeeMetaVault", async () => {
+            describe("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
@@ -865,14 +865,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.variances = {
-                            deposit: 0.0001,
-                            mint: 0.02,
-                            withdraw: 0.0006,
-                            redeem: 0.0003,
                             convertToAssets: 0.04,
                             convertToShares: 0.04,
-                            maxWithdraw: 0.0007,
-                            maxRedeem: 0.02,
+                            maxWithdraw: 0.04,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                         ctx.dataEmitter = dataEmitter
@@ -892,14 +887,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.variances = {
-                            deposit: 2,
-                            mint: 2,
-                            withdraw: 2,
-                            redeem: 2,
-                            convertToAssets: 2,
-                            convertToShares: 2,
-                            maxWithdraw: 2,
-                            maxRedeem: 2,
+                            convertToAssets: 0.04,
+                            convertToShares: 0.04,
+                            maxWithdraw: 0.25,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                         ctx.dataEmitter = dataEmitter
@@ -919,14 +909,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.variances = {
-                            deposit: 2,
-                            mint: 2,
-                            withdraw: 2,
-                            redeem: 2,
-                            convertToAssets: 2,
-                            convertToShares: 2,
-                            maxWithdraw: 2,
-                            maxRedeem: 2,
+                            convertToAssets: 0.04,
+                            convertToShares: 0.04,
+                            maxWithdraw: 0.25,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                         ctx.dataEmitter = dataEmitter
@@ -946,14 +931,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = threeCrvToken
                         ctx.sa = sa
                         ctx.variances = {
-                            deposit: 2,
-                            mint: 2,
-                            withdraw: 2,
-                            redeem: 2,
-                            convertToAssets: 2,
-                            convertToShares: 2,
-                            maxWithdraw: 2,
-                            maxRedeem: 2,
+                            convertToAssets: 0.5,
+                            convertToShares: 0.5,
+                            maxWithdraw: 2.8,
                         }
                         ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
                         ctx.dataEmitter = dataEmitter
@@ -972,14 +952,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         ctx.asset = daiToken
                         ctx.sa = sa
                         ctx.variances = {
-                            deposit: 0.0001,
-                            mint: 0.005,
-                            withdraw: 0.0001,
-                            redeem: 0.0001,
-                            convertToAssets: 0.06,
-                            convertToShares: 0.06,
-                            maxWithdraw: 0.0001,
-                            maxRedeem: 0.007,
+                            convertToAssets: 0.08,
+                            convertToShares: 0.08,
+                            maxWithdraw: 0.02,
                         }
                         ctx.amounts = testAmounts(1000, DAI.decimals)
                         ctx.dataEmitter = dataEmitter

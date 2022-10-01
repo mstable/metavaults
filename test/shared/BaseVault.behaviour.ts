@@ -1,4 +1,4 @@
-import { assertBNClose, assertBNClosePercent } from "@utils/assertions"
+import { assertBNClosePercent } from "@utils/assertions"
 import { ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
 import { simpleToExactAmount } from "@utils/math"
@@ -9,7 +9,7 @@ import type { StandardAccounts } from "@utils/machines"
 import type { BN } from "@utils/math"
 import type { BytesLike } from "ethers/lib/utils"
 import type { Account } from "types"
-import type { AbstractVault, DataEmitter, IERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
+import type { AbstractVault, Convex3CrvAbstractVault, DataEmitter, IERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
 
 export type BaseAbstractVault = AbstractVault | LightAbstractVault
 
@@ -161,12 +161,18 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             )
         })
         const assertDeposit = async (sender: Account, receiver: Account, assets: BN) => {
-            const { asset, dataEmitter, vault } = ctx()
+            const { asset, dataEmitter, variances, vault } = ctx()
 
             const assetsBefore = await asset.balanceOf(sender.address)
 
             const previewEncodedData = vault.interface.encodeFunctionData("previewDeposit", [assets])
-            const rawTx = vault.interface.encodeFunctionData("deposit", [assets, receiver.address])
+            // If the vault has deposit overrides
+            const rawTx = vault["deposit(uint256,address)"]
+                ? (vault as unknown as Convex3CrvAbstractVault).interface.encodeFunctionData("deposit(uint256,address)", [
+                      assets,
+                      receiver.address,
+                  ])
+                : vault.interface.encodeFunctionData("deposit", [assets, receiver.address])
             const {
                 tx,
                 previewResult: shares,
@@ -180,10 +186,15 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             await expect(tx).to.emit(asset, "Transfer").withArgs(sender.address, vault.address, assets)
 
             expect(await vault.maxRedeem(receiver.address), "receiver max redeem").to.eq(sharesBefore.add(shares))
-            assertBNClose(await vault.maxWithdraw(receiver.address), vaultAssetsBefore.add(assets), 1, "receiver max withdraw")
+            assertBNClosePercent(
+                await vault.maxWithdraw(receiver.address),
+                vaultAssetsBefore.add(assets),
+                variances.maxWithdraw,
+                "receiver max withdraw",
+            )
 
-            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssetsBefore.add(assets))
-            expect(await vault.totalSupply(), "totalSupply").to.eq(totalSupplyBefore.add(shares))
+            assertBNClosePercent(await vault.totalAssets(), totalAssetsBefore.add(assets), variances.maxWithdraw, "total assets")
+            expect(await vault.totalSupply(), "total supply").to.eq(totalSupplyBefore.add(shares))
 
             expect(await asset.balanceOf(sender.address), "sender asset balance").to.eq(assetsBefore.sub(assets))
             expect(await vault.balanceOf(receiver.address), "receiver shares balance").to.eq(sharesBefore.add(shares))
@@ -233,7 +244,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             assertBNClosePercent(await vault.convertToAssets(amounts.mint), estimatedAssets, variances.convertToAssets, "convertToAssets")
         })
         const assertMint = async (sender: Account, receiver: Account, shares: BN) => {
-            const { asset, dataEmitter, vault } = ctx()
+            const { asset, dataEmitter, variances, vault } = ctx()
 
             const previewEncodedData = vault.interface.encodeFunctionData("previewMint", [shares])
             const rawTx = vault.interface.encodeFunctionData("mint", [shares, receiver.address])
@@ -250,12 +261,16 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             await expect(tx).to.emit(asset, "Transfer").withArgs(sender.address, vault.address, assets)
 
             expect(await vault.maxRedeem(receiver.address), "receiver max redeem").to.eq(sharesBefore.add(shares))
-            // TODO why is this sometimes off by 1?
-            // expect(await vault.maxWithdraw(receiver.address), "receiver max withdraw").to.eq(vaultAssetsBefore.add(assets))
-            // expect(await vault.maxWithdraw(receiver.address), "receiver max withdraw").to.lte(vaultAssetsBefore.add(assets))
-            assertBNClose(await vault.maxWithdraw(receiver.address), vaultAssetsBefore.add(assets), 1, "receiver max withdraw")
+            // TODO why is this sometimes off by 1 for the LiquidatorStreamVault tests?
+            // assertBNClose(await vault.maxWithdraw(receiver.address), vaultAssetsBefore.add(assets), 1, "receiver max withdraw")
+            assertBNClosePercent(
+                await vault.maxWithdraw(receiver.address),
+                vaultAssetsBefore.add(assets),
+                variances.maxWithdraw,
+                "receiver max withdraw",
+            )
 
-            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssetsBefore.add(assets))
+            assertBNClosePercent(await vault.totalAssets(), totalAssetsBefore.add(assets), variances.maxWithdraw, "total assets")
             expect(await vault.totalSupply(), "totalSupply").to.eq(totalSupplyBefore.add(shares))
 
             expect(await asset.balanceOf(sender.address), "sender asset balance").to.gte(aliceAssetBalanceBefore.sub(assets))
@@ -322,7 +337,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             )
         })
         const assertWithdraw = async (sender: Account, receiver: Account, owner: Account, assets: BN) => {
-            const { asset, dataEmitter, vault } = ctx()
+            const { asset, dataEmitter, variances, vault } = ctx()
             const assetsBefore = await asset.balanceOf(receiver.address)
 
             const previewEncodedData = vault.interface.encodeFunctionData("previewWithdraw", [assets])
@@ -340,9 +355,14 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             await expect(tx).to.emit(asset, "Transfer").withArgs(vault.address, receiver.address, assets)
 
             expect(await vault.maxRedeem(owner.address), "owner max redeem").to.eq(sharesBefore.sub(shares))
-            expect(await vault.maxWithdraw(owner.address), "owner max withdraw").to.eq(vaultAssetsBefore.sub(assets))
+            assertBNClosePercent(
+                await vault.maxWithdraw(owner.address),
+                vaultAssetsBefore.sub(assets),
+                variances.maxWithdraw,
+                "owner max withdraw",
+            )
 
-            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssetsBefore.sub(assets))
+            assertBNClosePercent(await vault.totalAssets(), totalAssetsBefore.sub(assets), variances.maxWithdraw, "total assets")
             expect(await vault.totalSupply(), "totalSupply").to.eq(totalSupplyBefore.sub(shares))
 
             expect(await asset.balanceOf(receiver.address), "receiver asset balance").to.eq(assetsBefore.add(assets))
@@ -388,7 +408,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             await expect(tx).to.be.revertedWith("Amount exceeds allowance")
         })
     })
-    describe.skip("redeem", async () => {
+    describe("redeem", async () => {
         before(async () => {
             const { amounts, asset, vault } = ctx()
             await asset.connect(alice.signer).approve(vault.address, 0)
@@ -406,12 +426,19 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             assertBNClosePercent(await vault.convertToAssets(amounts.redeem), estimatedAssets, variances.convertToAssets, "convertToAssets")
         })
         const assertRedeem = async (sender: Account, receiver: Account, owner: Account, shares: BN) => {
-            const { asset, dataEmitter, vault } = ctx()
+            const { asset, dataEmitter, variances, vault } = ctx()
 
             const assetsBefore = await asset.balanceOf(receiver.address)
 
             const previewEncodedData = vault.interface.encodeFunctionData("previewRedeem", [shares])
-            const rawTx = vault.interface.encodeFunctionData("redeem", [shares, receiver.address, owner.address])
+            // If the vault has redeem overrides
+            const rawTx = vault["redeem(uint256,address,address)"]
+                ? (vault as unknown as Convex3CrvAbstractVault).interface.encodeFunctionData("redeem(uint256,address,address)", [
+                      shares,
+                      receiver.address,
+                      owner.address,
+                  ])
+                : vault.interface.encodeFunctionData("redeem", [shares, receiver.address, owner.address])
             const {
                 tx,
                 previewResult: assets,
@@ -425,9 +452,14 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             await expect(tx).to.emit(asset, "Transfer").withArgs(vault.address, receiver.address, assets)
 
             expect(await vault.maxRedeem(owner.address), "owner max redeem").to.eq(sharesBefore.sub(shares))
-            expect(await vault.maxWithdraw(owner.address), "owner max withdraw").to.eq(vaultAssetsBefore.sub(assets))
+            assertBNClosePercent(
+                await vault.maxWithdraw(owner.address),
+                vaultAssetsBefore.sub(assets),
+                variances.maxWithdraw,
+                "owner max withdraw",
+            )
 
-            expect(await vault.totalAssets(), "totalAssets").to.eq(totalAssetsBefore.sub(assets))
+            assertBNClosePercent(await vault.totalAssets(), totalAssetsBefore.sub(assets), variances.maxWithdraw, "total assets")
             expect(await vault.totalSupply(), "totalSupply").to.eq(totalSupplyBefore.sub(shares))
 
             expect(await asset.balanceOf(receiver.address), "receiver asset balance").to.eq(assetsBefore.add(assets))
@@ -554,7 +586,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
 
 export const testAmounts = (amount: number, decimals = 18): Amounts => {
     return {
-        initialDeposit: simpleToExactAmount(amount, decimals).mul(5),
+        initialDeposit: simpleToExactAmount(amount, decimals).mul(6),
         deposit: simpleToExactAmount(amount, decimals),
         mint: simpleToExactAmount(amount, decimals),
         withdraw: simpleToExactAmount(amount, decimals),
