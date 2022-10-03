@@ -1,6 +1,6 @@
 import { simpleToExactAmount } from "@utils/math"
 import {
-    MockAggregationRouterV4,
+    DataEmitter__factory,
     MockAggregationRouterV4__factory,
     MockERC20__factory,
     MockGPv2Settlement__factory,
@@ -11,7 +11,15 @@ import {
 import { DEAD_ADDRESS } from "../constants"
 
 import type { Signer } from "ethers"
-import type { IAggregationRouterV4, MockERC20, MockGPv2Settlement, MockGPv2VaultRelayer, MockNexus } from "types/generated"
+import type {
+    DataEmitter,
+    IAggregationRouterV4,
+    MockAggregationRouterV4,
+    MockERC20,
+    MockGPv2Settlement,
+    MockGPv2VaultRelayer,
+    MockNexus,
+} from "types/generated"
 
 import type { StandardAccounts } from "./standardAccounts"
 
@@ -19,6 +27,8 @@ import type { StandardAccounts } from "./standardAccounts"
  * @dev Standard mocks
  */
 export class ContractMocks {
+    public dataEmitter: DataEmitter
+
     public nexus: MockNexus
 
     // 18 decimals
@@ -36,6 +46,8 @@ export class ContractMocks {
     public router: IAggregationRouterV4
 
     public async init(sa: StandardAccounts): Promise<ContractMocks> {
+        this.dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+
         this.nexus = await new MockNexus__factory(sa.default.signer).deploy(sa.governor.address)
         await this.nexus.setKeeper(sa.keeper.address)
 

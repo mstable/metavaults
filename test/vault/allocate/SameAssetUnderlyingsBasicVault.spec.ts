@@ -168,6 +168,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
                     ctx.asset = asset
                     ctx.sa = sa
                     ctx.amounts = testAmounts(100, await asset.decimals())
+                    ctx.dataEmitter = mocks.dataEmitter
                 }
             })
             shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)

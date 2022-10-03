@@ -72,7 +72,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
             }
         }
 
-        //Store current assets per share.
+        // Store current assets per share.
         perfFeesAssetPerShare = currentAssetsPerShare;
 
         // Hook for implementing contracts to do something after performance fees have been collected.

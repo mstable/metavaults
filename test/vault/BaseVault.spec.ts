@@ -3,7 +3,7 @@ import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
+import { BasicVault__factory, DataEmitter__factory, LightBasicVault__factory } from "types/generated"
 
 import { shouldBehaveLikeBaseVault, testAmounts } from "../shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
@@ -30,6 +30,7 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
         const setup = async () => {
             const accounts = await ethers.getSigners()
             sa = await new StandardAccounts().initAccounts(accounts)
+
             mocks = await new ContractMocks().init(sa)
             nexus = mocks.nexus
             asset = mocks.erc20
@@ -46,18 +47,19 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
             await setup()
         })
         describe("behaviors", async () => {
-            const ctxVault: Partial<BaseVaultBehaviourContext> = {}
+            const ctx: Partial<BaseVaultBehaviourContext> = {}
             before("init contract", async () => {
-                ctxVault.fixture = async function fixture() {
+                ctx.fixture = async function fixture() {
                     await setup()
-                    ctxVault.vault = vault
-                    ctxVault.asset = asset
-                    ctxVault.sa = sa
-                    ctxVault.amounts = testAmounts(100, await vault.decimals())
+                    ctx.vault = vault
+                    ctx.asset = asset
+                    ctx.sa = sa
+                    ctx.amounts = testAmounts(100, await vault.decimals())
+                    ctx.dataEmitter = mocks.dataEmitter
                 }
             })
             shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))
-            shouldBehaveLikeBaseVault(() => ctxVault as BaseVaultBehaviourContext)
+            shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
         })
 
         describe("constructor", async () => {
