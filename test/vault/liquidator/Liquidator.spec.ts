@@ -1,4 +1,4 @@
-import { SAFE_INFINITY, ZERO } from "@utils/constants"
+import { ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -29,6 +29,7 @@ import type {
 } from "types"
 
 const ERROR = {
+    ALREADY_INITIALIZED: "Initializable: contract is already initialized",
     INVALID_BATCH: "invalid batch",
     INVALID_SWAP: "invalid swap pair",
     ONLY_KEEPER_GOVERNOR: "Only keeper or governor",
@@ -39,6 +40,7 @@ const ERROR = {
     NOT_SWAPPED: "not swapped",
     ALREADY_DONATED: "already donated",
     DONATE_TOKEN_WRONG_INPUT: "Wrong input",
+    DONATE_WRONG_TOKEN: "Donated token not asset",
 }
 
 describe("Liquidator", async () => {
@@ -201,23 +203,36 @@ describe("Liquidator", async () => {
         sa = await new StandardAccounts().initAccounts(accounts)
         await setup()
     })
-    it("should deployment and initialize", async () => {
-        expect(await vault1.totalAssets(), "vault 1 total assets").to.eq(0)
-        expect(await liquidator.nexus(), "nexus").to.eq(nexus.address)
-        expect(await liquidator.syncSwapper(), "syncSwapper").to.eq(syncSwapper.address)
-        expect(await liquidator.asyncSwapper(), "asyncSwapper").to.eq(asyncSwapper.address)
+    describe("calling initialize", async () => {
+        it("should deployment and initialize", async () => {
+            expect(await vault1.totalAssets(), "vault 1 total assets").to.eq(0)
+            expect(await liquidator.nexus(), "nexus").to.eq(nexus.address)
+            expect(await liquidator.syncSwapper(), "syncSwapper").to.eq(syncSwapper.address)
+            expect(await liquidator.asyncSwapper(), "asyncSwapper").to.eq(asyncSwapper.address)
 
-        const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
-        expect(pending.rewards, "rewards for R1/A1").to.eq(0)
-        expect(pending.batch, "batch for R1/A1").to.eq(0)
+            const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
+            expect(pending.rewards, "rewards for R1/A1").to.eq(0)
+            expect(pending.batch, "batch for R1/A1").to.eq(0)
 
-        const pendingVault1 = await liquidator.pendingVaultRewards(rewards1.address, asset1.address, vault1.address)
-        expect(pendingVault1.rewards, "vault1 rewards for R1/A1").to.eq(0)
-        expect(pendingVault1.batch, "vault1 batch for R1/A1").to.eq(0)
+            const pendingVault1 = await liquidator.pendingVaultRewards(rewards1.address, asset1.address, vault1.address)
+            expect(pendingVault1.rewards, "vault1 rewards for R1/A1").to.eq(0)
+            expect(pendingVault1.batch, "vault1 batch for R1/A1").to.eq(0)
 
-        const tx2 = liquidator.purchasedAssets(0, rewards1.address, asset1.address, vault1.address)
-        await expect(tx2).to.revertedWith(ERROR.INVALID_BATCH)
+            const tx2 = liquidator.purchasedAssets(0, rewards1.address, asset1.address, vault1.address)
+            await expect(tx2).to.revertedWith(ERROR.INVALID_BATCH)
+        })
+        it("fails if initialize is called more than once", async () => {
+            await expect(liquidator.initialize(ZERO_ADDRESS, ZERO_ADDRESS), "init call twice",
+            ).to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
+        })
+        it("fails if underlying vaults initialize is called more than once", async () => {
+            await expect(
+                vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address]), "init call twice",
+            ).to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
+        })
+
     })
+
     describe("collect rewards", () => {
         const asset1Deposit = asset1Total.mul(1).div(10)
         const asset2Deposit = asset2Total.mul(1).div(10)
@@ -939,6 +954,15 @@ describe("Liquidator", async () => {
             await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
 
             await assertDonateTokens([asset1], [asset1Amount], [vault3.address])
+        })
+        it("fails if donate wrong token to underlying vault", async () => {
+            let tx = vault1.donate(rewards1.address, ZERO_ADDRESS)
+            await expect(tx).to.be.revertedWith(ERROR.DONATE_WRONG_TOKEN)
+            tx = vault2.donate(rewards1.address, ZERO_ADDRESS)
+            await expect(tx).to.be.revertedWith(ERROR.DONATE_WRONG_TOKEN)
+            tx = vault3.donate(rewards1.address, ZERO_ADDRESS)
+            await expect(tx).to.be.revertedWith(ERROR.DONATE_WRONG_TOKEN)
+
         })
         context("from multiple vaults with multiple rewards", async () => {
             const vault1Asset1Amount = vault1reward1.mul(2).add(vault1reward2.mul(3e12)).add(vault1reward3.mul(4e6))
