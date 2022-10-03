@@ -3,7 +3,7 @@ import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.
 import { assertBNClose } from "@utils/assertions"
 import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
-import { StandardAccounts } from "@utils/machines"
+import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { getTimestampFromTx, increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -80,6 +80,9 @@ describe("Streamed Liquidator Vault", async () => {
         streamedSharesBefore: BigNumberish,
         totalAssetsBefore: BigNumberish,
     ) => {
+        const tokenToDonate = await vault.donateToken(ZERO_ADDRESS)
+        expect(asset.address, "Token to donate").to.be.eq(tokenToDonate)
+        // Donate
         // Donate
         const tx = await vault.donate(asset.address, txAmount)
 
@@ -411,6 +414,10 @@ describe("Streamed Liquidator Vault", async () => {
                 stakerSharesBefore.add(firstDonationAmount),
             )
         })
+        it("fails if donated token is not the underlying asset", async () => {
+            const tx = vault.donate(rewards1.address, ZERO_ADDRESS)
+            await expect(tx).to.be.revertedWith("Donated token not asset")
+        })
     })
     context("2 decimals and one block", async () => {
         const decimals = 2
@@ -423,6 +430,50 @@ describe("Streamed Liquidator Vault", async () => {
 
             expect(await asset.decimals(), "asset decimals").to.eq(decimals)
             expect(await vault.decimals(), "vault decimals").to.eq(decimals)
+        })
+    })
+    context("admin", async () => {
+        describe("addReward", async () => {
+            it("fails if callee is not governor", async () => {
+                const tx = vault.connect(sa.dummy1.signer).addRewards([ZERO_ADDRESS])
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("fails if module liquidator is not set", async () => {
+                await nexus.setLiquidator(ZERO_ADDRESS)
+                const tx = vault.connect(sa.governor.signer).addRewards([ZERO_ADDRESS])
+                await expect(tx).to.be.revertedWith("invalid Liquidator")
+            })
+            it("adds new rewards", async () => {
+                nexus.setLiquidator(liquidator.address)
+                const mocks = await new ContractMocks().init(sa)
+
+                const newRewards = [mocks.dai.address, mocks.usdc.address]
+                const rewardTokensBefore = await vault.rewardTokens()
+                // Add rewards
+                const tx = vault.connect(sa.governor.signer).addRewards(newRewards)
+                // Verify
+                await expect(tx).to.emit(vault, "RewardAdded").withArgs(mocks.dai.address, rewardTokensBefore.length)
+                await expect(tx)
+                    .to.emit(vault, "RewardAdded")
+                    .withArgs(mocks.usdc.address, rewardTokensBefore.length + 1)
+
+                const rewardTokensAfter = await vault.rewardTokens()
+                // Rewards are added
+                expect(rewardTokensAfter[rewardTokensAfter.length - 2]).to.equal(mocks.dai.address)
+                expect(rewardTokensAfter[rewardTokensAfter.length - 1]).to.equal(mocks.usdc.address)
+                // Reward tokens have allowance for the liquidator.
+                const rewardTokenAAllowance = await MockERC20__factory.connect(mocks.dai.address, sa.default.signer).allowance(
+                    vault.address,
+                    liquidator.address,
+                )
+                const rewardTokenBAllowance = await MockERC20__factory.connect(mocks.usdc.address, sa.default.signer).allowance(
+                    vault.address,
+                    liquidator.address,
+                )
+
+                expect(rewardTokenAAllowance, "rewards token allowance").to.be.eq(ethers.constants.MaxUint256)
+                expect(rewardTokenBAllowance, "rewards token allowance").to.be.eq(ethers.constants.MaxUint256)
+            })
         })
     })
 })

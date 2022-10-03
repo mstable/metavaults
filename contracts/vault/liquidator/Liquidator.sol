@@ -66,7 +66,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      * @param _syncSwapper Address of the sync DEX swapper.
      * @param _asyncSwapper Address of the async DEX swapper.
      */
-    function initialize(address _syncSwapper, address _asyncSwapper) external {
+    function initialize(address _syncSwapper, address _asyncSwapper) initializer external {
         _setSyncSwapper(_syncSwapper);
         _setAsyncSwapper(_asyncSwapper);
     }

@@ -107,7 +107,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
 
         uint256 rewardTokenLen = rewardToken.length;
 
-        // For each pair
+        // For reward token
         uint256 len = _rewardTokens.length;
         for (uint256 i = 0; i < len; ) {
             address newReward = _rewardTokens[i];
