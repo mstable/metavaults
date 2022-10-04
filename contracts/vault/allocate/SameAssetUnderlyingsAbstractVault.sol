@@ -135,7 +135,12 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @param   vaultIndex External vault index used to identify the underlying vault.
      * @return  vault Address of the underlying vault.
      */
-    function resolveVaultIndex(uint256 vaultIndex) public view virtual returns (IERC4626Vault vault) {
+    function resolveVaultIndex(uint256 vaultIndex)
+        public
+        view
+        virtual
+        returns (IERC4626Vault vault)
+    {
         // resolve the external vault index to the internal underlying vaults
         uint256 activeUnderlyingVaultsIndex = vaultIndexMap.map(vaultIndex);
         require(activeUnderlyingVaultsIndex < 0xF, "Inactive vault");
@@ -189,6 +194,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
                 ++i;
             }
         }
+
+        // Call _afterRebalance hook
+        _afterRebalance();
     }
 
     /***************************************
@@ -277,4 +285,14 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
 
         emit RemovedVault(vaultIndex, underlyingVault);
     }
+
+    /***************************************
+                Internal Hooks
+    ****************************************/
+
+    /**
+     * @dev Optional hook to do something after rebalance.
+     * For example, assetsPerShare update after rebalance by PeriodicAllocationAbstractVault
+     */
+    function _afterRebalance() internal virtual {}
 }
