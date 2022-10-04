@@ -169,8 +169,6 @@ async function expectRebalance(ctx: SameAssetUnderlyingsAbstractVaultBehaviourCo
     assertBNClose(dataAfter.bVault1Data.totalAssets, expectedVault1Data.totalAssets, variances.bVault1, "underlying vault 1 totalAssets")
     assertBNClose(dataAfter.bVault1Data.totalSupply, expectedVault1Data.totalSupply, variances.bVault1, "underlying vault 1 totalSupply")
     assertBNClose(dataAfter.bVault1Data.vaultShares, expectedVault1Data.vaultShares, variances.bVault1, "underlying vault 1 vaultShares")
-
-    expect(dataBefore.vaultData.aliceShares, "alice shares should not change").to.eq(dataAfter.vaultData.aliceShares)
 }
 
 export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => SameAssetUnderlyingsAbstractVaultBehaviourContext): void {
