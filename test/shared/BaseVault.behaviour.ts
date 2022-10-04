@@ -124,8 +124,9 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             const { vault, asset } = ctx()
             expect(await vault.asset(), "asset").to.eq(asset.address)
             expect(await vault.decimals(), "decimals").to.gte(0)
-            expect(await vault.totalSupply(), "total shares").to.eq(0)
-            expect(await vault.totalAssets(), "total assets").to.eq(0)
+            // Most of the time this will be zero but for streaming vaults this can be > 0
+            expect(await vault.totalSupply(), "total shares").to.gte(0)
+            expect(await vault.totalAssets(), "total assets").to.gte(0)
         })
     })
     describe("deposit", async () => {
