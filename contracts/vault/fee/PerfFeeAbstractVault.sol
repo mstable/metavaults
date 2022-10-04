@@ -131,5 +131,5 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
      * New shares will be issued at the now higher assets per share, but redemptions will use
      * the lower assets per share stored when the performance fee was charged.
      */
-    function _afterChargePerformanceFee() internal virtual returns (uint256 assets) {}
+    function _afterChargePerformanceFee() internal virtual {}
 }
