@@ -1065,9 +1065,9 @@ describe("PeriodicAllocationBasicVault", async () => {
         })
         describe("assetPerShare update should happen correctly", async () => {
             let updatedAssetPerShare: BN
-            const bVault1SettleAmount = oneMil.mul(7)
+            const bVault1SettleAmount = initialDepositAmount.mul(70).div(100) // 70%
             const bVault2SettleAmount = initialDepositAmount.sub(bVault1SettleAmount)
-            const transferAmount = oneMil.mul(2)
+            const transferAmount = initialDepositAmount.mul(20).div(100) // 20%
             const beforeEachFixture = async function fixture() {
                 await setup()
                 await pabVault.connect(user.signer).deposit(initialDepositAmount, user.address)
@@ -1116,6 +1116,31 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
                 expect(await pabVault.assetsTransferred(), "assetsTransferred").to.eq(0)
+            })
+            it("after rebalance", async () => {
+                // transfer some assets to bVault1
+                await asset.transfer(bVault1.address, transferAmount)
+
+                // validate pre-rebalance assetPerShare
+                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
+
+                // prepare rebalance
+                const swap = {
+                    fromVaultIndex: 0,
+                    toVaultIndex: 1,
+                    assets: bVault1SettleAmount.div(2),
+                    shares: BN.from(0),
+                }
+
+                // Perform the rebalance
+                const tx = pabVault.connect(sa.vaultManager.signer).rebalance([swap])
+
+                // calculate updatedAssetPerShare
+                updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+
+                // validate post-rebalance properties and event
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
+                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
             })
         })
         describe("vault params modify", async () => {
