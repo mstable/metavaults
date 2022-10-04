@@ -612,8 +612,10 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
 
     function _resetAllowances() internal {
         // Approve the Curve.fi metapool, eg musd3CRV, to transfer the asset 3Crv.
+        _asset.safeApprove(address(metapool), 0);
         _asset.safeApprove(address(metapool), type(uint256).max);
         // Approve the Convex booster contract to transfer the Curve.fi metapool LP token. eg musd3CRV
+        IERC20(metapoolToken).safeApprove(address(booster), 0);
         IERC20(metapoolToken).safeApprove(address(booster), type(uint256).max);
     }
 }
