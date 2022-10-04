@@ -217,4 +217,13 @@ contract PeriodicAllocationPerfFeeMetaVault is
     ) internal virtual override {
         // Assets are withdrawn from the underlying using the `sourceAssets` function if there are not enough assets in this vault.
     }
+
+    /***************************************
+                Internal Hooks
+    ****************************************/
+
+    /// @dev update assetPerShare after charging performance fees
+    function _afterChargePerformanceFee() internal virtual override {
+        _updateAssetPerShare();
+    }
 }
