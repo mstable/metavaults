@@ -220,7 +220,9 @@ abstract contract PeriodicAllocationAbstractVault is
 
             /// Source assets from a single vault
             if (sharesRatio <= assetSourcingParams.singleVaultSharesThreshold) {
-                IERC4626Vault underlyingVault = resolveVaultIndex(assetSourcingParams.singleSourceVaultIndex);
+                IERC4626Vault underlyingVault = resolveVaultIndex(
+                    assetSourcingParams.singleSourceVaultIndex
+                );
 
                 // Underlying vault has sufficient assets to cover the sourcing
                 if (requiredAssets <= underlyingVault.maxWithdraw(address(this))) {
@@ -367,5 +369,14 @@ abstract contract PeriodicAllocationAbstractVault is
         returns (uint256 shares)
     {
         return AssetPerShareAbstractVault._convertToShares(assets);
+    }
+
+    /***************************************
+                Internal Hooks
+    ****************************************/
+
+    /// @dev Updates assetPerShare after rebalance
+    function _afterRebalance() internal virtual override {
+        _updateAssetPerShare();
     }
 }
