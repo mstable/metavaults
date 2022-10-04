@@ -942,7 +942,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                 shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
             })
-            describe("curve3CrvBasicMetaVault - dai", async () => {
+            describe("curve3CrvBasicMetaVault - DAI", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
                     // Anonymous functions cannot be used as fixtures so can't use arrow function
@@ -957,6 +957,46 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             maxWithdraw: 0.02,
                         }
                         ctx.amounts = testAmounts(1000, DAI.decimals)
+                        ctx.dataEmitter = dataEmitter
+                    }
+                })
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+            describe("curve3CrvBasicMetaVault - USDC", async () => {
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
+                before(async () => {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = usdcMetaVault as unknown as AbstractVault
+                        ctx.asset = usdcToken
+                        ctx.sa = sa
+                        ctx.variances = {
+                            convertToAssets: 0.08,
+                            convertToShares: 0.08,
+                            maxWithdraw: 0.02,
+                        }
+                        ctx.amounts = testAmounts(1000, USDC.decimals)
+                        ctx.dataEmitter = dataEmitter
+                    }
+                })
+                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
+            })
+            describe("curve3CrvBasicMetaVault - USDT", async () => {
+                const ctx: Partial<BaseVaultBehaviourContext> = {}
+                before(async () => {
+                    // Anonymous functions cannot be used as fixtures so can't use arrow function
+                    ctx.fixture = async function fixture() {
+                        await loadOrExecFixture(setup)
+                        ctx.vault = usdtMetaVault as unknown as AbstractVault
+                        ctx.asset = usdtToken
+                        ctx.sa = sa
+                        ctx.variances = {
+                            convertToAssets: 0.08,
+                            convertToShares: 0.08,
+                            maxWithdraw: 0.02,
+                        }
+                        ctx.amounts = testAmounts(1000, USDT.decimals)
                         ctx.dataEmitter = dataEmitter
                     }
                 })
@@ -1477,6 +1517,37 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                 })
             })
+        })
+    })
+    context("Convex3CrvLiquidatorVault", async () => {
+        before("reset block number", async () => {
+            await loadOrExecFixture(setup)
+        })
+        describe("liquidate assets", () => {
+            before(async () => {
+                await threeCrvToken.connect(staker1.signer).approve(fraxConvexVault.address, ethers.constants.MaxUint256)
+                await fraxConvexVault.connect(staker1.signer).mint(simpleToExactAmount(10000), staker1.address)
+            })
+            it("staker should fail to liquidate vault if not governor", async () => {
+                const tx = fraxConvexVault.connect(staker1.signer).liquidateVault(0)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("vault manager should fail to liquidate vault if not governor", async () => {
+                const tx = fraxConvexVault.connect(vaultManager.signer).liquidateVault(0)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("governor should liquidate vault", async () => {
+                const governorAssetsBefore = await threeCrvToken.balanceOf(governor.address)
+                const totalSharesBefore = await fraxConvexVault.totalSupply()
+                await fraxConvexVault.connect(governor.signer).liquidateVault(0)
+
+                expect(await threeCrvToken.balanceOf(governor.address), "governor 3Crv bal").to.gt(governorAssetsBefore)
+                expect(await fraxConvexVault.totalAssets(), "total assets").to.eq(0)
+                expect(await fraxConvexVault.totalSupply(), "total shares").to.eq(totalSharesBefore)
+            })
+        })
+        it("reset allowances", async () => {
+            await fraxConvexVault.connect(governor.signer).resetAllowances()
         })
     })
 })

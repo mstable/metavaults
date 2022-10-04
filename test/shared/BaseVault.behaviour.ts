@@ -33,7 +33,7 @@ type Amounts = {
 }
 export interface BaseVaultBehaviourContext {
     vault: BaseAbstractVault
-    asset: IERC20 | IERC20Metadata
+    asset: IERC20 & IERC20Metadata
     sa: StandardAccounts
     fixture: () => Promise<void>
     amounts: Amounts
@@ -119,11 +119,13 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
         totalAssetsBefore = await vault.totalAssets()
         ctx().variances = { ...defaultVariances, ...ctx().variances }
     })
-    describe("store values", async () => {
-        it("should properly store valid arguments", async () => {
+    describe("empty vault", async () => {
+        it("should be initialized", async () => {
             const { vault, asset } = ctx()
             expect(await vault.asset(), "asset").to.eq(asset.address)
             expect(await vault.decimals(), "decimals").to.gte(0)
+            expect(await vault.totalSupply(), "total shares").to.eq(0)
+            expect(await vault.totalAssets(), "total assets").to.eq(0)
         })
     })
     describe("deposit", async () => {
@@ -584,13 +586,13 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
     })
 }
 
-export const testAmounts = (amount: number, decimals = 18): Amounts => {
+export const testAmounts = (amount: number, assetDecimals = 18, vaultDecimals = 18): Amounts => {
     return {
-        initialDeposit: simpleToExactAmount(amount, decimals).mul(6),
-        deposit: simpleToExactAmount(amount, decimals),
-        mint: simpleToExactAmount(amount, decimals),
-        withdraw: simpleToExactAmount(amount, decimals),
-        redeem: simpleToExactAmount(amount, decimals),
+        initialDeposit: simpleToExactAmount(amount, assetDecimals).mul(6),
+        deposit: simpleToExactAmount(amount, assetDecimals),
+        mint: simpleToExactAmount(amount, vaultDecimals),
+        withdraw: simpleToExactAmount(amount, assetDecimals),
+        redeem: simpleToExactAmount(amount, vaultDecimals),
     }
 }
 

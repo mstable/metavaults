@@ -585,25 +585,27 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         override
         returns (uint256 assets)
     {
+        uint256 metaVaultShares;
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            assets = shares; // 1:1 value of shares and assets
+            // start with 1:1 value of shares to underlying meta vault shares
+            metaVaultShares = shares;
         } else {
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             // Convert this vault's shares to underlying meta vault shares.
-            uint256 metaVaultShares = _getMetaVaultSharesFromShares(
+            metaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
                 totalMetaVaultShares,
                 totalShares
             );
-
-            // Convert underlying meta vault shares to 3Crv
-            // This uses the Metapool and 3Pool virtual prices
-            uint256 threeCrvTokens = metaVault.convertToAssets(metaVaultShares);
-            // Convert 3Crv to assets (DAI, USDC or USDT) by extrapolating redeeming 1 3Crv.
-            assets = _getAssetsForThreeCrvTokens(threeCrvTokens);
         }
+
+        // Convert underlying meta vault shares to 3Crv
+        // This uses the Metapool and 3Pool virtual prices
+        uint256 threeCrvTokens = metaVault.convertToAssets(metaVaultShares);
+        // Convert 3Crv to assets (DAI, USDC or USDT) by extrapolating redeeming 1 3Crv.
+        assets = _getAssetsForThreeCrvTokens(threeCrvTokens);
     }
 
     /**
@@ -619,16 +621,18 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         override
         returns (uint256 shares)
     {
+        // Calculate fair amount of 3Pool LP tokens (3Crv) using virtual prices for vault assets, eg DAI
+        uint256 threeCrvTokens = _getThreeCrvTokensForAssets(assets);
+
+        // Convert 3Crv to underlying meta vault shares.
+        // This uses the Metapool and 3Pool virtual prices.
+        uint256 metaVaultShares = metaVault.convertToShares(threeCrvTokens);
+
         uint256 totalShares = totalSupply();
         if (totalShares == 0) {
-            shares = assets; // 1:1 value of shares and assets
+            // start with 1:1 value of shares to underlying meta vault shares
+            shares = metaVaultShares;
         } else {
-            // Calculate fair amount of 3Pool LP tokens (3Crv) using virtual prices for vault assets, eg DAI
-            uint256 threeCrvTokens = _getThreeCrvTokensForAssets(assets);
-
-            // Convert 3Crv to underlying meta vault shares.
-            // This uses the Metapool and 3Pool virtual prices.
-            uint256 metaVaultShares = metaVault.convertToShares(threeCrvTokens);
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             shares = _getSharesFromMetaVaultShares(
