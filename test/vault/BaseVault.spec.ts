@@ -3,7 +3,7 @@ import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
-import { BasicVault__factory, DataEmitter__factory, LightBasicVault__factory } from "types/generated"
+import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
 
 import { shouldBehaveLikeBaseVault, testAmounts } from "../shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"

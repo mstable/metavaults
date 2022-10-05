@@ -5,8 +5,9 @@ import { ClaimableGovernor__factory } from "types/generated"
 
 import {shouldBehaveLikeClaimable } from "./ClaimableGovernor.behaviour"
 
+import type { Account } from "types"
+
 import type { IClaimableGovernableBehaviourContext} from "./ClaimableGovernor.behaviour";
-import { Account } from "types"
 
 describe("ClaimableGovernable", () => {
     const ctx: Partial<IClaimableGovernableBehaviourContext> = {}

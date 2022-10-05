@@ -17,9 +17,10 @@ import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { Liquidator } from "types/generated"
 
 import type { CowSwapContext } from "./peripheral/cowswapApi"
+import type { Chain } from "./utils"
 
 const log = logger("liq")
-const resolveMultipleAddress = async (chain, vaultsStr: string) =>
+const resolveMultipleAddress = async (chain:Chain, vaultsStr: string) =>
     Promise.all(vaultsStr.split(",").map((vaultName) => resolveAddress(vaultName, chain)))
 
 export async function deployLiquidator(

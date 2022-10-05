@@ -1,3 +1,4 @@
+import { logger } from "@tasks/utils/logger"
 import { assertBNClose } from "@utils/assertions"
 import { DEAD_ADDRESS } from "@utils/constants"
 import { impersonate, loadOrExecFixture, stopImpersonate } from "@utils/fork"
@@ -11,6 +12,8 @@ import { AbstractVault__factory, BasicVault__factory, Convex3CrvLiquidatorVault_
 import type { StandardAccounts } from "@utils/machines"
 import type { Account } from "types"
 import type { BasicVault, ERC20, IERC20Metadata, SameAssetUnderlyingsAbstractVault } from "types/generated"
+
+const log = logger("test:SameAssetUnderlyingsAbstractVault")
 
 type Variance = BN
 type Variances = {
@@ -362,8 +365,8 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     activeUnderlyingVaultsBefore = (await vault.activeUnderlyingVaults()).toNumber()
                     totalUnderlyingVaultsBefore = (await vault.totalUnderlyingVaults()).toNumber()
 
-                    console.log(`active vaults ${activeUnderlyingVaultsBefore}`)
-                    console.log(`total vaults ${totalUnderlyingVaultsBefore}`)
+                    log(`active vaults ${activeUnderlyingVaultsBefore}`)
+                    log(`total vaults ${totalUnderlyingVaultsBefore}`)
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
