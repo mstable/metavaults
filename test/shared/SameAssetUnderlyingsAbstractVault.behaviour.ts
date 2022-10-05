@@ -339,7 +339,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             it("should fail if callee is not vault manger", async () => {
                 const { vault, sa } = ctx()
                 const tx = vault.connect(sa.alice.signer).addVault(DEAD_ADDRESS)
-                await expect(tx).to.be.revertedWith("Only vault manager can execute")
+                await expect(tx).to.be.revertedWith("Only governor can execute")
             })
             it("should fail on mismatching asset", async () => {
                 const { vault, sa } = ctx()
@@ -349,7 +349,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 const bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, assetNew.address)
                 await bVaultNew.initialize(`bv3${await assetNew.name()}`, `bv3${await assetNew.symbol()}`, sa.vaultManager.address)
 
-                const tx = vault.connect(sa.vaultManager.signer).addVault(bVaultNew.address)
+                const tx = vault.connect(sa.governor.signer).addVault(bVaultNew.address)
                 await expect(tx).to.be.revertedWith("Invalid vault asset")
             })
             context("success", async () => {
@@ -368,7 +368,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
 
-                    const tx = await vault.connect(sa.vaultManager.signer).addVault(bVaultNew.address)
+                    const tx = await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
                     await expect(tx).to.emit(vault, "AddedVault").withArgs(totalUnderlyingVaultsBefore, bVaultNew.address)
                     expect(await vault.activeUnderlyingVaults(), "active underlying vaults after").to.eq(activeUnderlyingVaultsBefore + 1)
@@ -453,7 +453,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
 
-                    await vault.connect(sa.vaultManager.signer).addVault(bVaultNew.address)
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
                     activeUnderlyingVaultsBefore = (await vault.activeUnderlyingVaults()).toNumber()
                     totalUnderlyingVaultsBefore = (await vault.totalUnderlyingVaults()).toNumber()

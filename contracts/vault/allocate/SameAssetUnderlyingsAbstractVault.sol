@@ -213,7 +213,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      *
      * @param _underlyingVault Address of a ERC-4626 compliant vault.
      */
-    function addVault(address _underlyingVault) external onlyVaultManager {
+    function addVault(address _underlyingVault) external onlyGovernor {
         vaultIndexMap = _addVault(_underlyingVault, vaultIndexMap);
     }
 

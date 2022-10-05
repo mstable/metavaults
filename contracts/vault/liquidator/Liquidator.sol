@@ -211,6 +211,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
             "Wrong input"
         );
         assets = new uint256[](len);
+        address rewardToken;
         address vault;
         address purchaseToken;
         address previousVault;
@@ -220,9 +221,10 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
 
         // For each input index
         for (uint256 i = 0; i < len; ) {
+            rewardToken = rewardTokens[i];
             vault = vaults[i];
             purchaseToken = purchaseTokens[i];
-            batch = pairs[rewardTokens[i]][purchaseToken].length;
+            batch = pairs[rewardToken][purchaseToken].length;
             // if vault changes or purchase token changes trigger a donation to the vault.
             if (i > 0 && (vault != previousVault || purchaseToken != previousPurchaseToken)) {
                 _donateTokensToVault(previousPurchaseToken, previousVault, assets[donations]);
@@ -240,16 +242,16 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
                         --batch;
                     }
                     // If already swapped rewards for purchase tokens
-                    if (pairs[rewardTokens[i]][purchaseToken][batch].assets > 0) {
+                    if (pairs[rewardToken][purchaseToken][batch].assets > 0) {
                         // if swapped and donated
-                        if (pairs[rewardTokens[i]][purchaseToken][batch].vaultRewards[vault] == 0) {
+                        if (pairs[rewardToken][purchaseToken][batch].vaultRewards[vault] == 0) {
                             break;
                         }
                         // if swapped and not donated
                         else {
                             assets[donations] += _donateTokens(
                                 batch,
-                                rewardTokens[i],
+                                rewardToken,
                                 purchaseToken,
                                 vault
                             );
