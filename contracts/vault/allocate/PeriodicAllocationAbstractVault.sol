@@ -42,6 +42,10 @@ abstract contract PeriodicAllocationAbstractVault is
     /// @notice Threshold amount of transfers to/from for `assetPerShareUpdate`.
     uint256 public assetPerShareUpdateThreshold;
 
+    event SingleVaultSharesThresholdUpdated(uint256 singleVaultSharesThreshold);
+    event SingleSourceVaultIndexUpdated(uint32 singleSourceVaultIndex);
+    event AssetPerShareUpdateThresholdUpdated(uint256 assetPerShareUpdateThreshold);
+
     /**
      * @param _underlyingVaults  The underlying vaults address to invest into.
      * @param _sourceParams Params related to sourcing of assets.
@@ -326,6 +330,8 @@ abstract contract PeriodicAllocationAbstractVault is
     {
         require(_singleVaultSharesThreshold <= BASIS_SCALE, "Invalid shares threshold");
         sourceParams.singleVaultSharesThreshold = _singleVaultSharesThreshold;
+
+        emit SingleVaultSharesThresholdUpdated(_singleVaultSharesThreshold);
     }
 
     /// @notice `Governor` sets the underlying vault that small withdrawals are redeemed from.
@@ -334,6 +340,8 @@ abstract contract PeriodicAllocationAbstractVault is
         // Check the single source vault is active.
         resolveVaultIndex(_singleSourceVaultIndex);
         sourceParams.singleSourceVaultIndex = _singleSourceVaultIndex;
+
+        emit SingleSourceVaultIndexUpdated(_singleSourceVaultIndex);
     }
 
     /// @notice Governor sets the threshold asset amount of cumulative transfers to/from the vault before the assets per share is updated.
@@ -343,6 +351,8 @@ abstract contract PeriodicAllocationAbstractVault is
         onlyGovernor
     {
         assetPerShareUpdateThreshold = _assetPerShareUpdateThreshold;
+
+        emit AssetPerShareUpdateThresholdUpdated(_assetPerShareUpdateThreshold);
     }
 
     /*///////////////////////////////////////////////////////////////

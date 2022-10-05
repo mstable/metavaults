@@ -22,9 +22,9 @@
 <text text-anchor="start" x="8" y="-426.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&#160;settleSwap(_swap: DexSwapData)</text>
 <text text-anchor="start" x="8" y="-410.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&#160;cancelSwap(orderUid: bytes)</text>
 </g>
-<!-- 38 -->
+<!-- 36 -->
 <g id="node2" class="node">
-<title>38</title>
+<title>36</title>
 <polygon fill="#f2f2f2" stroke="black" points="254.6,-313.9 254.6,-623.5 982.24,-623.5 982.24,-313.9 254.6,-313.9"/>
 <text text-anchor="middle" x="618.42" y="-606.9" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="618.42" y="-590.1" font-family="Times,serif" font-size="14.00">CowSwapSeller</text>
@@ -71,44 +71,44 @@
 <text text-anchor="start" x="1008.25" y="-330.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyGovernance()</text>
 <text text-anchor="start" x="1008.25" y="-313.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_nexus: address)</text>
 </g>
-<!-- 82 -->
+<!-- 80 -->
 <g id="node4" class="node">
-<title>82</title>
-<polygon fill="#f2f2f2" stroke="black" points="385.28,-0.5 385.28,-268.5 851.56,-268.5 851.56,-0.5 385.28,-0.5"/>
+<title>80</title>
+<polygon fill="#f2f2f2" stroke="black" points="397.52,-0.5 397.52,-268.5 839.31,-268.5 839.31,-0.5 397.52,-0.5"/>
 <text text-anchor="middle" x="618.42" y="-251.9" font-family="Times,serif" font-size="14.00">CowSwapDex</text>
 <text text-anchor="middle" x="618.42" y="-235.1" font-family="Times,serif" font-size="14.00">../contracts/vault/swap/CowSwapDex.sol</text>
-<polyline fill="none" stroke="black" points="385.28,-226.9 851.56,-226.9 "/>
-<text text-anchor="start" x="393.28" y="-210.3" font-family="Times,serif" font-size="14.00">Internal:</text>
-<text text-anchor="start" x="393.28" y="-193.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_keeperOrLiquidator()</text>
-<text text-anchor="start" x="393.28" y="-176.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_initiateSwap(swapData: DexSwapData)</text>
-<text text-anchor="start" x="393.28" y="-159.9" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="393.28" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initiateSwap(swapData: DexSwapData) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
-<text text-anchor="start" x="393.28" y="-126.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initiateSwap(swapsData: DexSwapData[]) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
-<text text-anchor="start" x="393.28" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;settleSwap(DexSwapData)</text>
-<text text-anchor="start" x="393.28" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelSwap(orderUid: bytes) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
-<text text-anchor="start" x="393.28" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelSwap(orderUids: bytes[]) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
-<text text-anchor="start" x="393.28" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;rescueToken(_erc20: address, amount: uint256) &lt;&lt;onlyKeeperOrGovernor&gt;&gt;</text>
-<text text-anchor="start" x="393.28" y="-42.3" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="393.28" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyKeeperOrLiquidator()</text>
-<text text-anchor="start" x="393.28" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_nexus: address, _relayer: address, _settlement: address)</text>
+<polyline fill="none" stroke="black" points="397.52,-226.9 839.31,-226.9 "/>
+<text text-anchor="start" x="405.52" y="-210.3" font-family="Times,serif" font-size="14.00">Internal:</text>
+<text text-anchor="start" x="405.52" y="-193.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_keeperOrLiquidator()</text>
+<text text-anchor="start" x="405.52" y="-176.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_initiateSwap(swapData: DexSwapData)</text>
+<text text-anchor="start" x="405.52" y="-159.9" font-family="Times,serif" font-size="14.00">External:</text>
+<text text-anchor="start" x="405.52" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initiateSwap(swapData: DexSwapData) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
+<text text-anchor="start" x="405.52" y="-126.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;initiateSwap(swapsData: DexSwapData[]) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
+<text text-anchor="start" x="405.52" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;settleSwap(DexSwapData)</text>
+<text text-anchor="start" x="405.52" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelSwap(orderUid: bytes) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
+<text text-anchor="start" x="405.52" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelSwap(orderUids: bytes[]) &lt;&lt;onlyKeeperOrLiquidator&gt;&gt;</text>
+<text text-anchor="start" x="405.52" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;rescueToken(_erc20: address, amount: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="405.52" y="-42.3" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="405.52" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyKeeperOrLiquidator()</text>
+<text text-anchor="start" x="405.52" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_nexus: address, _relayer: address, _settlement: address)</text>
 </g>
-<!-- 82&#45;&gt;5 -->
+<!-- 80&#45;&gt;5 -->
 <g id="edge3" class="edge">
-<title>82&#45;&gt;5</title>
-<path fill="none" stroke="black" stroke-dasharray="5,2" d="M385.06,-220.6C336.36,-243.96 287.18,-272.1 245.42,-305 219.85,-325.15 196.43,-351.48 176.86,-377.08"/>
+<title>80&#45;&gt;5</title>
+<path fill="none" stroke="black" stroke-dasharray="5,2" d="M397.26,-214.85C344.63,-239.28 290.67,-269.35 245.42,-305 219.85,-325.15 196.43,-351.48 176.86,-377.08"/>
 <polygon fill="none" stroke="black" points="168.13,-371.23 158.99,-401.67 185.12,-383.58 168.13,-371.23"/>
 </g>
-<!-- 82&#45;&gt;38 -->
+<!-- 80&#45;&gt;36 -->
 <g id="edge1" class="edge">
-<title>82&#45;&gt;38</title>
+<title>80&#45;&gt;36</title>
 <path fill="none" stroke="black" d="M618.42,-268.7C618.42,-273.56 618.42,-278.46 618.42,-283.37"/>
 <polygon fill="none" stroke="black" points="607.92,-283.7 618.42,-313.7 628.92,-283.7 607.92,-283.7"/>
 </g>
-<!-- 82&#45;&gt;13 -->
+<!-- 80&#45;&gt;13 -->
 <g id="edge2" class="edge">
-<title>82&#45;&gt;13</title>
-<path fill="none" stroke="black" d="M851.85,-222.24C892.53,-241.72 933.64,-264.35 975.88,-294.09"/>
-<polygon fill="none" stroke="black" points="969.78,-302.63 1000.18,-311.91 982.2,-285.7 969.78,-302.63"/>
+<title>80&#45;&gt;13</title>
+<path fill="none" stroke="black" d="M839.63,-216.48C884.1,-237.15 929.64,-261.62 975.68,-293.97"/>
+<polygon fill="none" stroke="black" points="969.77,-302.65 1000.18,-311.91 982.18,-285.71 969.77,-302.65"/>
 </g>
 </g>
 </svg>
