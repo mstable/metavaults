@@ -72,7 +72,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     }
 
     /**
-     * @notice Anyone can collect different rewards from a list of vaults.
+     * @notice The keeper or governor can collect different rewards from a list of vaults.
      * The Liquidator calls each vault to collect their rewards.
      * The vaults transfer the rewards to themselves first and then the Liquidator
      * transfers each reward from each vault to the Liquidator.
@@ -96,6 +96,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     function collectRewards(address[] memory vaults)
         external
         nonReentrant
+        onlyKeeperOrGovernor
         returns (
             address[][] memory rewardTokens,
             uint256[][] memory rewards,
