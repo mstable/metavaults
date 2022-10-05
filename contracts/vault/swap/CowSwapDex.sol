@@ -146,11 +146,11 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
 
     /**
      * @notice Rescues tokens from the contract in case of a cancellation or failure and sends it to governor.
-     * @dev only keeper or governor can invoke.
+     * @dev only governor can invoke.
      * Even if a swap fails, the order can be created again and keep trying, rescueToken must be the last resource,
      * ie, cowswap is not availabler for N hours.
      */
-    function rescueToken(address _erc20, uint256 amount) external onlyKeeperOrGovernor {
+    function rescueToken(address _erc20, uint256 amount) external onlyGovernor {
         IERC20(_erc20).safeTransfer(_governor(), amount);
     }
 }
