@@ -260,7 +260,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 maxAssets = (requiredThreeCrvTokens * invariant) / total3CrvSupply;
         // Max USD = USD amount + (1 + mint slippage). So for 1% slippage, USD amount * 1.01
         // We will assume 1 DAI is close to 1 USD so max USD = max assets (DAI, USDC or USDT).
-        maxAssets = maxAssets * (BASIS_SCALE + mintSlippage);
+        maxAssets = (maxAssets * (BASIS_SCALE + mintSlippage)) / BASIS_SCALE;
         require(assets <= maxAssets, "too much slippage");
 
         // Transfer this vault's asssets (DAI, USDC or USDT) from the caller.
