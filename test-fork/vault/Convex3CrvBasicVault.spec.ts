@@ -16,7 +16,7 @@ import {
     IConvexRewardsPool__factory,
     ICurve3Pool__factory,
     ICurveMetapool__factory,
-    IERC20__factory,
+    IERC20Metadata__factory,
 } from "types/generated"
 
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
@@ -34,8 +34,7 @@ import type {
     IConvexRewardsPool,
     ICurve3Pool,
     ICurveMetapool,
-    IERC20,
-} from "types/generated"
+    IERC20Metadata} from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
@@ -53,7 +52,7 @@ describe("Convex 3Crv Basic Vault", async () => {
     let owner: Account
     let governor: Account
     let bob: Account
-    let threeCrvToken: IERC20
+    let threeCrvToken: IERC20Metadata
     let threePool: ICurve3Pool
     let metapool: ICurveMetapool
     let baseRewardsPool: IConvexRewardsPool
@@ -81,7 +80,7 @@ describe("Convex 3Crv Basic Vault", async () => {
         governor = await impersonateAccount(governorAddress)
         bob = await impersonateAccount(bobAddress)
 
-        threeCrvToken = IERC20__factory.connect(ThreeCRV.address, deployer)
+        threeCrvToken = IERC20Metadata__factory.connect(ThreeCRV.address, deployer)
 
         dataEmitter = await new DataEmitter__factory(deployer).deploy()
 
