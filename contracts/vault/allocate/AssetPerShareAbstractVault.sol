@@ -114,12 +114,8 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
 
     /// @dev Updates assetPerShare of this vault to be expanted by the child contract to charge perf fees every assetPerShare update.
     function _updateAssetPerShare() internal virtual {
-        uint256 totalShares = totalSupply();
-        // Update current assets per share
-        uint256 totalAssets = totalAssets();
-        assetsPerShare = totalShares > 0
-            ? (totalAssets * ASSETS_PER_SHARE_SCALE) / totalShares
-            : assetsPerShare;
+        uint256 totalAssets;
+        (assetsPerShare, totalAssets) = calculateAssetPerShare();
 
         emit AssetsPerShareUpdated(assetsPerShare, totalAssets);
     }
@@ -128,5 +124,22 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
     /// @dev to be called by watcher
     function updateAssetPerShare() external onlyVaultManager {
         _updateAssetPerShare();
+    }
+
+    /// @notice calculates current assetsPerShare
+    /// @return assetsPerShare_ current assetsPerShare
+    /// @return totalAssets_ totalAssets of the vault
+    function calculateAssetPerShare()
+        public
+        view
+        returns (uint256 assetsPerShare_, uint256 totalAssets_)
+    {
+        uint256 totalShares = totalSupply();
+        
+        // Calculate current assets per share
+        totalAssets_ = totalAssets();
+        assetsPerShare_ = totalShares > 0
+            ? (totalAssets_ * ASSETS_PER_SHARE_SCALE) / totalShares
+            : assetsPerShare;
     }
 }
