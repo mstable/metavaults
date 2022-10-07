@@ -135,7 +135,8 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         returns (uint256 assetsPerShare_, uint256 totalAssets_)
     {
         uint256 totalShares = totalSupply();
-        // Update current assets per share
+        
+        // Calculate current assets per share
         totalAssets_ = totalAssets();
         assetsPerShare_ = totalShares > 0
             ? (totalAssets_ * ASSETS_PER_SHARE_SCALE) / totalShares
