@@ -1005,6 +1005,8 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
 
+                expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
+
                 // Update assetPerShare
                 const tx = pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
                 await expect(tx)
@@ -1063,7 +1065,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 expect(userAssetsConsumed, "userAssetsConsumed").to.eq(expectedAssetsConsumed)
             })
         })
-        describe("assetPerShare update should happen correctly", async () => {
+        describe("assetPerShare calculate and update should happen correctly", async () => {
             let updatedAssetPerShare: BN
             const bVault1SettleAmount = initialDepositAmount.mul(70).div(100) // 70%
             const bVault2SettleAmount = initialDepositAmount.sub(bVault1SettleAmount)
@@ -1086,7 +1088,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             beforeEach(async () => {
                 await loadOrExecFixture(beforeEachFixture)
             })
-            it("when transferAmount < updateThreshold", async () => {
+            it("when depositAmount < updateThreshold", async () => {
                 await pabVault.connect(user.signer).deposit(belowThresholdAmount, user.address)
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
                 expect(await pabVault.assetsTransferred(), "assetsTransferred").to.eq(belowThresholdAmount)
@@ -1095,6 +1097,8 @@ describe("PeriodicAllocationBasicVault", async () => {
                 await asset.transfer(bVault1.address, transferAmount)
 
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+
+                expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
 
                 const tx = pabVault.connect(user.signer).deposit(aboveThresholdAmount, user.address)
                 await expect(tx)
