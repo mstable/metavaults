@@ -33,7 +33,7 @@ type Amounts = {
 }
 export interface BaseVaultBehaviourContext {
     vault: BaseAbstractVault
-    asset: IERC20 & IERC20Metadata
+    asset: IERC20 | IERC20Metadata
     sa: StandardAccounts
     fixture: () => Promise<void>
     amounts: Amounts
