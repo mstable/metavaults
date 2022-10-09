@@ -252,7 +252,7 @@ describe("Liquidator", async () => {
         it("from a single vault with single reward", async () => {
             await rewards1.transfer(vault3.address, vault3reward1)
 
-            const tx = await liquidator.collectRewards([vault3.address])
+            const tx = await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
 
             await expect(tx).to.emit(liquidator, "CollectedRewards")
             await expect(tx).to.emit(rewards1, "Transfer").withArgs(vault3.address, liquidator.address, vault3reward1)
@@ -281,7 +281,7 @@ describe("Liquidator", async () => {
 
             await rewards1.transfer(vault3.address, vault3reward1)
 
-            const tx = await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+            const tx = await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
             await expect(tx).to.emit(liquidator, "CollectedRewards")
 
@@ -322,7 +322,7 @@ describe("Liquidator", async () => {
         it("twice in a batch", async () => {})
         it("for a second batch", async () => {})
         it("no rewards in any vault", async () => {
-            const tx = await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+            const tx = await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
             await expect(tx).to.emit(liquidator, "CollectedRewards")
 
@@ -363,7 +363,7 @@ describe("Liquidator", async () => {
             await setup()
             const asset1Amount = vault3reward1.mul(2)
             await rewards1.transfer(vault3.address, vault3reward1)
-            await liquidator.collectRewards([vault3.address])
+            await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
             await asset1.transfer(syncSwapper.address, asset1Amount)
 
             const tx = await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
@@ -395,7 +395,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
             })
             it("reward 1 to asset 1 for vaults 1 and 3", async () => {
                 // Supply assets for the swap
@@ -509,7 +509,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
                 // Supply assets for the swap
                 const reward1Amount = vault1reward1.add(vault3reward1)
@@ -530,7 +530,7 @@ describe("Liquidator", async () => {
                 await rewards1.transfer(vault2.address, vault2reward1.div(4))
                 await rewards1.transfer(vault3.address, vault3reward1.div(4))
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
             })
             it("reward 1 to asset 1 for vaults 1 and 3", async () => {
                 const rewardsAmount = vault1reward1.add(vault3reward1).div(4)
@@ -594,7 +594,7 @@ describe("Liquidator", async () => {
             before(async () => {
                 await setup()
                 await rewards1.transfer(vault3.address, vault3reward1)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, asset1Amount)
             })
             it("not keep or governor", async () => {
@@ -631,7 +631,7 @@ describe("Liquidator", async () => {
             const asset1Amount = vault3reward1.mul(2)
             const fromAssetFeeAmount = ZERO // zero fee to simplify test
             await rewards1.transfer(vault3.address, vault3reward1)
-            await liquidator.collectRewards([vault3.address])
+            await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
             const swapFromReward1ToAsset1: DexSwapData = {
                 fromAsset: rewards1.address,
                 fromAssetAmount: vault3reward1,
@@ -664,7 +664,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
             })
             it("reward 1 to asset 1 for vaults 1 and 3", async () => {
                 // Supply assets for the swap
@@ -785,7 +785,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
                 // Supply assets for the swap
                 const reward1Amount = vault1reward1.add(vault3reward1)
@@ -833,7 +833,7 @@ describe("Liquidator", async () => {
                 await rewards1.transfer(vault2.address, vault2reward1.div(4))
                 await rewards1.transfer(vault3.address, vault3reward1.div(4))
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
             })
             it("reward 1 to asset 1 for vaults 1 and 3", async () => {
                 const rewardsAmount = vault1reward1.add(vault3reward1).div(4)
@@ -897,7 +897,7 @@ describe("Liquidator", async () => {
             before(async () => {
                 await setup()
                 await rewards1.transfer(vault3.address, vault3reward1)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
             })
             it("initiateSwap not keep or governor", async () => {
                 const tx = liquidator.connect(sa.default.signer).initiateSwap(rewards1.address, asset1.address, "0x")
@@ -949,7 +949,7 @@ describe("Liquidator", async () => {
             const reward1Amount = simpleToExactAmount(1000)
             const asset1Amount = reward1Amount.mul(2)
             await rewards1.transfer(vault3.address, reward1Amount)
-            await liquidator.collectRewards([vault3.address])
+            await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
             await asset1.transfer(syncSwapper.address, asset1Amount)
             await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
 
@@ -981,7 +981,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
                 // Supply assets for the swaps
                 const asset1Amount = vault1Asset1Amount.add(vault3reward1.mul(2))
@@ -1038,13 +1038,13 @@ describe("Liquidator", async () => {
                 await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("not swapped for pair", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
 
                 const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
                 await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("already donated for pair", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, asset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 await assertDonateTokens([asset1], [asset1Amount], [vault3.address])
@@ -1053,7 +1053,7 @@ describe("Liquidator", async () => {
                 await expect(tx).to.revertedWith(ERROR.NOTHING_TO_DONATE)
             })
             it("not keep or governor", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, asset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 const tx = liquidator.connect(sa.default.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
@@ -1081,12 +1081,12 @@ describe("Liquidator", async () => {
                 await setup()
                 // First batch
                 await rewards1.transfer(vault3.address, firstReward1Amount)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, firstAsset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 // second batch
                 await rewards1.transfer(vault3.address, secondReward1Amount)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, secondAsset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
             })
@@ -1118,7 +1118,7 @@ describe("Liquidator", async () => {
             before(async () => {
                 // First batch
                 await rewards1.transfer(vault3.address, firstReward1Amount)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, firstAsset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
 
@@ -1130,7 +1130,7 @@ describe("Liquidator", async () => {
                 await rewards1.transfer(vault3.address, secondReward1Amount)
                 await rewards4.transfer(vault3.address, secondReward4Amount)
 
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, secondAsset11Amount.add(secondAsset41Amount)) // for reward 1,4
 
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
@@ -1155,7 +1155,7 @@ describe("Liquidator", async () => {
             const reward1Amount = simpleToExactAmount(1000)
             const asset1Amount = reward1Amount.mul(2)
             await rewards1.transfer(vault3.address, reward1Amount)
-            await liquidator.collectRewards([vault3.address])
+            await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
             await asset1.transfer(syncSwapper.address, asset1Amount)
             await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
 
@@ -1178,7 +1178,7 @@ describe("Liquidator", async () => {
 
                 await rewards1.transfer(vault3.address, vault3reward1)
 
-                await liquidator.collectRewards([vault1.address, vault2.address, vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault1.address, vault2.address, vault3.address])
 
                 // Supply assets for the swaps
                 const reward1Amount = vault1reward1.add(vault3reward1)
@@ -1245,12 +1245,12 @@ describe("Liquidator", async () => {
                 await expect(tx).to.revertedWith(ERROR.INVALID_BATCH)
             })
             it("not swapped for pair", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 const tx = liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
                 await expect(tx).to.revertedWith(ERROR.NOT_SWAPPED)
             })
             it("already donated for pair", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, asset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 await liquidator.connect(vault3Account).claimAssets(0, rewards1.address, asset1.address)
@@ -1259,7 +1259,7 @@ describe("Liquidator", async () => {
                 await expect(tx).to.revertedWith(ERROR.ALREADY_DONATED)
             })
             it("not the correct vault", async () => {
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, asset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 const tx = liquidator.connect(await impersonate(vault2.address)).claimAssets(0, rewards1.address, asset1.address)
@@ -1276,12 +1276,12 @@ describe("Liquidator", async () => {
                 await setup()
                 // First batch
                 await rewards1.transfer(vault3.address, firstReward1Amount)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, firstAsset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
                 // second batch
                 await rewards1.transfer(vault3.address, secondReward1Amount)
-                await liquidator.collectRewards([vault3.address])
+                await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
                 await asset1.transfer(syncSwapper.address, secondAsset1Amount)
                 await liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
             })
@@ -1344,7 +1344,7 @@ describe("Liquidator", async () => {
             expect(await vault1.rewardToken(3), "reward token after").eq(rewards4.address)
 
             await rewards4.transfer(vault1.address, simpleToExactAmount(100, 24))
-            await liquidator.collectRewards([vault3.address])
+            await liquidator.connect(sa.keeper.signer).collectRewards([vault3.address])
         })
     })
 })

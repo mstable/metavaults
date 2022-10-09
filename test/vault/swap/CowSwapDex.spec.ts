@@ -400,7 +400,7 @@ describe("CowSwapDex", () => {
         describe("fails", async () => {
             it("if caller is not governor or liquidator", async () => {
                 await expect(cowSwapDex.connect(sa.default.signer).rescueToken(asset1.address, BN.from(1)), "!caller").to.be.revertedWith(
-                    "Only keeper or governor",
+                    "Only governor can execute",
                 )
             })
         })
