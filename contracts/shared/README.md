@@ -8,14 +8,6 @@ Common contracts used by different vaults.
 
 ![Vault Manager Role](../../docs/VaultManagerRole.svg)
 
-`PausableModule` contracts
-
-![PausableModule](../../docs/PausableModule.svg)
-
-`SafeCastExtended` contracts
-
-![SafeCast Extended](../../docs/SafeCastExtended.svg)
-
 `TokenHolder` contracts
 
 ![TokenHolder](../../docs/TokenHolder.svg)

@@ -19,8 +19,6 @@ sol2uml storage ../contracts -c Nexus -o NexusStorage.svg
 
 # contracts/shared
 sol2uml .. -b VaultManagerRole -i abis,artifacts,types,_flat,build
-sol2uml .. -b PausableModule -i abis,artifacts,types,_flat,build
-sol2uml .. -b SafeCastExtended -i abis,artifacts,types,_flat,build
 sol2uml .. -b TokenHolder -i abis,artifacts,types,_flat,build
 
 # contracts/tokens
