@@ -122,6 +122,7 @@ describe("Liquidator", async () => {
         // Deploy test Liquidator
         liquidator = await new Liquidator__factory(sa.default.signer).deploy(nexus.address)
         await liquidator.initialize(syncSwapper.address, asyncSwapper.address)
+        liquidator = liquidator.connect(sa.keeper.signer)
         await nexus.setLiquidator(liquidator.address)
 
         // Deploy mock vaults
@@ -222,15 +223,14 @@ describe("Liquidator", async () => {
             await expect(tx2).to.revertedWith(ERROR.INVALID_BATCH)
         })
         it("fails if initialize is called more than once", async () => {
-            await expect(liquidator.initialize(ZERO_ADDRESS, ZERO_ADDRESS), "init call twice",
-            ).to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
+            await expect(liquidator.initialize(ZERO_ADDRESS, ZERO_ADDRESS), "init call twice").to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
         })
         it("fails if underlying vaults initialize is called more than once", async () => {
             await expect(
-                vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address]), "init call twice",
+                vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address]),
+                "init call twice",
             ).to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
         })
-
     })
 
     describe("collect rewards", () => {
@@ -962,7 +962,6 @@ describe("Liquidator", async () => {
             await expect(tx).to.be.revertedWith(ERROR.DONATE_WRONG_TOKEN)
             tx = vault3.donate(rewards1.address, ZERO_ADDRESS)
             await expect(tx).to.be.revertedWith(ERROR.DONATE_WRONG_TOKEN)
-
         })
         context("from multiple vaults with multiple rewards", async () => {
             const vault1Asset1Amount = vault1reward1.mul(2).add(vault1reward2.mul(3e12)).add(vault1reward3.mul(4e6))
