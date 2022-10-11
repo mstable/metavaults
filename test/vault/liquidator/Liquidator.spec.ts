@@ -123,7 +123,7 @@ describe("Liquidator", async () => {
         liquidator = await new Liquidator__factory(sa.default.signer).deploy(nexus.address)
         await liquidator.initialize(syncSwapper.address, asyncSwapper.address)
         liquidator = liquidator.connect(sa.keeper.signer)
-        await nexus.setLiquidator(liquidator.address)
+        await nexus.setLiquidatorV2(liquidator.address)
 
         // Deploy mock vaults
         // Vault 1 has all rewards and asset 1

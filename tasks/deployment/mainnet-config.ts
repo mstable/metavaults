@@ -1,15 +1,12 @@
-import { DAI, USDC, USDT } from "@tasks/utils"
+import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils"
 import { ONE_DAY } from "@utils/constants"
 import { simpleToExactAmount } from "@utils/math"
 
-import type { Convex3CrvConstructorData, Convex3CrvPool, Curve3CrvPool } from "types/convexTypes"
+import type { Convex3CrvPool, Curve3CrvPool } from "types/convexTypes"
 
-const curveThreeTokenAddress = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490" // ThreeCRV
-const curveThreePoolAddress = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
-const convexBoosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
 const feeReceiver = "0x3dd46846eed8D147841AE162C8425c08BD8E1b41" //mStableDAO
-const rewardTokens = ["0xD533a949740bb3306d119CC777fa900bA034cd52", "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B"] // [CRV.address, CVX.address],
-const donateToken = "0x6B175474E89094C44Da98b954EedeAC495271d0F" //DAI
+const rewardTokens = [CRV.address, CVX.address]
+const donateToken = DAI.address
 
 const slippageData = {
     redeem: 101,
@@ -19,54 +16,40 @@ const slippageData = {
 }
 
 /* ***********************************
- * Curve3CRVMetavault configurations *
+ * Curve3CrvMetaVault configurations *
  **********************************  */
 const daiCurve3CrvMetaVault: Curve3CrvPool = {
     // constructor
-    // metaVault: "0x0_DEFINE AFTER DEPLOYMENT",
     asset: DAI.address,
-    slippageData,
     // initialize
     name: "DAI Convex Meta Vault",
     symbol: "mvDAI-CX1",
     decimals: DAI.decimals,
+    slippageData,
 }
 const usdcCurve3CrvMetaVault: Curve3CrvPool = {
     // constructor
-    // metaVault: "0x0_DEFINE AFTER DEPLOYMENT",
     asset: USDC.address,
-    slippageData,
     // initialize
     name: "USDC Convex Meta Vault",
     symbol: "mvUSDC-CX1",
     decimals: USDC.decimals,
+    slippageData,
 }
 
 const usdtCurve3CrvMetaVault: Curve3CrvPool = {
     // constructor
-    // metaVault: "0x0_DEFINE AFTER DEPLOYMENT",
     asset: USDT.address,
-    slippageData,
     // initialize
     name: "USDT Convex Meta Vault",
     symbol: "mvUSDT-CX1",
     decimals: USDT.decimals,
+    slippageData,
 }
 
 /* *****************************************
  * PeriodicAllocationPerfFeeMetaVault configurations *
  ****************************************  */
-
-// convex related
-const buildConvex3CrvConstructorData = (convex3CrvPool: Convex3CrvPool): Convex3CrvConstructorData => {
-    return {
-        metapool: convex3CrvPool.curveMetapool,
-        metapoolToken: convex3CrvPool.curveMetapoolToken,
-        convexPoolId: convex3CrvPool.convexPoolId,
-        booster: convexBoosterAddress, // Convex Finance: Booster
-        basePool: curveThreePoolAddress, // Curve.fi: DAI/USDC/USDT Pool
-    }
-}
 
 const musdConvex3CrvPool: Convex3CrvPool = {
     // constructor
@@ -81,18 +64,14 @@ const musdConvex3CrvPool: Convex3CrvPool = {
     isFactory: false,
     convexRewardPool: "0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52", // CRVRewardsPool
     decimals: 18,
-    asset: curveThreeTokenAddress,
+    asset: ThreeCRV.address,
     // liquidator
-    factory: "liquidator",
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
-    // LP token address	0x1AEf73d49Dedc4b1778d0706583995958Dc862e6
-    // Deposit contract address	0xF403C135812408BFbE8713b5A23a04b3D48AAE31
-    // Rewards contract address	0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52
 }
 const pwrdConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0xbcb91E689114B9Cc865AD7871845C95241Df4105", // Curve.fi Factory USD Metapool: PWR... (PWRD3CRV-f)
@@ -105,8 +84,7 @@ const pwrdConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex PWRD+3Crv",
     symbol: "vcvxPWRD3CRV-f",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -125,8 +103,7 @@ const usdpConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex USDP+3Crv",
     symbol: "vcvxusdp3CRV",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -145,8 +122,7 @@ const mimConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex MIM+3Crv",
     symbol: "vcvxMIM-3LP3CRV-f",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -164,8 +140,7 @@ const fraxConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex FRAX+3Crv",
     symbol: "vcvxFRAX3CRV-f",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -183,8 +158,7 @@ const busdConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex BUSD+3Crv",
     symbol: "vcvxBUSD3CRV-f",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -202,8 +176,7 @@ const lusdConvex3CrvPool: Convex3CrvPool = {
     name: "Vault Convex LUSD+3Crv",
     symbol: "vcvxLUSD3CRV-f",
     decimals: 18,
-    asset: curveThreeTokenAddress,
-    factory: "liquidator",
+    asset: ThreeCRV.address,
     streamDuration: ONE_DAY.mul(6),
     rewardTokens,
     donateToken,
@@ -211,14 +184,6 @@ const lusdConvex3CrvPool: Convex3CrvPool = {
     donationFee: 10000, // 1%
     slippageData,
 }
-
-const musdPoolConstructor = buildConvex3CrvConstructorData(musdConvex3CrvPool)
-const pwrdPoolConstructor = buildConvex3CrvConstructorData(pwrdConvex3CrvPool)
-const usdpPoolConstructor = buildConvex3CrvConstructorData(usdpConvex3CrvPool)
-const mimPoolConstructor = buildConvex3CrvConstructorData(mimConvex3CrvPool)
-const fraxPoolConstructor = buildConvex3CrvConstructorData(fraxConvex3CrvPool)
-const busdPoolConstructor = buildConvex3CrvConstructorData(busdConvex3CrvPool)
-const lusdPoolConstructor = buildConvex3CrvConstructorData(lusdConvex3CrvPool)
 
 export const config = {
     convex3CrvPools: {
@@ -230,19 +195,9 @@ export const config = {
         busd: busdConvex3CrvPool,
         lusd: lusdConvex3CrvPool,
     },
-    // TODO review to delete convex3CrvConstructors
-    convex3CrvConstructors: {
-        musd: musdPoolConstructor,
-        pwrd: pwrdPoolConstructor,
-        usdp: usdpPoolConstructor,
-        mim: mimPoolConstructor,
-        frax: fraxPoolConstructor,
-        busd: busdPoolConstructor,
-        lusd: lusdPoolConstructor,
-    },
 
     periodicAllocationPerfFeeMetaVault: {
-        asset: curveThreeTokenAddress,
+        asset: ThreeCRV.address,
         name: "Convex 3CRV Meta Vault",
         symbol: "m3CRV-CX1",
         performanceFee: 50000, //5

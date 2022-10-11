@@ -169,7 +169,7 @@ describe("Streamed Liquidator Vault", async () => {
         // Deploy test Liquidator
         liquidator = await new Liquidator__factory(sa.default.signer).deploy(nexus.address)
         await liquidator.initialize(swapper.address, ZERO_ADDRESS)
-        await nexus.setLiquidator(liquidator.address)
+        await nexus.setLiquidatorV2(liquidator.address)
     }
 
     const setup = async (decimals = 18): Promise<LiquidatorStreamBasicVault> => {
@@ -558,12 +558,12 @@ describe("Streamed Liquidator Vault", async () => {
                 await expect(tx).to.be.revertedWith("Only governor can execute")
             })
             it("fails if module liquidator is not set", async () => {
-                await nexus.setLiquidator(ZERO_ADDRESS)
+                await nexus.setLiquidatorV2(ZERO_ADDRESS)
                 const tx = vault.connect(sa.governor.signer).addRewards([ZERO_ADDRESS])
-                await expect(tx).to.be.revertedWith("invalid Liquidator")
+                await expect(tx).to.be.revertedWith("invalid Liquidator V2")
             })
             it("adds new rewards", async () => {
-                nexus.setLiquidator(liquidator.address)
+                nexus.setLiquidatorV2(liquidator.address)
                 const mocks = await new ContractMocks().init(sa)
 
                 const newRewards = [mocks.dai.address, mocks.usdc.address]

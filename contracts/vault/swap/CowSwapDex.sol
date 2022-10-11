@@ -46,7 +46,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
 
     function _keeperOrLiquidator() internal view {
         require(
-            msg.sender == _keeper() || msg.sender == _liquidator(),
+            msg.sender == _keeper() || msg.sender == _liquidatorV2(),
             "Only keeper or liquidator"
         );
     }

@@ -1,4 +1,4 @@
-import { deploy3CrvMetaVaults, deployCommon, deployCore } from "@tasks/deployment"
+import { deploy3CrvMetaVaults, deployCommon } from "@tasks/deployment"
 import { config } from "@tasks/deployment/mainnet-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
@@ -22,8 +22,10 @@ import {
     DataEmitter__factory,
     IERC20__factory,
     IERC20Metadata__factory,
+    InstantProxyAdmin__factory,
     MockGPv2Settlement__factory,
     MockGPv2VaultRelayer__factory,
+    Nexus__factory,
     PeriodicAllocationPerfFeeMetaVault__factory,
 } from "types/generated"
 
@@ -529,19 +531,19 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
-        // Deploy core contracts  (nexus, proxy admin)
-        const core = await deployCore(hre, deployer, "instant", governor.address)
-        nexus = core.nexus
-        proxyAdmin = core.proxyAdmin as InstantProxyAdmin
+        const nexusAddress = resolveAddress("Nexus")
+        nexus = Nexus__factory.connect(nexusAddress, governor.signer)
+        const proxyAdminAddress = resolveAddress("InstantProxyAdmin")
+        proxyAdmin = InstantProxyAdmin__factory.connect(proxyAdminAddress, governor.signer)
 
         // Deploy mocked contracts
         ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
         const syncSwapper = await deployMockSyncSwapper(deployer, nexus)
 
         // Deploy common /  utilities  contracts
-        ;({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
+        ;({ liquidator } = await deployCommon(hre, deployer, nexus, proxyAdmin, syncSwapper.address, swapper.address))
 
-        await proposeAcceptNexusModule(nexus, governor, "Liquidator", liquidator.address)
+        await proposeAcceptNexusModule(nexus, governor, "LiquidatorV2", liquidator.address)
         liquidator = liquidator.connect(governor.signer)
 
         //  1 - deployConvex3CrvLiquidatorVault,  2 - deployPeriodicAllocationPerfFeeMetaVaults,  3 - deployCurve3CrvMetaVault
@@ -549,7 +551,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             convex3CrvVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curve3CrvMetaVaults,
-        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManager.address)
+        } = await deploy3CrvMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)

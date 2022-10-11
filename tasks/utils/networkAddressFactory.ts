@@ -10,7 +10,6 @@ import type { AssetAddressTypes, Token } from "./tokens"
 
 const log = logger("addresses")
 
-// TODO - clean this list of names
 export const contractNames = [
     "Nexus",
     "DelayedProxyAdmin",
@@ -20,62 +19,16 @@ export const contractNames = [
     "VaultManager",
     "FundManager",
     "mStableDAO",
-    "BadgerSafe",
-    "SavingsManager",
     "Liquidator",
-    // Will become the EmissionsController
-    "RewardsDistributor",
-    "EmissionsController",
-    "PolygonPoSBridge",
-    "PolygonRootChainManager",
-    "PolygonChildChainManager",
-    "BoostDirector",
-    "VoterProxy",
-    "Collector",
-    "Ejector",
-    "Poker",
-    "SaveWrapper",
-    "RevenueRecipient",
-    "RevenueBuyBack",
-    "MassetManager",
-    "FeederManager",
-    "FeederLogic",
-    "FeederWrapper",
-    "FeederInterestValidator",
-    "BasketManager", // Legacy mUSD contract
-    "SignatureVerifier",
-    "QuestManager",
-    "QuestMaster",
-    "QuestSigner",
-    "StakedTokenMTA",
-    "StakedTokenBPT",
-    "PlatformTokenVendorFactory",
-    "BalancerVault",
-    "BalancerRecipient",
-    "BalancerStakingPoolId",
-    "AaveIncentivesController",
-    "AaveLendingPoolAddressProvider",
-    "AlchemixStakingPool",
-    "CompController",
-    "Disperse",
-    "DisperseForwarder",
-    "QuickSwapRouter",
-    "UniswapRouterV3",
-    "UniswapQuoterV3",
-    "UniswapEthToken",
-    "UniswapV2-MTA/WETH",
-    "MStableYieldSource", // Used for PoolTogether
     "OperationsSigner",
     "ENSRegistrarController",
     "ENSResolver",
-    "FraxVault",
-    "VisorRouter",
-    "VotiumBribe",
-    "VotiumForwarder",
     // v2
     "GPv2VaultRelayer",
     "GPv2Settlement",
     "CowSwapDex",
+    "1InchSwapDex",
+    "LiquidatorV2",
     // Pools
     "CurveMUSDPool",
     "CurveThreePool",
@@ -84,6 +37,8 @@ export const contractNames = [
     "ConvexBooster",
     "OneInchAggregationRouterV4",
     "OneInchAggregationExecutor",
+    "Curve3CrvMetapoolCalculatorLibrary",
+    "Curve3CrvFactoryMetapoolCalculatorLibrary",
 ] as const
 export type ContractNames = typeof contractNames[number]
 
@@ -162,16 +117,6 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xE1304aA964C5119C98E8AE554F031Bf3B21eC836"
             default:
         }
-    } else if (chain === Chain.ropsten) {
-        switch (contractName) {
-            case "Nexus":
-                return "0xeD04Cd19f50F893792357eA53A549E23Baf3F6cB"
-            case "DelayedProxyAdmin":
-                return "0x2d369F83E9DC764a759a74e87a9Bc542a2BbfdF0"
-            case "OperationsSigner":
-                return "0xb805220e070bca63441233a1ca569afe392bb840"
-            default:
-        }
     } else if (chain === Chain.goerli) {
         switch (contractName) {
             case "Nexus":
@@ -184,17 +129,6 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xC06B8183A6BC9FCa36B760f4B460aE3140cc6bD4"
             case "DelayedProxyAdmin":
                 return "0xdE0Fe341e324184d177617495F8D6d40b9edCe16"
-            default:
-        }
-    } else if (chain === Chain.rinkeby) {
-        switch (contractName) {
-            // V2
-            case "GPv2VaultRelayer":
-                return "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
-            case "GPv2Settlement":
-                return "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
-            case "CowSwapDex":
-                return "0x930a3dd309f91fabc45281dff9ab3a9b7b6692ed"
             default:
         }
     }

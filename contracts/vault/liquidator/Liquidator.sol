@@ -58,7 +58,6 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      * @param _nexus  Address of the Nexus contract that resolves protocol modules and roles.
      */
     constructor(address _nexus) ImmutableModule(_nexus) {
-        _initializeReentrancyGuard();
     }
 
     /**
@@ -67,6 +66,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      * @param _asyncSwapper Address of the async DEX swapper.
      */
     function initialize(address _syncSwapper, address _asyncSwapper) external initializer {
+        _initializeReentrancyGuard();
         _setSyncSwapper(_syncSwapper);
         _setAsyncSwapper(_asyncSwapper);
     }
