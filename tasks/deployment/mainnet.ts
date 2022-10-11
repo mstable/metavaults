@@ -7,7 +7,7 @@ import { deployCowSwapDex, deployOneInchDex } from "@tasks/dex"
 import { deployLiquidator } from "@tasks/liquidator"
 import { deployNexus } from "@tasks/nexus"
 import { deployProxyAdminDelayed, deployProxyAdminInstant } from "@tasks/proxyAdmin"
-import { getSigner } from "@tasks/utils"
+import { CRV, CVX, DAI, getSigner } from "@tasks/utils"
 import { getChain, resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { ONE_WEEK } from "@utils/constants"
 import { impersonate, setBalancesToAccount } from "@utils/fork"
@@ -21,7 +21,6 @@ import {
     deployConvex3CrvVault,
     deployCurve3CrvFactoryMetapoolCalculatorLibrary,
     deployCurve3CrvMetapoolCalculatorLibrary,
-    TASK_NAMES,
 } from "../convex3CrvVault"
 import { config } from "./mainnet-config"
 
@@ -108,34 +107,17 @@ async function setBalancesToAccounts(hre) {
     await setBalancesToAccount(sa.dummy1, [threeCrvToken], tokensToMockBalance)
     await setBalancesToAccount(sa.dummy2, [threeCrvToken], tokensToMockBalance)
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const deployerStConvex3CrvVault =
-    (hre: HardhatRuntimeEnvironment, speed: string, nexus: string, vaultManager: string, proxyAdmin: string) =>
-    async (pool: string, calculatorLibrary: string) => {
-        const convex3CrvPool = config.convex3CrvPools[pool]
-        const constructorData = config.convex3CrvConstructors[pool]
-
-        return hre.run(TASK_NAMES.TASK_DEPLOY_CONVEX3CRV_VAULT, {
-            name: convex3CrvPool.name,
-            symbol: convex3CrvPool.symbol,
-            constructorData,
-            asset: convex3CrvPool.asset,
-            nexus,
-            proxyAdmin,
-            vaultManager,
-            calculatorLibrary,
-            streamDuration: convex3CrvPool.streamDuration.toNumber(),
-            factory: convex3CrvPool.factory,
-            speed,
-        })
-    }
 const deployerConvex3CrvVault =
     (hre: HardhatRuntimeEnvironment, signer: Signer, nexus: string, vaultManager: string, proxyAdmin: string) =>
     async (pool: string, calculatorLibrary: string) => {
         const convex3CrvPool: Convex3CrvPool = config.convex3CrvPools[pool]
-        const constructorData = config.convex3CrvConstructors[pool]
+        const constructorData = {
+            metapool: convex3CrvPool.curveMetapool,
+            convexPoolId: convex3CrvPool.convexPoolId,
+            booster: resolveAddress("ConvexBooster"),
+        }
 
-        return deployConvex3CrvVault(hre, signer, convex3CrvPool.factory, {
+        return deployConvex3CrvVault(hre, signer, true, {
             name: convex3CrvPool.name,
             symbol: convex3CrvPool.symbol,
             constructorData,
@@ -146,6 +128,11 @@ const deployerConvex3CrvVault =
             calculatorLibrary,
             streamDuration: BN.from(convex3CrvPool.streamDuration).toNumber(),
             slippageData: convex3CrvPool.slippageData,
+            donateToken: DAI.address,
+            rewardTokens: [CRV.address, CVX.address],
+            feeReceiver: resolveAddress("mStableDAO"),
+            donationFee: 10000,
+            factory: convex3CrvPool.isFactory,
         })
     }
 export async function deployConvex3CrvVaults(
@@ -260,28 +247,28 @@ export const deployCore = async (
 export const deployCommon = async (
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
-    core: Phase1Deployed,
+    nexus: Nexus,
+    proxyAdmin: DelayedProxyAdmin | InstantProxyAdmin,
     syncSwapperAddress?: string,
     asyncSwapperAddress?: string,
 ): Promise<Phase2Deployed> => {
-    const { nexus } = core
     const oneInchDexSwap = !!syncSwapperAddress
         ? new OneInchDexSwap__factory(signer).attach(syncSwapperAddress)
         : await deployOneInchDex(hre, signer)
     const cowSwapDex = !!asyncSwapperAddress
         ? new CowSwapDex__factory(signer).attach(asyncSwapperAddress)
         : await deployCowSwapDex(hre, signer, nexus.address)
-    const liquidator = await deployLiquidator(hre, signer, nexus.address, oneInchDexSwap.address, cowSwapDex.address)
+    const liquidator = await deployLiquidator(hre, signer, nexus.address, oneInchDexSwap.address, cowSwapDex.address, proxyAdmin.address)
     return { oneInchDexSwap, cowSwapDex, liquidator }
 }
 
 export const deploy3CrvMetaVaults = async (
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
-    core: Phase1Deployed,
+    nexus: Nexus,
+    proxyAdmin: DelayedProxyAdmin | InstantProxyAdmin,
     vaultManager: string,
 ): Promise<Phase3Deployed> => {
-    const { nexus, proxyAdmin } = core
     // 1 - deployConvex3CrvLiquidatorVault
     const { convex3CrvVaults, curve3CrvMetapoolCalculatorLibrary } = await deployConvex3CrvVaults(
         hre,

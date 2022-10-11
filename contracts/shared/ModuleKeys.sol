@@ -36,6 +36,9 @@ contract ModuleKeys {
     // keccak256("Liquidator");
     bytes32 internal constant KEY_LIQUIDATOR =
         0x1e9cb14d7560734a61fa5ff9273953e971ff3cd9283c03d8346e3264617933d4;
+    // keccak256("LiquidatorV2");
+    bytes32 internal constant KEY_LIQUIDATOR_V2 =
+        0x4609f0c2814c5fc06ab61e580b24d36b621602ec696fa6680495a87fc21afb80;
     // keccak256("Keeper");
     bytes32 internal constant KEY_KEEPER =
         0x4f78afe9dfc9a0cb0441c27b9405070cd2a48b490636a7bdd09f355e33a5d7de;

@@ -59,7 +59,7 @@ contract Curve3PoolCalculator {
     }
 
     /**
-     * @notice Calculates the amount of pool coins to deposit for minting a fixed amount of liquidity provider tokens (3Crv).
+     * @notice Calculates the amount of pool coins deposited for minting a fixed amount of liquidity provider tokens (3Crv).
      * @param _mintAmount The amount of liquidity provider tokens (3Crv) to mint.
      * @param _coinIndex The index of the coin in the pool to withdraw. 0 = DAI, 1 = USDC, 2 = USDT.
      * @return tokenAmount_ The amount of coins, eg DAI, USDC or USDT, to deposit.
@@ -79,7 +79,7 @@ contract Curve3PoolCalculator {
     }
 
     /**
-     * @notice Calculates the amount of pool coins to receive for redeeming a fixed amount of liquidity provider tokens (3Crv).
+     * @notice Calculates the amount of pool coins received for redeeming a fixed amount of liquidity provider tokens (3Crv).
      * @param _burnAmount The amount of liquidity provider tokens (3Crv) to burn.
      * @param _coinIndex The index of the coin in the pool to withdraw. 0 = DAI, 1 = USDC, 2 = USDT.
      * @return tokenAmount_ The amount of coins, eg DAI, USDC or USDT, to receive from the redeem.

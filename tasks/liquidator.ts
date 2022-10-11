@@ -2,7 +2,7 @@ import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
 import { ONE_DAY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { BN } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
-import { Liquidator__factory } from "types/generated"
+import { AssetProxy__factory, Liquidator__factory } from "types/generated"
 
 import { getOrderDetails, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
@@ -14,13 +14,13 @@ import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
-import type { Liquidator } from "types/generated"
+import type { AssetProxy, Liquidator } from "types/generated"
 
 import type { CowSwapContext } from "./peripheral/cowswapApi"
 import type { Chain } from "./utils"
 
 const log = logger("liq")
-const resolveMultipleAddress = async (chain:Chain, vaultsStr: string) =>
+const resolveMultipleAddress = async (chain: Chain, vaultsStr: string) =>
     Promise.all(vaultsStr.split(",").map((vaultName) => resolveAddress(vaultName, chain)))
 
 export async function deployLiquidator(
@@ -29,30 +29,47 @@ export async function deployLiquidator(
     nexusAddress: string,
     syncSwapperAddress: string,
     asyncSwapperAddress: string,
+    proxyAdmin: string,
 ) {
     const constructorArguments = [nexusAddress]
-    const liquidator = await deployContract<Liquidator>(new Liquidator__factory(signer), "Liquidator", constructorArguments)
-    await liquidator.initialize(syncSwapperAddress, asyncSwapperAddress)
+    const liquidatorImpl = await deployContract<Liquidator>(new Liquidator__factory(signer), "Liquidator", constructorArguments)
+
     await verifyEtherscan(hre, {
-        address: liquidator.address,
+        address: liquidatorImpl.address,
         contract: "contracts/vault/liquidator/Liquidator.sol:Liquidator",
         constructorArguments,
     })
-    return liquidator
+
+    // Proxy
+    const data = liquidatorImpl.interface.encodeFunctionData("initialize", [syncSwapperAddress, asyncSwapperAddress])
+    const proxyConstructorArguments = [liquidatorImpl.address, proxyAdmin, data]
+    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+
+    await verifyEtherscan(hre, {
+        address: proxy.address,
+        contract: "contracts/upgradability/Proxies.sol:AssetProxy",
+        constructorArguments: proxyConstructorArguments,
+    })
+
+    return Liquidator__factory.connect(proxy.address, signer)
 }
 
 subtask("liq-deploy", "Deploys a new Liquidator contract")
-    .addParam("syncSwapper", "Sync Swapper address", undefined, types.string)
-    .addParam("asyncSwapper", "Async Swapper address", undefined, types.string)
-    .addOptionalParam("nexus", "Nexus address, overrides lookup", undefined, types.string)
+    .addOptionalParam("syncSwapper", "Sync Swapper address override", undefined, types.string)
+    .addOptionalParam("asyncSwapper", "Async Swapper address override", undefined, types.string)
+    .addOptionalParam("nexus", "Nexus address override", undefined, types.string)
+    .addOptionalParam("proxyAdmin", "Proxy admin address override", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { nexus, speed, syncSwapper, asyncSwapper } = taskArgs
+        const { nexus, proxyAdmin, syncSwapper, asyncSwapper, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
+        const syncSwapperAddress = resolveAddress(syncSwapper ?? "1InchSwapDex", chain)
+        const asyncSwapperAddress = resolveAddress(asyncSwapper ?? "CowSwapDex", chain)
+        const proxyAdminAddress = resolveAddress(proxyAdmin ?? "InstantProxyAdmin", chain)
 
-        return deployLiquidator(hre, signer, nexusAddress, syncSwapper, asyncSwapper)
+        return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress)
     })
 
 task("liq-deploy").setAction(async (_, __, runSuper) => {

@@ -102,8 +102,8 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
     }
 
     function _addRewards(address[] memory _rewardTokens) internal virtual {
-        address liquidator = nexus.getModule(keccak256("Liquidator"));
-        require(liquidator != address(0), "invalid Liquidator");
+        address liquidator = _liquidatorV2();
+        require(liquidator != address(0), "invalid Liquidator V2");
 
         uint256 rewardTokenLen = rewardToken.length;
 

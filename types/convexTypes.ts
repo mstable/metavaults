@@ -24,8 +24,7 @@ export interface Convex3CrvPool {
     symbol: string
     decimals: number
     asset: string
-    // liquidator seetings
-    factory?: Convex3CrvPoolFactory
+    // liquidator settings
     streamDuration?: BigNumberish
     rewardTokens?: string[]
     donateToken?: string
@@ -50,12 +49,9 @@ export interface Convex3CrvPool {
 export interface Convex3CrvConstructorData {
     /** Curve Metapool Convex3CrvPool.curveMetapool */
     metapool: string
-    /** Curve Metapool Token Convex3CrvPool.curveMetapoolToken */
-    metapoolToken?: string
     booster: string
     /** Convex3CrvPool.convexPoolId */
     convexPoolId: BigNumberish
-    basePool: string
 }
 
 // Convex 3RCV Vault Configurations
