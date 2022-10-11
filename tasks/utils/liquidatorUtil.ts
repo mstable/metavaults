@@ -29,3 +29,31 @@ export const buildDonateTokensInput = async (signer: Signer | Provider, vaultsAd
         { rewardTokens: [], purchaseTokens: [], vaults: [] },
     )
 }
+/**
+ * Builds  the argument in order to request to the liquidator to initiate swaps.
+ *
+ * @param {(Signer | Provider)} signer
+ * @param {string[]} vaultsAddress
+ * @return {*}
+ */
+export const buildInitiateSwapInput = async (signer: Signer | Provider, vaultsAddress: string[]) => {
+    const pairs = await Promise.all(
+        vaultsAddress.map(async (vaultAddress) => {
+            const vault = LiquidatorAbstractVault__factory.connect(vaultAddress, signer)
+            const rewardTokens: string[] = await vault.rewardTokens()
+            const purchaseTokens: string[] = await Promise.all(rewardTokens.map(async (rewardToken) => vault.donateToken(rewardToken)))
+            return rewardTokens.map((rewardToken, i) => ({ fromAsset: rewardToken, toAsset: purchaseTokens[i] }))
+        }),
+    )
+    // get all distinct  "fromAsset" - "toAsset" pairs
+    return pairs
+        .flatMap((pair) => pair)
+        .reduce((prev, curr) => {
+            // if pair already exist do not add it, otherwise add it
+            if (prev.find((prevPair) => prevPair.fromAsset !== curr.fromAsset && prevPair.toAsset !== curr.toAsset)) {
+                return prev.concat(curr)
+            } else {
+                return prev
+            }
+        }, [])
+}
