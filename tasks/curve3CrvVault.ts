@@ -54,7 +54,6 @@ interface PeriodicAllocationPerfFeeMetaVaultParams {
     assetPerShareUpdateThreshold: BN
 }
 
-// TODO ADD TASK
 export async function deployCurve3PoolCalculatorLibrary(hre: HardhatRuntimeEnvironment, signer: Signer) {
     const calculatorLibrary = await deployContract<Curve3PoolCalculatorLibrary>(
         new Curve3PoolCalculatorLibrary__factory(signer),
@@ -67,6 +66,7 @@ export async function deployCurve3PoolCalculatorLibrary(hre: HardhatRuntimeEnvir
         contract: "contracts/peripheral/Curve/Curve3PoolCalculatorLibrary.sol:Curve3PoolCalculatorLibrary",
         constructorArguments: [],
     })
+
     return calculatorLibrary
 }
 
@@ -103,7 +103,6 @@ export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, s
     return { proxy, impl: vaultImpl }
 }
 
-// TODO ADD TASK
 export const deployPeriodicAllocationPerfFeeMetaVault = async (
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
@@ -157,6 +156,19 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
 
     return { proxy, impl: vaultImpl }
 }
+
+subtask("curve-3crv-lib-deploy", "Deploys a Curve 3Pool calculator library")
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+
+        return deployCurve3PoolCalculatorLibrary(hre, signer)
+    })
+task("curve-3crv-lib-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
 
 subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
     .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
