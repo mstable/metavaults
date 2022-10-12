@@ -1,3 +1,5 @@
+import { simpleToExactAmount } from "@utils/math"
+import { subtask, task, types } from "hardhat/config"
 import {
     AssetProxy__factory,
     Curve3CrvBasicMetaVault__factory,
@@ -5,7 +7,7 @@ import {
     PeriodicAllocationPerfFeeMetaVault__factory,
 } from "types"
 
-import { deployContract } from "./utils"
+import { deployContract, getChain, getSigner, resolveAddress, resolveToken } from "./utils"
 import { verifyEtherscan } from "./utils/etherscan"
 
 import type { BN } from "@utils/math"
@@ -155,3 +157,72 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
 
     return { proxy, impl: vaultImpl }
 }
+
+subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
+    .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
+    .addParam(
+        "singleSource",
+        "Token symbol or address of the vault that smaller withdraws should be sourced from.",
+        undefined,
+        types.string,
+    )
+    .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
+    .addOptionalParam("symbol", "Vault symbol", "mv3CRV", types.string)
+    .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
+    .addOptionalParam(
+        "proxyAdmin",
+        "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
+        "InstantProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
+    .addOptionalParam("perfFee", "Performance fee scaled to 6 decimal places. default 1% = 10000", 10000, types.int)
+    .addOptionalParam(
+        "singleThreshold",
+        "Max percentage of assets withdraws will source from a single vault in basis points. default 10%",
+        1000,
+        types.int,
+    )
+    .addOptionalParam("updateThreshold", "Asset per share update threshold. default 100k", 100000, types.int)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { name, symbol, asset, vaults, proxyAdmin, feeReceiver, perfFee, singleSource, singleThreshold, updateThreshold, speed } =
+            taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const nexusAddress = resolveAddress("Nexus", chain)
+        const assetToken = resolveToken(asset, chain)
+        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const vaultManagerAddress = resolveAddress("VaultManager", chain)
+
+        const underlyings = vaults.split(",")
+        const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
+        const singleSourceAddress = resolveAddress(singleSource, chain)
+        const singleSourceVaultIndex = underlyingAddresses.indexOf(singleSourceAddress)
+
+        const feeReceiverAddress = resolveAddress(feeReceiver, chain)
+
+        const { proxy, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+            nexus: nexusAddress,
+            asset: assetToken.address,
+            name,
+            symbol,
+            vaultManager: vaultManagerAddress,
+            proxyAdmin: proxyAdminAddress,
+            feeReceiver: feeReceiverAddress,
+            performanceFee: perfFee,
+            underlyingVaults: underlyingAddresses,
+            sourceParams: {
+                singleVaultSharesThreshold: singleThreshold,
+                singleSourceVaultIndex,
+            },
+            assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
+        })
+
+        return { proxy, impl }
+    })
+task("convex-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
