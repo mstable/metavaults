@@ -340,6 +340,7 @@ task("convex-3crv-fork")
             calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
         })
 
+        // Deploy Convex 3Crv Meta Vault
         const metaVault = await hre.run("convex-3crv-meta-vault-deploy", {
             speed,
             vaults: [
@@ -351,7 +352,10 @@ task("convex-3crv-fork")
             singleSource: fraxConvexVault.proxy.address,
         })
 
-        // deployConvex3CrvLiquidatorVault
+        // Deploy Curve Meta Vaults
+        const threePoolLib = await hre.run("curve-3crv-lib-deploy", {
+            speed,
+        })
 
         // simulate accounts and deposit tokens.
         await setBalancesToAccounts(hre)

@@ -93,6 +93,10 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xF2F400C138F9fb900576263af0BC7fCde2B1b8a8"
             case "VaultManager":
                 return "0x1116241647D2173342b108e6363fFe58762e3e97"
+            case "CowSwapDex":
+                return "0x8E9A9a122F402CD98727128BaF3dCCAF05189B67"
+            case "LiquidatorV2":
+                return "0xD298291059aed77686037aEfFCf497A321A4569e"
             default:
         }
     } else if (chain === Chain.polygon) {

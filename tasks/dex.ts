@@ -146,14 +146,14 @@ task("dex-rescue-token", "Calls rescueToken from the CowSwapDex and sends it to 
     })
 
 subtask("cow-swap-dex-deploy", "Deploys a new CowSwapDex contract")
-    .addOptionalParam("nexus", "Nexus address, overrides lookup", undefined, types.string)
+    .addOptionalParam("nexus", "Nexus address, overrides lookup", "Nexus", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
     .setAction(async (taskArgs, hre) => {
         const { nexus, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
 
-        const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
+        const nexusAddress = resolveAddress(nexus, chain)
 
         return deployCowSwapDex(hre, signer, nexusAddress)
     })
