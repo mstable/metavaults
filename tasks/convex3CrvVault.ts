@@ -311,22 +311,46 @@ task("convex-3crv-fork")
         // Deploy the Convex 3Crv Vaults
         const Curve3CrvMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: false })
         const Curve3CrvFactoryMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: true })
-        await hre.run("convex-3crv-vault-deploy", {
+        const musdConvexVault = await hre.run("convex-3crv-vault-deploy", {
             speed,
             symbol: "vcx3CRV-mUSD",
             name: "3Crv Convex mUSD Vault",
             pool: "mUSD",
             calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary.address,
         })
-        await hre.run("convex-3crv-vault-deploy", {
+        const fraxConvexVault = await hre.run("convex-3crv-vault-deploy", {
             speed,
             symbol: "vcx3CRV-FRAX",
             name: "3Crv Convex FRAX Vault",
             pool: "FRAX",
             calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
         })
+        const lusdConvexVault = await hre.run("convex-3crv-vault-deploy", {
+            speed,
+            symbol: "vcx3CRV-LUSD",
+            name: "3Crv Convex LUSD Vault",
+            pool: "LUSD",
+            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
+        })
+        const busdConvexVault = await hre.run("convex-3crv-vault-deploy", {
+            speed,
+            symbol: "vcx3CRV-BUSD",
+            name: "3Crv Convex BUSD Vault",
+            pool: "BUSD",
+            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
+        })
 
-        // deployPeriodicAllocationPerfFeeMetaVault
+        const metaVault = await hre.run("convex-3crv-meta-vault-deploy", {
+            speed,
+            vaults: [
+                musdConvexVault.proxy.address,
+                fraxConvexVault.proxy.address,
+                lusdConvexVault.proxy.address,
+                busdConvexVault.proxy.address,
+            ].join(","),
+            singleSource: fraxConvexVault.proxy.address,
+        })
+
         // deployConvex3CrvLiquidatorVault
 
         // simulate accounts and deposit tokens.
