@@ -1,4 +1,4 @@
-import { config } from "@tasks/deployment/mainnet-config"
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { musd3CRV, ThreeCRV } from "@tasks/utils/tokens"
 import shouldBehaveLikeBaseVault, { testAmounts } from "@test/shared/BaseVault.behaviour"
@@ -7,6 +7,7 @@ import { impersonate, impersonateAccount } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
+import { Wallet } from "ethers"
 import * as hre from "hardhat"
 import {
     Convex3CrvBasicVault__factory,
@@ -34,7 +35,8 @@ import type {
     IConvexRewardsPool,
     ICurve3Pool,
     ICurveMetapool,
-    IERC20Metadata} from "types/generated"
+    IERC20Metadata,
+} from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
@@ -42,6 +44,7 @@ const governorAddress = resolveAddress("Governor")
 const deployerAddress = resolveAddress("OperationsSigner")
 const nexusAddress = resolveAddress("Nexus")
 const baseRewardPoolAddress = resolveAddress("CRVRewardsPool")
+const booster = resolveAddress("ConvexBooster")
 const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const threeCrvWhaleAddress = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A" // Curve.fi: DAI/USDC/USDT Gauge
 const bobAddress = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
@@ -131,6 +134,8 @@ describe("Convex 3Crv Basic Vault", async () => {
             sa.bob = bob
             sa.governor = governor
             sa.dummy1 = bob
+            const otherSigner = Wallet.createRandom()
+            sa.other = { signer: otherSigner, address: otherSigner.address }
 
             const variances = {
                 deposit: "2",
@@ -148,22 +153,27 @@ describe("Convex 3Crv Basic Vault", async () => {
             baseCtx.sa = sa
             baseCtx.amounts = testAmounts(100, 18)
             baseCtx.variances = variances
+            baseCtx.dataEmitter = dataEmitter
         }
         return baseCtx
     }
 
     it("deploy and initialize Convex vault for mUSD pool", async () => {
         await setup(normalBlock)
-        const musdConvexConstructorData = config.convex3CrvConstructors.musd
-        const vault = await deployVault(musdConvexConstructorData)
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.musd.curveMetapool,
+            convexPoolId: config.convex3CrvPools.musd.convexPoolId,
+            booster,
+        }
+        const vault = await deployVault(convexConstructorData)
 
         expect(await vault.nexus(), "nexus").eq(nexusAddress)
 
-        expect(await vault.metapool(), "metapool").to.equal(musdConvexConstructorData.metapool)
-        expect(await vault.metapoolToken(), "metapool token").to.equal(musdConvexConstructorData.metapoolToken)
-        expect(await vault.basePool(), "base pool").to.equal(musdConvexConstructorData.basePool)
-        expect(await vault.booster(), "booster").to.equal(musdConvexConstructorData.booster)
-        expect(await vault.convexPoolId(), "convex Pool Id").to.equal(musdConvexConstructorData.convexPoolId)
+        expect(await vault.metapool(), "metapool").to.equal(config.convex3CrvPools.musd.curveMetapool)
+        expect(await vault.metapoolToken(), "metapool token").to.equal(config.convex3CrvPools.musd.curveMetapoolToken)
+        expect(await vault.basePool(), "base pool").to.equal(resolveAddress("CurveThreePool"))
+        expect(await vault.booster(), "booster").to.equal(booster)
+        expect(await vault.convexPoolId(), "convex Pool Id").to.equal(convexConstructorData.convexPoolId)
         expect(await vault.baseRewardPool(), "convex reward pool").to.equal(baseRewardPoolAddress)
 
         await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, config.convex3CrvPools.musd.slippageData)
@@ -182,9 +192,9 @@ describe("Convex 3Crv Basic Vault", async () => {
         expect(data.vault.mintSlippage, "mintSlippage").eq(config.convex3CrvPools.musd.slippageData.mint)
 
         // Convex vault specific data
-        expect(data.convex.curveMetapool, "Curve Metapool").eq(musdConvexConstructorData.metapool)
-        expect(data.convex.booster, "booster").eq(musdConvexConstructorData.booster)
-        expect(data.convex.convexPoolId, "poolId").eq(musdConvexConstructorData.convexPoolId)
+        expect(data.convex.curveMetapool, "Curve Metapool").eq(convexConstructorData.metapool)
+        expect(data.convex.booster, "booster").eq(booster)
+        expect(data.convex.convexPoolId, "poolId").eq(convexConstructorData.convexPoolId)
         expect(data.convex.metapoolToken, "metapoolToken").eq(musd3CRV.address)
         expect(data.convex.baseRewardPool, "baseRewardPool").eq(baseRewardPoolAddress)
 
@@ -195,11 +205,17 @@ describe("Convex 3Crv Basic Vault", async () => {
     })
     describe("mUSD Convex Vault", () => {
         const initialDeposit = simpleToExactAmount(400000, 18)
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.musd.curveMetapool,
+            convexPoolId: config.convex3CrvPools.musd.convexPoolId,
+            booster,
+        }
         describe("should behave like Convex3Crv Vault", async () => {
             let ctx: Convex3CrvContext
             before(async () => {
                 await setup(normalBlock)
-                const vault = await deployVault(config.convex3CrvConstructors.musd)
+
+                const vault = await deployVault(convexConstructorData)
                 await vault.initialize(
                     "Vault Convex mUSD/3CRV",
                     "vcvxmusd3CRV",
@@ -238,7 +254,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             let baseCtx: Partial<BaseVaultBehaviourContext>
             before(async () => {
                 baseCtx = await createBaseContext(
-                    config.convex3CrvConstructors.musd,
+                    convexConstructorData,
                     config.convex3CrvPools.musd.slippageData,
                     initialDeposit,
                     "Vault Convex mUSD/3CRV",
@@ -251,9 +267,15 @@ describe("Convex 3Crv Basic Vault", async () => {
     describe("USDP Convex Vault", () => {
         let ctx: Convex3CrvContext
         const initialDeposit = simpleToExactAmount(2000, 18)
+
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.usdp.curveMetapool,
+            convexPoolId: config.convex3CrvPools.usdp.convexPoolId,
+            booster,
+        }
         before(async () => {
             await setup(15410000)
-            const vault = await deployVault(config.convex3CrvConstructors.usdp)
+            const vault = await deployVault(convexConstructorData)
             await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
@@ -284,9 +306,14 @@ describe("Convex 3Crv Basic Vault", async () => {
     describe("FRAX Convex Vault", () => {
         let ctx: Convex3CrvContext
         const initialDeposit = simpleToExactAmount(50000, 18)
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.frax.curveMetapool,
+            convexPoolId: config.convex3CrvPools.frax.convexPoolId,
+            booster,
+        }
         before(async () => {
             await setup(15410000)
-            const vault = await deployVault(config.convex3CrvConstructors.frax, true)
+            const vault = await deployVault(convexConstructorData, true)
             await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
@@ -317,9 +344,14 @@ describe("Convex 3Crv Basic Vault", async () => {
     describe("BUSD Convex Vault", () => {
         let ctx: Convex3CrvContext
         const initialDeposit = simpleToExactAmount(50000, 18)
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.busd.curveMetapool,
+            convexPoolId: config.convex3CrvPools.busd.convexPoolId,
+            booster,
+        }
         before(async () => {
             await setup(15410000)
-            const vault = await deployVault(config.convex3CrvConstructors.busd, true)
+            const vault = await deployVault(convexConstructorData, true)
             await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
@@ -350,9 +382,14 @@ describe("Convex 3Crv Basic Vault", async () => {
     describe("LUSD Convex Vault", () => {
         let ctx: Convex3CrvContext
         const initialDeposit = simpleToExactAmount(50000, 18)
+        const convexConstructorData = {
+            metapool: config.convex3CrvPools.lusd.curveMetapool,
+            convexPoolId: config.convex3CrvPools.lusd.convexPoolId,
+            booster,
+        }
         before(async () => {
             await setup(15410000)
-            const vault = await deployVault(config.convex3CrvConstructors.lusd, true)
+            const vault = await deployVault(convexConstructorData, true)
             await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)

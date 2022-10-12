@@ -1,4 +1,4 @@
-import { config } from "@tasks/deployment/mainnet-config"
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
@@ -34,6 +34,7 @@ const feeReceiver = resolveAddress("mStableDAO")
 const baseRewardPoolAddress = resolveAddress("CRVRewardsPool")
 const curveThreePoolAddress = resolveAddress("CurveThreePool")
 const curveMUSDPoolAddress = resolveAddress("CurveMUSDPool")
+const booster = resolveAddress("ConvexBooster")
 const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const staker1Address = "0x85eB61a62701be46479C913717E8d8FAD42b398d"
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
@@ -61,6 +62,11 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     const depositAmount = simpleToExactAmount(100000, 18)
     const mintAmount = simpleToExactAmount(100000, 18)
     const initialDepositAmount = depositAmount.mul(4)
+    const musdConvexConstructorData = {
+        metapool: config.convex3CrvPools.musd.curveMetapool,
+        convexPoolId: config.convex3CrvPools.musd.convexPoolId,
+        booster,
+    }
 
     const setup = async (blockNumber: number) => {
         if (network.name === "hardhat") {
@@ -91,17 +97,26 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         baseRewardsPool = IConvexRewardsPool__factory.connect(baseRewardPoolAddress, staker1.signer)
 
         dataEmitter = await new DataEmitter__factory(staker1.signer).deploy()
+
+        // Mock the Liquidator
+        const nexus = Nexus__factory.connect(resolveAddress("Nexus"), governor.signer)
+        const liquidatorKey = keccak256(toUtf8Bytes("LiquidatorV2"))
+        await nexus.connect(governor.signer).proposeModule(liquidatorKey, mockLiquidator.address)
+        await increaseTime(ONE_WEEK)
+        await nexus.connect(governor.signer).acceptProposedModule(liquidatorKey)
     }
+
     const deployVault = async () => {
         const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(deployer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
         }
+
         musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, deployer).deploy(
             nexusAddress,
             ThreeCRV.address,
-            config.convex3CrvConstructors.musd,
+            musdConvexConstructorData,
             ONE_DAY.mul(6),
         )
         await musdConvexVault.initialize(
@@ -118,6 +133,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
 
     it("deploy and initialize Convex vault for mUSD pool", async () => {
         await setup(normalBlock)
+
         const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(deployer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
@@ -126,16 +142,16 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, deployer).deploy(
             nexusAddress,
             ThreeCRV.address,
-            config.convex3CrvConstructors.musd,
+            musdConvexConstructorData,
             ONE_DAY.mul(6),
         )
 
         expect(await musdConvexVault.nexus(), "nexus").eq(nexusAddress)
-        expect(await musdConvexVault.metapool(), "curve Metapool").to.equal(config.convex3CrvConstructors.musd.metapool)
-        expect(await musdConvexVault.metapoolToken(), "metapool token").to.equal(config.convex3CrvConstructors.musd.metapoolToken)
-        expect(await musdConvexVault.basePool(), "3Pool pool").to.equal(config.convex3CrvConstructors.musd.basePool)
-        expect(await musdConvexVault.booster(), "booster").to.equal(config.convex3CrvConstructors.musd.booster)
-        expect(await musdConvexVault.convexPoolId(), "convex Pool Id").to.equal(config.convex3CrvConstructors.musd.convexPoolId)
+        expect(await musdConvexVault.metapool(), "curve Metapool").to.equal(config.convex3CrvPools.musd.curveMetapool)
+        expect(await musdConvexVault.metapoolToken(), "metapool token").to.equal(config.convex3CrvPools.musd.curveMetapoolToken)
+        expect(await musdConvexVault.basePool(), "3Pool pool").to.equal(resolveAddress("CurveThreePool"))
+        expect(await musdConvexVault.booster(), "booster").to.equal(booster)
+        expect(await musdConvexVault.convexPoolId(), "convex Pool Id").to.equal(config.convex3CrvPools.musd.convexPoolId)
         expect(await musdConvexVault.baseRewardPool(), "convex reward pool").to.equal(baseRewardPoolAddress)
 
         await musdConvexVault.initialize(
@@ -163,10 +179,10 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         expect(data.vault.mintSlippage, "mint slippage").eq(config.convex3CrvPools.musd.slippageData.mint)
 
         // Convex vault specific data
-        expect(data.convex.curveMetapool, "Curve Metapool").eq(config.convex3CrvConstructors.musd.metapool)
-        expect(data.convex.booster, "booster").eq(config.convex3CrvConstructors.musd.booster)
-        expect(data.convex.convexPoolId, "poolId").eq(config.convex3CrvConstructors.musd.convexPoolId)
-        expect(data.convex.metapoolToken, "metapoolToken").eq(config.convex3CrvConstructors.musd.metapoolToken)
+        expect(data.convex.curveMetapool, "Curve Metapool").eq(config.convex3CrvPools.musd.curveMetapool)
+        expect(data.convex.booster, "booster").eq(booster)
+        expect(data.convex.convexPoolId, "poolId").eq(config.convex3CrvPools.musd.convexPoolId)
+        expect(data.convex.metapoolToken, "metapoolToken").eq(config.convex3CrvPools.musd.curveMetapoolToken)
         expect(data.convex.baseRewardPool, "baseRewardPool").eq(baseRewardPoolAddress)
 
         // Vault rewards
@@ -174,9 +190,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         expect(await musdConvexVault.rewardToken(1), "2nd rewards token").to.eq(CVX.address)
 
         // Vault has approved the liquidator to transfer the reward tokens
-        const liquidatorAddress = resolveAddress("Liquidator")
-        expect(await crvToken.allowance(musdConvexVault.address, liquidatorAddress), "CRV allowance").to.gt(0)
-        expect(await cvxToken.allowance(musdConvexVault.address, liquidatorAddress), "CVX allowance").to.gt(0)
+        expect(await crvToken.allowance(musdConvexVault.address, mockLiquidator.address), "CRV allowance").to.gt(0)
+        expect(await cvxToken.allowance(musdConvexVault.address, mockLiquidator.address), "CVX allowance").to.gt(0)
 
         // Fees
         expect(await musdConvexVault.feeReceiver(), "fee receiver").to.eq(feeReceiver)
@@ -235,13 +250,6 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     describe("reward liquidations", () => {
         before(async () => {
             await setup(normalBlock)
-
-            // Mock the Liquidator
-            const nexus = Nexus__factory.connect(resolveAddress("Nexus"), governor.signer)
-            const liquidatorKey = keccak256(toUtf8Bytes("Liquidator"))
-            await nexus.connect(governor.signer).proposeModule(liquidatorKey, mockLiquidator.address)
-            await increaseTime(ONE_WEEK)
-            await nexus.connect(governor.signer).acceptProposedModule(liquidatorKey)
 
             // Deploy and initialize the vault
             await deployVault()

@@ -1,4 +1,4 @@
-import { ONE_WEEK } from "@utils/constants"
+import { ONE_DAY } from "@utils/constants"
 import { subtask, task, types } from "hardhat/config"
 import {
     AssetProxy__factory,
@@ -6,9 +6,11 @@ import {
     Convex3CrvLiquidatorVault__factory,
     Curve3CrvFactoryMetapoolCalculatorLibrary__factory,
     Curve3CrvMetapoolCalculatorLibrary__factory,
+    Nexus__factory,
 } from "types/generated"
 
-import { config } from "./deployment/mainnet-config"
+import { setBalancesToAccounts } from "./deployment/convex3CrvVaults"
+import { config } from "./deployment/convex3CrvVaults-config"
 import { CRV, CVX } from "./utils"
 import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
@@ -176,17 +178,6 @@ export async function deployConvex3CrvLiquidatorVault(
 
     return { proxy, impl: vaultImpl }
 }
-export async function deployConvex3CrvVault(
-    hre: HardhatRuntimeEnvironment,
-    signer: Signer,
-    liquidator: boolean,
-    params: Convex3CrvLiquidatorVaultParams,
-) {
-    if (liquidator) {
-        return deployConvex3CrvLiquidatorVault(hre, signer, params)
-    }
-    return deployConvex3CrvBasicVault(hre, signer, params)
-}
 
 subtask("convex-3crv-lib-deploy", "Deploys a Curve Metapool calculator library")
     .addOptionalParam("factory", "Is the Curve Metapool a factory pool", false, types.boolean)
@@ -207,22 +198,36 @@ task("convex-3crv-lib-deploy").setAction(async (_, __, runSuper) => {
 subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addParam("name", "Vault name", undefined, types.string)
     .addParam("symbol", "Vault symbol", undefined, types.string)
-    .addParam("pool", "Symbol of the Convex pool in lower case. eg musd, frax, mim, lusd, busd", undefined, types.string)
+    .addParam("pool", "Symbol of the Convex pool. eg mUSD, FRAX, MIM, LUSD, BUSD", undefined, types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
-    .addOptionalParam("streamDuration", "Number of seconds the stream takes.", ONE_WEEK, types.int)
+    .addOptionalParam("streamDuration", "Number of seconds the stream takes. default 6 days", ONE_DAY.mul(6), types.int)
     .addOptionalParam(
         "proxyAdmin",
         "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
         "InstantProxyAdmin",
         types.string,
     )
+    .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", undefined, types.string)
     .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
     .addOptionalParam("donationFee", "Liquidation fee scaled to 6 decimal places. default 1% = 10000", 10000, types.int)
     .addOptionalParam("donateToken", "Address or token symbol of token that rewards will be swapped to.", "DAI", types.string)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { name, symbol, pool, asset, streamDuration, proxyAdmin, slippage, donateToken, donationFee, feeReceiver, speed } = taskArgs
+        const {
+            name,
+            symbol,
+            pool,
+            asset,
+            streamDuration,
+            proxyAdmin,
+            calculatorLibrary,
+            slippage,
+            donateToken,
+            donationFee,
+            feeReceiver,
+            speed,
+        } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -233,10 +238,15 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const vaultManagerAddress = resolveAddress("VaultManager", chain)
         const convexBoosterAddress = resolveAddress("ConvexBooster", chain)
 
-        const convex3CrvPool = config.convex3CrvPools[pool]
-        const calculatorLibraryAddress = convex3CrvPool.isFactory
-            ? resolveAddress("Curve3CrvFactoryMetapoolCalculatorLibrary", chain)
-            : resolveAddress("Curve3CrvMetapoolCalculatorLibrary", chain)
+        const convex3CrvPool = config.convex3CrvPools[pool.toLowerCase()]
+        let calculatorLibraryAddress
+        if (calculatorLibrary) {
+            calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
+        } else {
+            calculatorLibraryAddress = convex3CrvPool.isFactory
+                ? resolveAddress("Curve3CrvFactoryMetapoolCalculatorLibrary", chain)
+                : resolveAddress("Curve3CrvMetapoolCalculatorLibrary", chain)
+        }
         const constructorData = {
             metapool: convex3CrvPool.curveMetapool,
             booster: convexBoosterAddress,
@@ -270,3 +280,55 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
 task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
+
+task("convex-3crv-fork")
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { speed } = taskArgs
+
+        const deployer = await getSigner(hre, speed)
+
+        const nexus = Nexus__factory.connect(resolveAddress("Nexus"), deployer)
+
+        // Deploy the Liquidator
+        const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
+        const cowSwapDex = await hre.run("cow-swap-dex-deploy", { speed, nexus: nexus.address })
+        const liquidator = await hre.run("liq-deploy", {
+            speed,
+            nexus: nexus.address,
+            syncSwapper: oneInchDexSwap.address,
+            asyncSwapper: cowSwapDex.address,
+        })
+
+        // Register the new Liquidator in the Nexus
+        // impersonate default signer with custom governor address
+        process.env.IMPERSONATE = resolveAddress("Governor")
+        await hre.run("nexus-prop-mod", { speed, module: "LiquidatorV2", address: liquidator.address })
+        await hre.run("time-increase", { speed, weeks: 1 })
+        await hre.run("nexus-acc-mod", { speed, module: "LiquidatorV2" })
+        delete process.env.IMPERSONATE
+
+        // Deploy the Convex 3Crv Vaults
+        const Curve3CrvMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: false })
+        const Curve3CrvFactoryMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: true })
+        await hre.run("convex-3crv-vault-deploy", {
+            speed,
+            symbol: "vcx3CRV-mUSD",
+            name: "3Crv Convex mUSD Vault",
+            pool: "mUSD",
+            calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary.address,
+        })
+        await hre.run("convex-3crv-vault-deploy", {
+            speed,
+            symbol: "vcx3CRV-FRAX",
+            name: "3Crv Convex FRAX Vault",
+            pool: "FRAX",
+            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
+        })
+
+        // deployPeriodicAllocationPerfFeeMetaVault
+        // deployConvex3CrvLiquidatorVault
+
+        // simulate accounts and deposit tokens.
+        await setBalancesToAccounts(hre)
+    })

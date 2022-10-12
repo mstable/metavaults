@@ -1,5 +1,5 @@
 import { deploy3CrvMetaVaults, deployCommon } from "@tasks/deployment"
-import { config } from "@tasks/deployment/mainnet-config"
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
@@ -62,8 +62,8 @@ const usdtWhaleAddress = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 const staker1Address = "0xA86e412109f77c45a3BC1c5870b880492Fb86A14" // Tokemak: Manager
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
 const rewardsWhaleAddress = "0x2faf487a4414fe77e2327f0bf4ae2a264a776ad2" // FTX Exchange
-const curveThreePoolAddress = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
-const convexBoosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
+const curveThreePoolAddress = resolveAddress("CurveThreePool")
+const convexBoosterAddress = resolveAddress("ConvexBooster")
 
 type Settlement = { vaultIndex: BN; assets: BN }
 interface Convex3CrvLiquidatorVaults {

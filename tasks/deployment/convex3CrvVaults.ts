@@ -7,22 +7,19 @@ import { deployCowSwapDex, deployOneInchDex } from "@tasks/dex"
 import { deployLiquidator } from "@tasks/liquidator"
 import { deployNexus } from "@tasks/nexus"
 import { deployProxyAdminDelayed, deployProxyAdminInstant } from "@tasks/proxyAdmin"
-import { CRV, CVX, DAI, getSigner } from "@tasks/utils"
-import { getChain, resolveAddress } from "@tasks/utils/networkAddressFactory"
-import { ONE_WEEK } from "@utils/constants"
+import { CRV, CVX, DAI } from "@tasks/utils"
+import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { impersonate, setBalancesToAccount } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { BN } from "@utils/math"
-import { keccak256, toUtf8Bytes } from "ethers/lib/utils"
-import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, ERC20__factory, OneInchDexSwap__factory } from "types"
 
 import {
-    deployConvex3CrvVault,
+    deployConvex3CrvLiquidatorVault,
     deployCurve3CrvFactoryMetapoolCalculatorLibrary,
     deployCurve3CrvMetapoolCalculatorLibrary,
 } from "../convex3CrvVault"
-import { config } from "./mainnet-config"
+import { config } from "./convex3CrvVaults-config"
 
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
@@ -85,7 +82,7 @@ interface Phase3Deployed {
  *
  * @param {*} hre Hardhat Runtime Environment
  */
-async function setBalancesToAccounts(hre) {
+export const setBalancesToAccounts = async (hre) => {
     const accounts = await hre.ethers.getSigners()
     const sa = await new StandardAccounts().initAccounts(accounts, true)
     const threeCRVTokenAddress = resolveAddress("3Crv")
@@ -117,7 +114,7 @@ const deployerConvex3CrvVault =
             booster: resolveAddress("ConvexBooster"),
         }
 
-        return deployConvex3CrvVault(hre, signer, true, {
+        return deployConvex3CrvLiquidatorVault(hre, signer, {
             name: convex3CrvPool.name,
             symbol: convex3CrvPool.symbol,
             constructorData,
@@ -304,120 +301,3 @@ export const deploy3CrvMetaVaults = async (
         curve3PoolCalculatorLibrary,
     }
 }
-
-subtask("deploy-core", "Deploys core smart contracts, nexus, proxy admin")
-    .addOptionalParam("proxyAdminType", "Type of proxy admin: 'instant' | 'delayed'", "delayed", types.string)
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { proxyAdminType, speed } = taskArgs
-        const accounts = await hre.ethers.getSigners()
-        const sa = await new StandardAccounts().initAccounts(accounts, true)
-
-        // Deploy nexus
-        const nexus = await hre.run("nexus-deploy", { speed, governor: sa.governor.address })
-        // proxy-admin-instant-deploy , proxy-admin-delayed-deploy
-        const proxyAdmin = await hre.run(`proxy-admin-${proxyAdminType}-deploy`, { speed })
-
-        return { nexus, proxyAdmin }
-    })
-subtask("deploy-common", "Deploys common smart contracts")
-    .addOptionalParam("nexus", "Nexus address, overrides lookup", undefined, types.string)
-    .addOptionalParam("router", "OneInch Router address, overrides lookup", undefined, types.string)
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { nexus, speed } = taskArgs
-        const chain = getChain(hre)
-        const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
-
-        const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
-        const cowSwapDex = await hre.run("cow-swap-dex-deploy", { speed, nexus: nexusAddress })
-        const liquidator = await hre.run("liq-deploy", {
-            speed,
-            nexus: nexusAddress,
-            syncSwapper: oneInchDexSwap.address,
-            asyncSwapper: cowSwapDex.address,
-        })
-
-        return { oneInchDexSwap, cowSwapDex, liquidator }
-    })
-subtask("deploy-3crv-meta-vaults", "Deploys Convex / Curve 3Crv Meta Vaults plus 4626 wrappers")
-    .addParam("nexus", "Nexus address", undefined, types.string)
-    .addParam("proxyAdmin", "ProxyAdmin address", undefined, types.string)
-    .addParam("vaultManager", "VaultManager address", undefined, types.string)
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { speed, vaultManager, nexus, proxyAdmin } = taskArgs
-        const signer = await getSigner(hre, speed)
-
-        // 1 - deployConvex3CrvLiquidatorVault
-        const { convex3CrvVaults, curve3CrvMetapoolCalculatorLibrary } = await deployConvex3CrvVaults(
-            hre,
-            signer,
-            nexus,
-            vaultManager,
-            proxyAdmin,
-        )
-        // 2 - deployPeriodicAllocationPerfFeeMetaVaults
-        const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVaults(
-            hre,
-            signer,
-            nexus,
-            vaultManager,
-            proxyAdmin,
-            convex3CrvVaults,
-        )
-        // 3 - deployCurve3CrvMetaVault
-        const { curve3CrvMetaVaults, curve3PoolCalculatorLibrary } = await deployCurve3CrvMetaVaults(
-            hre,
-            signer,
-            nexus,
-            vaultManager,
-            proxyAdmin,
-            periodicAllocationPerfFeeMetaVault.proxy.address,
-        )
-
-        return {
-            convex3CrvVaults,
-            curve3CrvMetapoolCalculatorLibrary,
-            periodicAllocationPerfFeeMetaVault,
-            curve3CrvMetaVaults,
-            curve3PoolCalculatorLibrary,
-        }
-    })
-
-task("deploy-full-fork")
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { speed } = taskArgs
-
-        const accounts = await hre.ethers.getSigners()
-        const sa = await new StandardAccounts().initAccounts(accounts, true)
-        // impersonate default signer with custom governor address
-        process.env.IMPERSONATE = sa.governor.address
-        const signer = await getSigner(hre, speed)
-
-        const phase1: Phase1Deployed = await hre.run("deploy-core", { speed, proxyAdminType: "instant" })
-        const phase2: Phase2Deployed = await hre.run("deploy-common", { speed })
-
-        // has dependency on vault liquidators, can not be deployed without the module
-        await phase1.nexus.connect(signer).proposeModule(keccak256(toUtf8Bytes("Liquidator")), phase2.liquidator.address)
-        await hre.ethers.provider.send("evm_increaseTime", [BN.from(ONE_WEEK).toNumber()])
-        await hre.ethers.provider.send("evm_mine", [])
-        await phase1.nexus.connect(signer).acceptProposedModule(keccak256(toUtf8Bytes("Liquidator")))
-
-        // deployCurve3CrvMetaVault
-        // deployPeriodicAllocationPerfFeeMetaVault
-        // deployConvex3CrvLiquidatorVault
-
-        const phase3: Phase3Deployed = await hre.run("deploy-3crv-meta-vaults", {
-            speed,
-            nexus: phase1.nexus.address,
-            proxyAdmin: phase1.proxyAdmin.address,
-            vaultManager: sa.vaultManager.address,
-        })
-        // simulate accounts and deposit tokens.
-        await setBalancesToAccounts(hre)
-    })
-
-// TODO - remove this module export and test if the tasks are still running
-// module.exports = {}

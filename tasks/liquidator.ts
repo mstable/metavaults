@@ -20,6 +20,7 @@ import type { CowSwapContext } from "./peripheral/cowswapApi"
 import type { Chain } from "./utils"
 
 const log = logger("liq")
+
 const resolveMultipleAddress = async (chain: Chain, vaultsStr: string) =>
     Promise.all(vaultsStr.split(",").map((vaultName) => resolveAddress(vaultName, chain)))
 
@@ -55,19 +56,19 @@ export async function deployLiquidator(
 }
 
 subtask("liq-deploy", "Deploys a new Liquidator contract")
-    .addOptionalParam("syncSwapper", "Sync Swapper address override", undefined, types.string)
-    .addOptionalParam("asyncSwapper", "Async Swapper address override", undefined, types.string)
-    .addOptionalParam("nexus", "Nexus address override", undefined, types.string)
-    .addOptionalParam("proxyAdmin", "Proxy admin address override", undefined, types.string)
+    .addOptionalParam("syncSwapper", "Sync Swapper address override", "1InchSwapDex", types.string)
+    .addOptionalParam("asyncSwapper", "Async Swapper address override", "CowSwapDex", types.string)
+    .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
+    .addOptionalParam("proxyAdmin", "Proxy admin address override", "InstantProxyAdmin", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { nexus, proxyAdmin, syncSwapper, asyncSwapper, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
-        const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
-        const syncSwapperAddress = resolveAddress(syncSwapper ?? "1InchSwapDex", chain)
-        const asyncSwapperAddress = resolveAddress(asyncSwapper ?? "CowSwapDex", chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin ?? "InstantProxyAdmin", chain)
+        const nexusAddress = resolveAddress(nexus, chain)
+        const syncSwapperAddress = resolveAddress(syncSwapper, chain)
+        const asyncSwapperAddress = resolveAddress(asyncSwapper, chain)
+        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
 
         return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress)
     })
@@ -82,7 +83,7 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
         const vaultsAddress = await resolveMultipleAddress(chain, taskArgs.vaults)
         const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
         const tx = await liquidator.collectRewards(vaultsAddress)
@@ -100,7 +101,7 @@ subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to as
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
         const fromAssetAddress = await resolveAddress(taskArgs.reward, chain)
         const toAssetAddress = await resolveAddress(taskArgs.asset, chain)
         const receiver = taskArgs.receiver
@@ -139,7 +140,7 @@ subtask("liq-settle-swap", "Calls settleSwap on liquidator to account for the sw
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
         const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
         const orderOwner = await liquidator.asyncSwapper()
 
@@ -173,7 +174,7 @@ subtask("liq-sync-swap", "Calls sync swap on liquidator to swap rewards to asset
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
         const fromAssetAddress = await resolveAddress(taskArgs.reward, chain)
         const toAssetAddress = await resolveAddress(taskArgs.asset, chain)
 
@@ -207,7 +208,7 @@ subtask("liq-donate-tokens", "Donate purchased tokens to vaults")
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("Liquidator", chain)
+        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
         const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
         const vaultsAddress = await resolveMultipleAddress(chain, taskArgs.vaults)
         const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(signer, vaultsAddress)

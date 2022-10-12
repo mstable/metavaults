@@ -7,8 +7,9 @@ import "./tasks/liquidator"
 import "./tasks/nexus"
 import "./tasks/proxyAdmin"
 import "./tasks/vault"
+import "./tasks/time"
 import "./tasks/token"
-import "./tasks/deployment/mainnet"
+import "./tasks/deployment/convex3CrvVaults"
 import "./tasks/metaVaultManage"
 
 export default config

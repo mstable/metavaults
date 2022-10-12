@@ -6,7 +6,7 @@ import { Chain, tokens } from "./tokens"
 
 import type { Signer } from "ethers"
 
-import type { AssetAddressTypes, Token } from "./tokens"
+import type { Token } from "./tokens"
 
 const log = logger("addresses")
 
@@ -91,6 +91,8 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0x1111111254fb6c44bAC0beD2854e76F90643097d"
             case "OneInchAggregationExecutor":
                 return "0xF2F400C138F9fb900576263af0BC7fCde2B1b8a8"
+            case "VaultManager":
+                return "0x1116241647D2173342b108e6363fFe58762e3e97"
             default:
         }
     } else if (chain === Chain.polygon) {
@@ -146,12 +148,6 @@ export const getChain = (hre: HardhatRuntime = {}): Chain => {
     if (hre?.network.name === "polygon_testnet") {
         return Chain.mumbai
     }
-    if (hre?.network.name === "ropsten") {
-        return Chain.ropsten
-    }
-    if (hre?.network.name === "rinkeby") {
-        return Chain.rinkeby
-    }
     if (hre?.network.name === "goerli") {
         return Chain.goerli
     }
@@ -164,29 +160,15 @@ export const getNetworkAddress = (contractName: ContractNames, hre: HardhatRunti
 }
 
 // Singleton instances of different contract names and token symbols
-const resolvedAddressesInstances: { [contractNameSymbol: string]: { [tokenType: string]: string } } = {}
-
-// Update the singleton instance so we don't need to resolve this next time
-const updateResolvedAddresses = (addressContractNameSymbol: string, tokenType: AssetAddressTypes, address: string) => {
-    if (resolvedAddressesInstances[addressContractNameSymbol]) {
-        resolvedAddressesInstances[addressContractNameSymbol][tokenType] = address
-    } else {
-        resolvedAddressesInstances[addressContractNameSymbol] = { [tokenType]: address }
-    }
-}
+const resolvedAddressesInstances: { [contractNameSymbol: string]: string } = {}
 
 // Resolves a contract name or token symbol to an ethereum address
-export const resolveAddress = (
-    addressContractNameSymbol: string,
-    chain = Chain.mainnet,
-    tokenType: AssetAddressTypes = "address",
-): string => {
+export const resolveAddress = (addressContractNameSymbol: string, chain = Chain.mainnet): string => {
     let address = addressContractNameSymbol
     // If not an Ethereum address
-    if (!addressContractNameSymbol.match(ethereumAddress) && tokenType !== "localhost") {
+    if (!addressContractNameSymbol.match(ethereumAddress)) {
         // If previously resolved then return from singleton instances
-        if (resolvedAddressesInstances[addressContractNameSymbol]?.[tokenType])
-            return resolvedAddressesInstances[addressContractNameSymbol][tokenType]
+        if (resolvedAddressesInstances[addressContractNameSymbol]) return resolvedAddressesInstances[addressContractNameSymbol]
 
         // If an mStable contract name
         address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
@@ -195,21 +177,20 @@ export const resolveAddress = (
             // If a token Symbol
             const token = tokens.find((t) => t.symbol === addressContractNameSymbol && t.chain === chain)
             if (!token) throw Error(`Invalid address, token symbol or contract name "${addressContractNameSymbol}" for chain ${chain}`)
-            if (!token[tokenType])
-                throw Error(`Can not find token type "${tokenType}" for "${addressContractNameSymbol}" on chain ${chain}`)
+            if (!token.address) throw Error(`Can not find address for token "${addressContractNameSymbol}" on chain ${chain}`)
 
-            address = token[tokenType]
-            log(`Resolved asset with symbol "${addressContractNameSymbol}" and type "${tokenType}" to address ${address}`)
+            address = token.address
+            log(`Resolved asset with symbol "${addressContractNameSymbol}" to address ${address}`)
 
             // Update the singleton instance so we don't need to resolve this next time
-            updateResolvedAddresses(addressContractNameSymbol, tokenType, address)
+            resolvedAddressesInstances[addressContractNameSymbol] = address
             return address
         }
 
         log(`Resolved contract name "${addressContractNameSymbol}" to address ${address}`)
 
         // Update the singleton instance so we don't need to resolve this next time
-        updateResolvedAddresses(addressContractNameSymbol, tokenType, address)
+        resolvedAddressesInstances[addressContractNameSymbol] = address
 
         return address
     }
@@ -217,24 +198,20 @@ export const resolveAddress = (
 }
 
 // Singleton instances of different contract names and token symbols
-const resolvedTokenInstances: { [address: string]: { [tokenType: string]: Token } } = {}
+const resolvedTokenInstances: { [address: string]: Token } = {}
 
-export const resolveToken = (symbol: string, chain = Chain.mainnet, tokenType: AssetAddressTypes = "address"): Token => {
+export const resolveToken = (symbol: string, chain = Chain.mainnet): Token => {
     // If previously resolved then return from singleton instances
-    if (resolvedTokenInstances[symbol]?.[tokenType]) return resolvedTokenInstances[symbol][tokenType]
+    if (resolvedTokenInstances[symbol]) return resolvedTokenInstances[symbol]
 
     // If a token Symbol
     const token = tokens.find((t) => t.symbol === symbol && t.chain === chain)
     if (!token) throw Error(`Can not find token symbol ${symbol} on chain ${chain}`)
-    if (!token[tokenType]) throw Error(`Can not find token type "${tokenType}" for ${symbol} on chain ${chain}`)
+    if (!token.address) throw Error(`Can not find token for ${symbol} on chain ${chain}`)
 
-    log(`Resolved token symbol ${symbol} and type "${tokenType}" to address ${token[tokenType]}`)
+    log(`Resolved token symbol ${symbol} to address ${token.address}`)
 
-    if (resolvedTokenInstances[symbol]) {
-        resolvedTokenInstances[symbol][tokenType] = token
-    } else {
-        resolvedTokenInstances[symbol] = { [tokenType]: token }
-    }
+    resolvedTokenInstances[symbol] = token
 
     return token
 }
@@ -249,27 +226,22 @@ export const resolveToken = (symbol: string, chain = Chain.mainnet, tokenType: A
  * @param {string} [address]
  * @return {*}  {Promise<Token>}
  */
-export const resolveVaultToken = async (
-    signer: Signer,
-    chain: Chain,
-    symbol: string,
-    tokenType: AssetAddressTypes,
-    address?: string,
-): Promise<Token> => {
+export const resolveVaultToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
     let token: Token
     if (address !== undefined) {
         const tkn = IERC20Metadata__factory.connect(address, signer)
         const vault = IERC4626Vault__factory.connect(address, signer)
         token = {
-            symbol: symbol,
-            address: address,
+            symbol,
+            address,
             chain,
             quantityFormatter: "USD",
-            asset: await vault.asset(),
             decimals: await tkn.decimals(),
+            assetSymbol: await tkn.symbol(),
+            assetAddress: await vault.asset(),
         }
     } else {
-        token = await resolveToken(symbol, chain, tokenType)
+        token = await resolveToken(symbol, chain)
     }
 
     return token
@@ -284,13 +256,7 @@ export const resolveVaultToken = async (
  * @param {string} [address]
  * @return {*}  {Promise<Token>}
  */
-export const resolveAssetToken = async (
-    signer: Signer,
-    chain: Chain,
-    symbol: string,
-    tokenType: AssetAddressTypes,
-    address?: string,
-): Promise<Token> => {
+export const resolveAssetToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
     let assetToken: Token
     if (address !== undefined) {
         const tkn = IERC20Metadata__factory.connect(address, signer)
@@ -302,7 +268,7 @@ export const resolveAssetToken = async (
             decimals: await tkn.decimals(),
         }
     } else {
-        assetToken = resolveToken(symbol, chain, tokenType)
+        assetToken = resolveToken(symbol, chain)
     }
     return assetToken
 }
