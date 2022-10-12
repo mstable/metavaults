@@ -1,4 +1,4 @@
-import { config } from "@tasks/deployment/mainnet-config"
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { DAI, mUSD, musd3CRV, resolveAddress, ThreeCRV, USDC, usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
