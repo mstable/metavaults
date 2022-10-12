@@ -37,6 +37,7 @@ export const contractNames = [
     "ConvexBooster",
     "OneInchAggregationRouterV4",
     "OneInchAggregationExecutor",
+    "Curve3CrvCalculatorLibrary",
     "Curve3CrvMetapoolCalculatorLibrary",
     "Curve3CrvFactoryMetapoolCalculatorLibrary",
 ] as const

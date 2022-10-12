@@ -170,6 +170,51 @@ task("curve-3crv-lib-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
 
+subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Crv Meta Vault")
+    .addParam("metaVault", "Underlying Meta Vault override", "mv3CRV", types.string)
+    .addParam("name", "Meta Vault name", undefined, types.string)
+    .addParam("symbol", "Meta Vault symbol", undefined, types.string)
+    .addParam("asset", "Token address or symbol of the vault's asset. eg DAI, USDC or USDT", undefined, types.string)
+    .addOptionalParam(
+        "proxyAdmin",
+        "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
+        "InstantProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", "Curve3CrvCalculatorLibrary", types.string)
+    .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, proxyAdmin, speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const nexusAddress = resolveAddress("Nexus", chain)
+        const assetToken = resolveToken(asset, chain)
+        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const vaultManagerAddress = resolveAddress("VaultManager", chain)
+        const metaVaultAddress = resolveAddress(metaVault, chain)
+        const calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
+
+        const { proxy, impl } = await deployCurve3CrvMetaVault(hre, signer, {
+            nexus: nexusAddress,
+            asset: assetToken.address,
+            name,
+            symbol,
+            metaVault: metaVaultAddress,
+            vaultManager: vaultManagerAddress,
+            proxyAdmin: proxyAdminAddress,
+            slippageData: { mint: slippage, deposit: slippage, redeem: slippage, withdraw: slippage },
+            calculatorLibrary: calculatorLibraryAddress,
+        })
+
+        return { proxy, impl }
+    })
+task("curve-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
 subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
     .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
     .addParam(

@@ -286,24 +286,18 @@ task("convex-3crv-fork")
     .setAction(async (taskArgs, hre) => {
         const { speed } = taskArgs
 
-        const deployer = await getSigner(hre, speed)
-
-        const nexus = Nexus__factory.connect(resolveAddress("Nexus"), deployer)
-
         // Deploy the Liquidator
-        const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
-        const cowSwapDex = await hre.run("cow-swap-dex-deploy", { speed, nexus: nexus.address })
-        const liquidator = await hre.run("liq-deploy", {
-            speed,
-            nexus: nexus.address,
-            syncSwapper: oneInchDexSwap.address,
-            asyncSwapper: cowSwapDex.address,
-        })
+        // const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
+        // const cowSwapDex = await hre.run("cow-swap-dex-deploy", { speed })
+        // const liquidator = await hre.run("liq-deploy", {
+        //     speed,
+        //     syncSwapper: oneInchDexSwap.address,
+        //     asyncSwapper: cowSwapDex.address,
+        // })
 
         // Register the new Liquidator in the Nexus
-        // impersonate default signer with custom governor address
         process.env.IMPERSONATE = resolveAddress("Governor")
-        await hre.run("nexus-prop-mod", { speed, module: "LiquidatorV2", address: liquidator.address })
+        // await hre.run("nexus-prop-mod", { speed, module: "LiquidatorV2", address: resolveAddress("LiquidatorV2") })
         await hre.run("time-increase", { speed, weeks: 1 })
         await hre.run("nexus-acc-mod", { speed, module: "LiquidatorV2" })
         delete process.env.IMPERSONATE
@@ -355,6 +349,30 @@ task("convex-3crv-fork")
         // Deploy Curve Meta Vaults
         const threePoolLib = await hre.run("curve-3crv-lib-deploy", {
             speed,
+        })
+        const daiCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
+            speed,
+            metaVault: metaVault.proxy.address,
+            symbol: "3pDAI",
+            name: "3Pooler Meta Vault (DAI)",
+            asset: "DAI",
+            calculatorLibrary: threePoolLib.address,
+        })
+        const usdcCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
+            speed,
+            metaVault: metaVault.proxy.address,
+            symbol: "3pUSDC",
+            name: "3Pooler Meta Vault (USDC)",
+            asset: "USDC",
+            calculatorLibrary: threePoolLib.address,
+        })
+        const usdtCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
+            speed,
+            metaVault: metaVault.proxy.address,
+            symbol: "3pUSDT",
+            name: "3Pooler Meta Vault (USDT)",
+            asset: "USDT",
+            calculatorLibrary: threePoolLib.address,
         })
 
         // simulate accounts and deposit tokens.
