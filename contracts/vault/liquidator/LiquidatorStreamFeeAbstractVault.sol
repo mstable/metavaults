@@ -43,6 +43,7 @@ abstract contract LiquidatorStreamFeeAbstractVault is LiquidatorStreamAbstractVa
     uint32 public donationFee;
 
     event FeeReceiverUpdated(address indexed feeReceiver);
+    event DonationFeeUpdated(uint32 donationFee);
 
     /**
      * @param _feeReceiver Account that receives the performance fee as shares.
@@ -79,6 +80,18 @@ abstract contract LiquidatorStreamFeeAbstractVault is LiquidatorStreamAbstractVa
     /***************************************
                     Vault Admin
     ****************************************/
+
+    /**
+     * @notice  Called by the protocol `Governor` to set a new donation fee
+     * @param _donationFee Donation fee scaled to 6 decimal places. 1% = 10000, 0.01% = 100
+     */
+    function setDonationFee(uint32 _donationFee) external onlyGovernor {
+        require(_donationFee <= FEE_SCALE, "Invalid fee");
+
+        donationFee = _donationFee;
+
+        emit DonationFeeUpdated(_donationFee);
+    }
 
     /**
      * @notice Called by the protocol `Governor` to set the fee receiver address.
