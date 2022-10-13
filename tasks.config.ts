@@ -10,6 +10,8 @@ import "./tasks/time"
 import "./tasks/token"
 import "./tasks/deployment/localhost"
 import "./tasks/convex3CrvVault"
+import "./tasks/convex3CrvFork"
+import "./tasks/convex3CrvMetaVault"
 import "./tasks/curve3CrvVault"
 import "./tasks/metaVaultManage"
 

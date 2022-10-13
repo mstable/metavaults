@@ -1,8 +1,5 @@
-import {
-    deployCurve3CrvMetaVault,
-    deployCurve3PoolCalculatorLibrary,
-    deployPeriodicAllocationPerfFeeMetaVault,
-} from "@tasks/curve3CrvVault"
+import { deployPeriodicAllocationPerfFeeMetaVaults } from "@tasks/convex3CrvMetaVault"
+import { deployCurve3CrvMetaVaults } from "@tasks/curve3CrvVault"
 import { deployCowSwapDex, deployOneInchDex } from "@tasks/dex"
 import { deployLiquidator } from "@tasks/liquidator"
 import { deployNexus } from "@tasks/nexus"
@@ -21,6 +18,7 @@ import {
 } from "../convex3CrvVault"
 import { config } from "./convex3CrvVaults-config"
 
+import type { Curve3CrvMetaVaultsDeployed } from "@tasks/curve3CrvVault"
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type {
@@ -28,10 +26,8 @@ import type {
     Convex3CrvPool,
     Convex3CrvVault,
     CowSwapDex,
-    Curve3CrvBasicMetaVault,
     Curve3CrvFactoryMetapoolCalculatorLibrary,
     Curve3CrvMetapoolCalculatorLibrary,
-    Curve3CrvPool,
     Curve3PoolCalculatorLibrary,
     DelayedProxyAdmin,
     InstantProxyAdmin,
@@ -41,19 +37,12 @@ import type {
     PeriodicAllocationPerfFeeMetaVault,
 } from "types"
 
-interface Curve3CrvMetaVaultDeployed {
-    proxy: AssetProxy
-    impl: Curve3CrvBasicMetaVault
-}
-interface Curve3CrvMetaVaultsDeployed {
-    [key: string]: { proxy: AssetProxy; impl: Curve3CrvBasicMetaVault }
+export interface Convex3CrvVaultsDeployed {
+    [key: string]: { proxy: AssetProxy; impl: Convex3CrvVault }
 }
 interface Convex3CrvVaultDeployed {
     proxy: AssetProxy
     impl: Convex3CrvVault
-}
-interface Convex3CrvVaultsDeployed {
-    [key: string]: { proxy: AssetProxy; impl: Convex3CrvVault }
 }
 
 // Core smart contracts
@@ -61,12 +50,14 @@ interface Phase1Deployed {
     nexus: Nexus
     proxyAdmin: DelayedProxyAdmin | InstantProxyAdmin
 }
+
 // Common/Shared smart contracts
 interface Phase2Deployed {
     oneInchDexSwap: OneInchDexSwap
     cowSwapDex: CowSwapDex
     liquidator: Liquidator
 }
+
 // Use case smart contracts,  ie vaults
 interface Phase3Deployed {
     convex3CrvVaults: Convex3CrvVaultsDeployed
@@ -160,70 +151,6 @@ export async function deployConvex3CrvVaults(
         convex3CrvVaults[pool] = convex3CrvVaultDeployed
     }
     return { convex3CrvVaults, curve3CrvMetapoolCalculatorLibrary }
-}
-export async function deployPeriodicAllocationPerfFeeMetaVaults(
-    hre: HardhatRuntimeEnvironment,
-    signer: Signer,
-    nexus: string,
-    vaultManager: string,
-    proxyAdmin: string,
-    convex3CrvVaults: Convex3CrvVaultsDeployed,
-) {
-    const { periodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVaultConf } = config
-    const underlyingVaults = [
-        convex3CrvVaults.musd.proxy.address,
-        convex3CrvVaults.frax.proxy.address,
-        convex3CrvVaults.lusd.proxy.address,
-        convex3CrvVaults.busd.proxy.address,
-    ]
-    const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
-        nexus,
-        asset: PeriodicAllocationPerfFeeMetaVaultConf.asset,
-        name: PeriodicAllocationPerfFeeMetaVaultConf.name,
-        symbol: PeriodicAllocationPerfFeeMetaVaultConf.symbol,
-        vaultManager,
-        proxyAdmin,
-        performanceFee: PeriodicAllocationPerfFeeMetaVaultConf.performanceFee,
-        feeReceiver: PeriodicAllocationPerfFeeMetaVaultConf.feeReceiver,
-        sourceParams: PeriodicAllocationPerfFeeMetaVaultConf.sourceParams,
-        assetPerShareUpdateThreshold: PeriodicAllocationPerfFeeMetaVaultConf.assetPerShareUpdateThreshold,
-        underlyingVaults,
-    })
-    return periodicAllocationPerfFeeMetaVault
-}
-
-export async function deployCurve3CrvMetaVaults(
-    hre: HardhatRuntimeEnvironment,
-    signer: Signer,
-    nexus: string,
-    vaultManager: string,
-    proxyAdmin: string,
-    metaVault: string,
-) {
-    const curve3CrvMetaVaults: Curve3CrvMetaVaultsDeployed = {}
-
-    const { curve3CrvMetaVault } = config
-    const pools: string[] = Object.keys(curve3CrvMetaVault)
-    const curve3PoolCalculatorLibrary: Curve3PoolCalculatorLibrary = await deployCurve3PoolCalculatorLibrary(hre, signer)
-
-    for (let i = 0; i < pools.length; i++) {
-        const pool = pools[i]
-        const curve3CrvPool: Curve3CrvPool = curve3CrvMetaVault[pool]
-        const curve3CrvMetaVaultDeployed: Curve3CrvMetaVaultDeployed = await deployCurve3CrvMetaVault(hre, signer, {
-            calculatorLibrary: curve3PoolCalculatorLibrary.address,
-            nexus,
-            asset: curve3CrvPool.asset,
-            metaVault,
-            // metaVault: curve3CrvPool.metaVault,
-            slippageData: curve3CrvPool.slippageData,
-            name: curve3CrvPool.name,
-            symbol: curve3CrvPool.symbol,
-            vaultManager,
-            proxyAdmin,
-        })
-        curve3CrvMetaVaults[pool] = curve3CrvMetaVaultDeployed
-    }
-    return { curve3CrvMetaVaults, curve3PoolCalculatorLibrary }
 }
 
 export const deployCore = async (

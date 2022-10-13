@@ -1,19 +1,13 @@
-import { simpleToExactAmount } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
-import {
-    AssetProxy__factory,
-    Curve3CrvBasicMetaVault__factory,
-    Curve3PoolCalculatorLibrary__factory,
-    PeriodicAllocationPerfFeeMetaVault__factory,
-} from "types"
+import { AssetProxy__factory, Curve3CrvBasicMetaVault__factory, Curve3PoolCalculatorLibrary__factory } from "types"
 
+import { config } from "./deployment/convex3CrvVaults-config"
 import { deployContract, getChain, getSigner, resolveAddress, resolveToken } from "./utils"
 import { verifyEtherscan } from "./utils/etherscan"
 
-import type { BN } from "@utils/math"
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
-import type { AssetProxy, Curve3CrvBasicMetaVault, Curve3PoolCalculatorLibrary, PeriodicAllocationPerfFeeMetaVault } from "types"
+import type { AssetProxy, Curve3CrvBasicMetaVault, Curve3CrvPool, Curve3PoolCalculatorLibrary } from "types"
 
 // deployCurve3CrvMetaVault
 type SlippageData = {
@@ -33,25 +27,12 @@ interface Curve3CrvBasicMetaVaultParams {
     vaultManager: string
     proxyAdmin: string
 }
-
-// deployPeriodicAllocationPerfFeeMetaVault
-interface AssetSourcingParams {
-    singleVaultSharesThreshold: number
-    singleSourceVaultIndex: number
+interface Curve3CrvMetaVaultDeployed {
+    proxy: AssetProxy
+    impl: Curve3CrvBasicMetaVault
 }
-
-interface PeriodicAllocationPerfFeeMetaVaultParams {
-    nexus: string
-    asset: string
-    name: string
-    symbol: string
-    vaultManager: string
-    proxyAdmin: string
-    performanceFee: number
-    feeReceiver: string
-    underlyingVaults: Array<string>
-    sourceParams: AssetSourcingParams
-    assetPerShareUpdateThreshold: BN
+export interface Curve3CrvMetaVaultsDeployed {
+    [key: string]: { proxy: AssetProxy; impl: Curve3CrvBasicMetaVault }
 }
 
 export async function deployCurve3PoolCalculatorLibrary(hre: HardhatRuntimeEnvironment, signer: Signer) {
@@ -70,7 +51,6 @@ export async function deployCurve3PoolCalculatorLibrary(hre: HardhatRuntimeEnvir
     return calculatorLibrary
 }
 
-// TODO ADD TASK
 export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, signer: Signer, params: Curve3CrvBasicMetaVaultParams) => {
     const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin } = params
 
@@ -103,58 +83,38 @@ export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, s
     return { proxy, impl: vaultImpl }
 }
 
-export const deployPeriodicAllocationPerfFeeMetaVault = async (
+export async function deployCurve3CrvMetaVaults(
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
-    params: PeriodicAllocationPerfFeeMetaVaultParams,
-) => {
-    const {
-        nexus,
-        asset,
-        name,
-        symbol,
-        vaultManager,
-        proxyAdmin,
-        performanceFee,
-        feeReceiver,
-        underlyingVaults,
-        sourceParams,
-        assetPerShareUpdateThreshold,
-    } = params
-    const constructorArguments = [nexus, asset]
-    const vaultImpl = await deployContract<PeriodicAllocationPerfFeeMetaVault>(
-        new PeriodicAllocationPerfFeeMetaVault__factory(signer),
-        "PeriodicAllocationPerfFeeMetaVault",
-        constructorArguments,
-    )
+    nexus: string,
+    vaultManager: string,
+    proxyAdmin: string,
+    metaVault: string,
+) {
+    const curve3CrvMetaVaults: Curve3CrvMetaVaultsDeployed = {}
 
-    await verifyEtherscan(hre, {
-        address: vaultImpl.address,
-        contract: "contracts/vault/meta/PeriodicAllocationPerfFeeMetaVault.sol:PeriodicAllocationPerfFeeMetaVault",
-        constructorArguments: constructorArguments,
-    })
+    const { curve3CrvMetaVault } = config
+    const pools: string[] = Object.keys(curve3CrvMetaVault)
+    const curve3PoolCalculatorLibrary: Curve3PoolCalculatorLibrary = await deployCurve3PoolCalculatorLibrary(hre, signer)
 
-    // Proxy
-    const data = vaultImpl.interface.encodeFunctionData("initialize", [
-        name,
-        symbol,
-        vaultManager,
-        performanceFee,
-        feeReceiver,
-        underlyingVaults,
-        sourceParams,
-        assetPerShareUpdateThreshold,
-    ])
-    const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
-
-    await verifyEtherscan(hre, {
-        address: proxy.address,
-        contract: "contracts/upgradability/Proxies.sol:AssetProxy",
-        constructorArguments: proxyConstructorArguments,
-    })
-
-    return { proxy, impl: vaultImpl }
+    for (let i = 0; i < pools.length; i++) {
+        const pool = pools[i]
+        const curve3CrvPool: Curve3CrvPool = curve3CrvMetaVault[pool]
+        const curve3CrvMetaVaultDeployed: Curve3CrvMetaVaultDeployed = await deployCurve3CrvMetaVault(hre, signer, {
+            calculatorLibrary: curve3PoolCalculatorLibrary.address,
+            nexus,
+            asset: curve3CrvPool.asset,
+            metaVault,
+            // metaVault: curve3CrvPool.metaVault,
+            slippageData: curve3CrvPool.slippageData,
+            name: curve3CrvPool.name,
+            symbol: curve3CrvPool.symbol,
+            vaultManager,
+            proxyAdmin,
+        })
+        curve3CrvMetaVaults[pool] = curve3CrvMetaVaultDeployed
+    }
+    return { curve3CrvMetaVaults, curve3PoolCalculatorLibrary }
 }
 
 subtask("curve-3crv-lib-deploy", "Deploys a Curve 3Pool calculator library")
@@ -212,74 +172,5 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Crv Meta Vault")
         return { proxy, impl }
     })
 task("curve-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
-    return runSuper()
-})
-
-subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
-    .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
-    .addParam(
-        "singleSource",
-        "Token symbol or address of the vault that smaller withdraws should be sourced from.",
-        undefined,
-        types.string,
-    )
-    .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
-    .addOptionalParam("symbol", "Vault symbol", "mv3CRV", types.string)
-    .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
-    .addOptionalParam(
-        "proxyAdmin",
-        "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
-        "InstantProxyAdmin",
-        types.string,
-    )
-    .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
-    .addOptionalParam("perfFee", "Performance fee scaled to 6 decimal places. default 1% = 10000", 10000, types.int)
-    .addOptionalParam(
-        "singleThreshold",
-        "Max percentage of assets withdraws will source from a single vault in basis points. default 10%",
-        1000,
-        types.int,
-    )
-    .addOptionalParam("updateThreshold", "Asset per share update threshold. default 100k", 100000, types.int)
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { name, symbol, asset, vaults, proxyAdmin, feeReceiver, perfFee, singleSource, singleThreshold, updateThreshold, speed } =
-            taskArgs
-
-        const signer = await getSigner(hre, speed)
-        const chain = getChain(hre)
-
-        const nexusAddress = resolveAddress("Nexus", chain)
-        const assetToken = resolveToken(asset, chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
-        const vaultManagerAddress = resolveAddress("VaultManager", chain)
-
-        const underlyings = vaults.split(",")
-        const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
-        const singleSourceAddress = resolveAddress(singleSource, chain)
-        const singleSourceVaultIndex = underlyingAddresses.indexOf(singleSourceAddress)
-
-        const feeReceiverAddress = resolveAddress(feeReceiver, chain)
-
-        const { proxy, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
-            nexus: nexusAddress,
-            asset: assetToken.address,
-            name,
-            symbol,
-            vaultManager: vaultManagerAddress,
-            proxyAdmin: proxyAdminAddress,
-            feeReceiver: feeReceiverAddress,
-            performanceFee: perfFee,
-            underlyingVaults: underlyingAddresses,
-            sourceParams: {
-                singleVaultSharesThreshold: singleThreshold,
-                singleSourceVaultIndex,
-            },
-            assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
-        })
-
-        return { proxy, impl }
-    })
-task("convex-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
