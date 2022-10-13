@@ -25,10 +25,9 @@ library Curve3PoolCalculatorLibrary {
     /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
     uint256 public constant CURVE_FEE_SCALE = 1e10;
     /// @notice Address of the Curve.fi 3Pool contract.
-    ICurve3Pool public constant THREE_POOL =
-        ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    address public constant THREE_POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
     /// @notice Address of the Curve.fi 3Pool liquidity token (3Crv).
-    IERC20 public constant LP_TOKEN = IERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
+    address public constant LP_TOKEN = 0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     /// @notice Scales up the mint tokens by 0.002 basis points.
     uint256 public constant MINT_ADJUST = 10000002;
     uint256 public constant MINT_ADJUST_SCALE = 10000000;
@@ -50,15 +49,15 @@ library Curve3PoolCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         // To save gas, only deal with deposits when there are already coins in the 3Pool.
         require(totalSupply_ > 0, "empty THREE_POOL");
 
         // Get balance of each stablecoin in the 3Pool
         uint256[N_COINS] memory oldBalances = [
-            THREE_POOL.balances(0), // DAI
-            THREE_POOL.balances(1), // USDC
-            THREE_POOL.balances(2) // USDT
+            ICurve3Pool(THREE_POOL).balances(0), // DAI
+            ICurve3Pool(THREE_POOL).balances(1), // USDC
+            ICurve3Pool(THREE_POOL).balances(2) // USDT
         ];
         // Scale USDC and USDT from 6 decimals up to 18 decimals
         uint256[N_COINS] memory oldBalancesScaled = [
@@ -68,7 +67,7 @@ library Curve3PoolCalculatorLibrary {
         ];
 
         // Get 3Pool amplitude coefficient (A)
-        uint256 Ann = THREE_POOL.A() * N_COINS;
+        uint256 Ann = ICurve3Pool(THREE_POOL).A() * N_COINS;
 
         // USD value before deposit
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -92,7 +91,7 @@ library Curve3PoolCalculatorLibrary {
         // We need to recalculate the invariant accounting for fees
         // to calculate fair user's share
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = (THREE_POOL.fee() * 3) / 8;
+        uint256 fee = (ICurve3Pool(THREE_POOL).fee() * 3) / 8;
 
         // The following is not in a for loop to save gas
 
@@ -141,14 +140,14 @@ library Curve3PoolCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         require(totalSupply_ > 0, "empty THREE_POOL");
 
         // Get balance of each stablecoin in the 3Pool
         uint256[N_COINS] memory oldBalances = [
-            THREE_POOL.balances(0), // DAI
-            THREE_POOL.balances(1), // USDC
-            THREE_POOL.balances(2) // USDT
+            ICurve3Pool(THREE_POOL).balances(0), // DAI
+            ICurve3Pool(THREE_POOL).balances(1), // USDC
+            ICurve3Pool(THREE_POOL).balances(2) // USDT
         ];
         // Scale USDC and USDT from 6 decimals up to 18 decimals
         uint256[N_COINS] memory oldBalancesScaled = [
@@ -158,7 +157,7 @@ library Curve3PoolCalculatorLibrary {
         ];
 
         // Get 3Pool amplitude coefficient (A)
-        uint256 Ann = THREE_POOL.A() * N_COINS;
+        uint256 Ann = ICurve3Pool(THREE_POOL).A() * N_COINS;
 
         // USD value before withdraw
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -182,7 +181,7 @@ library Curve3PoolCalculatorLibrary {
         // We need to recalculate the invariant accounting for fees
         // to calculate fair user's share
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = (THREE_POOL.fee() * 3) / 8;
+        uint256 fee = (ICurve3Pool(THREE_POOL).fee() * 3) / 8;
 
         // The following is not in a for loop to save gas
 
@@ -233,18 +232,18 @@ library Curve3PoolCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         // To save gas, only deal with mints when there are already coins in the 3Pool.
         require(totalSupply_ > 0, "empty THREE_POOL");
 
         // Get 3Pool balances and scale to 18 decimal
         uint256[N_COINS] memory oldBalancesScaled = [
-            THREE_POOL.balances(0), // DAI
-            THREE_POOL.balances(1) * 1e12, // USDC
-            THREE_POOL.balances(2) * 1e12 // USDT
+            ICurve3Pool(THREE_POOL).balances(0), // DAI
+            ICurve3Pool(THREE_POOL).balances(1) * 1e12, // USDC
+            ICurve3Pool(THREE_POOL).balances(2) * 1e12 // USDT
         ];
 
-        uint256 Ann = THREE_POOL.A() * N_COINS;
+        uint256 Ann = ICurve3Pool(THREE_POOL).A() * N_COINS;
 
         // Get invariant before mint
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -261,7 +260,7 @@ library Curve3PoolCalculatorLibrary {
         );
 
         // Adjust balances for fees
-        uint256 fee = (THREE_POOL.fee() * 3) / 8;
+        uint256 fee = (ICurve3Pool(THREE_POOL).fee() * 3) / 8;
         uint256[N_COINS] memory newBalancesScaled;
 
         // The following is not in a for loop to save gas
@@ -322,16 +321,16 @@ library Curve3PoolCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         require(totalSupply_ > 0, "empty THREE_POOL");
 
         uint256[N_COINS] memory oldBalancesScaled = [
-            THREE_POOL.balances(0), // DAI
-            THREE_POOL.balances(1) * 1e12, // USDC
-            THREE_POOL.balances(2) * 1e12 // USDT
+            ICurve3Pool(THREE_POOL).balances(0), // DAI
+            ICurve3Pool(THREE_POOL).balances(1) * 1e12, // USDC
+            ICurve3Pool(THREE_POOL).balances(2) * 1e12 // USDT
         ];
 
-        uint256 Ann = THREE_POOL.A() * N_COINS;
+        uint256 Ann = ICurve3Pool(THREE_POOL).A() * N_COINS;
 
         // Get invariant before redeem
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -349,7 +348,7 @@ library Curve3PoolCalculatorLibrary {
 
         // Adjust balances for fees
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = (THREE_POOL.fee() * 3) / 8;
+        uint256 fee = (ICurve3Pool(THREE_POOL).fee() * 3) / 8;
         uint256[N_COINS] memory newBalancesScaled;
 
         // The following is not in a for loop to save gas
@@ -389,13 +388,17 @@ library Curve3PoolCalculatorLibrary {
     function getVirtualPrice() external view returns (uint256 virtualPrice_) {
         // Calculate the USD value of the 3Pool which is the invariant
         uint256 invariant = _getD(
-            [THREE_POOL.balances(0), THREE_POOL.balances(1) * 1e12, THREE_POOL.balances(2) * 1e12],
-            THREE_POOL.A() * N_COINS
+            [
+                ICurve3Pool(THREE_POOL).balances(0),
+                ICurve3Pool(THREE_POOL).balances(1) * 1e12,
+                ICurve3Pool(THREE_POOL).balances(2) * 1e12
+            ],
+            ICurve3Pool(THREE_POOL).A() * N_COINS
         );
 
         // This will fail if the pool is empty.
         // virtual price of one 3Crv in USD scaled to 18 decimal places (3Crv/USD) = 3Pool USD value * 1e18 / total 3Crv
-        virtualPrice_ = (invariant * VIRTUAL_PRICE_SCALE) / LP_TOKEN.totalSupply();
+        virtualPrice_ = (invariant * VIRTUAL_PRICE_SCALE) / IERC20(LP_TOKEN).totalSupply();
     }
 
     /**

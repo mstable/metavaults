@@ -64,10 +64,11 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         assetFromUsdScale = (10**(18 - _decimals));
 
         uint256 _assetPoolIndex = 4;
-        if (Curve3PoolCalculatorLibrary.THREE_POOL.coins(0) == address(_asset)) _assetPoolIndex = 0;
-        else if (Curve3PoolCalculatorLibrary.THREE_POOL.coins(1) == address(_asset))
+        if (ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).coins(0) == address(_asset))
+            _assetPoolIndex = 0;
+        else if (ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).coins(1) == address(_asset))
             _assetPoolIndex = 1;
-        else if (Curve3PoolCalculatorLibrary.THREE_POOL.coins(2) == address(_asset))
+        else if (ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).coins(2) == address(_asset))
             _assetPoolIndex = 2;
         require(_assetPoolIndex < 3, "Underlying asset not in 3Pool");
         assetPoolIndex = _assetPoolIndex;
@@ -369,7 +370,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
                 uint256[3] memory assetsArray;
                 assetsArray[assetPoolIndex] = assets;
                 // Burn 3Pool LP tokens (3Crv) and receive this vault's asset (DAI, USDC or USDT).
-                Curve3PoolCalculatorLibrary.THREE_POOL.remove_liquidity_imbalance(
+                ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).remove_liquidity_imbalance(
                     assetsArray,
                     requiredThreeCrvTokens
                 );
@@ -428,7 +429,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         if (paused()) {
             return 0;
         }
-        
+
         maxAssets = _previewRedeem(balanceOf(owner));
     }
 
@@ -519,7 +520,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             minAssets = minAssets / assetFromUsdScale;
 
             // Burn 3Pool LP tokens (3Crv) and receive this vault's asset (DAI, USDC or USDT).
-            Curve3PoolCalculatorLibrary.THREE_POOL.remove_liquidity_one_coin(
+            ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).remove_liquidity_one_coin(
                 threeCrvTokens,
                 int128(uint128(assetPoolIndex)),
                 minAssets
@@ -657,13 +658,16 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         assetsArray[assetPoolIndex] = _assets;
 
         // Add assets, eg DAI, to the 3Pool and receive 3Pool LP tokens (3Crv)
-        Curve3PoolCalculatorLibrary.THREE_POOL.add_liquidity(assetsArray, _minThreeCrvTokens);
+        ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).add_liquidity(
+            assetsArray,
+            _minThreeCrvTokens
+        );
 
         // Deposit 3Crv into the underlying meta vault and receive meta vault shares.
         // This assumes there is no 3Crv sitting in this vault. If there is, the caller will get extra vault shares.
         // Meta Vault deposits do not need sandwich attack protection.
         metaVaultShares_ = metaVault.deposit(
-            Curve3PoolCalculatorLibrary.LP_TOKEN.balanceOf(address(this)),
+            IERC20(Curve3PoolCalculatorLibrary.LP_TOKEN).balanceOf(address(this)),
             address(this)
         );
     }
@@ -750,8 +754,8 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
 
         metaVault.redeem(totalMetaVaultShares, address(this), address(this));
 
-        Curve3PoolCalculatorLibrary.THREE_POOL.remove_liquidity_one_coin(
-            Curve3PoolCalculatorLibrary.LP_TOKEN.balanceOf(address(this)),
+        ICurve3Pool(Curve3PoolCalculatorLibrary.THREE_POOL).remove_liquidity_one_coin(
+            IERC20(Curve3PoolCalculatorLibrary.LP_TOKEN).balanceOf(address(this)),
             int128(uint128(assetPoolIndex)),
             minAssets
         );
@@ -773,6 +777,9 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
     /// Also approves the underlying Meta Vault to transfer 3Crv from this vault.
     function _resetAllowances() internal {
         _asset.safeApprove(address(Curve3PoolCalculatorLibrary.THREE_POOL), type(uint256).max);
-        Curve3PoolCalculatorLibrary.LP_TOKEN.safeApprove(address(metaVault), type(uint256).max);
+        IERC20(Curve3PoolCalculatorLibrary.LP_TOKEN).safeApprove(
+            address(metaVault),
+            type(uint256).max
+        );
     }
 }
