@@ -40,10 +40,9 @@ const tsconfig = {
 const chainMapping: Record<Chain, number> = {
     [Chain.mainnet]: 1,
     [Chain.polygon]: 137,
-    [Chain.ropsten]: 3,
     [Chain.mumbai]: 80001,
-    [Chain.rinkeby]: 4,
     [Chain.goerli]: 5,
+    [Chain.sepolia]: 11155111,
 }
 
 const clean = () => {
@@ -168,6 +167,6 @@ const publish = () => {
     clean()
     compile()
     bundle()
-    publish()
-    clean()
+    //publish()
+    //clean()
 })()
