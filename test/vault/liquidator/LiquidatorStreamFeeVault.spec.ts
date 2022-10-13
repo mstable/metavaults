@@ -1,7 +1,7 @@
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { assertBNClose } from "@utils/assertions"
-import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO_ADDRESS } from "@utils/constants"
+import { ONE_DAY, ONE_HOUR, ONE_WEEK, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -517,6 +517,43 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
                 expect(rewardTokenAAllowance, "rewards token allowance").to.be.eq(ethers.constants.MaxUint256)
                 expect(rewardTokenBAllowance, "rewards token allowance").to.be.eq(ethers.constants.MaxUint256)
+            })
+        })
+        describe("setDonationFee", async () => {
+            it("should fail if callee is not governor", async () => {
+                const tx = vault.connect(sa.dummy1.signer).setDonationFee(ZERO)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("should fail wrong fee", async () => {
+                const maxFee = await vault.connect(sa.governor.signer).FEE_SCALE()
+                const tx = vault.connect(sa.governor.signer).setDonationFee(maxFee.add(1))
+                await expect(tx).to.be.revertedWith("Invalid fee")
+            })
+
+            it("should update the donation fee", async () => {
+                const donationFee = ZERO
+                const oldDonationFee = await vault.connect(sa.governor.signer).donationFee()
+                const tx = vault.connect(sa.governor.signer).setDonationFee(donationFee.toBigInt())
+                await expect(tx).to.emit(vault, "DonationFeeUpdated").withArgs(donationFee)
+                expect(await vault.connect(sa.governor.signer).donationFee(), "new fee").to.be.eq(donationFee)
+
+                // return donation fee to previous value
+                await vault.connect(sa.governor.signer).setDonationFee(oldDonationFee)
+            })
+        })
+        describe("set fee receiver", async () => {
+            it("should fail if callee is not governor", async () => {
+                const tx = vault.connect(sa.dummy1.signer).setFeeReceiver(ZERO_ADDRESS)
+                await expect(tx).to.be.revertedWith("Only governor can execute")
+            })
+            it("should emit FeeReceiverUpdated event and correctly update address", async () => {
+                const newFeeReceiver = ZERO_ADDRESS
+                const oldFeeReceiver = await vault.feeReceiver()
+                const tx = vault.connect(sa.governor.signer).setFeeReceiver(newFeeReceiver)
+                await expect(tx).to.emit(vault, "FeeReceiverUpdated").withArgs(newFeeReceiver)
+                expect(await vault.feeReceiver(), "FeeReceiver").to.eq(newFeeReceiver)
+                // return previous value
+                await vault.connect(sa.governor.signer).setFeeReceiver(oldFeeReceiver)
             })
         })
     })
