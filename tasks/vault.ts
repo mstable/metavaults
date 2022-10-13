@@ -32,9 +32,9 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, "address", vaultAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
         const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.asset, "address", vaultToken.asset)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
 
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const assets = simpleToExactAmount(amount, assetToken.decimals)
@@ -42,14 +42,14 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
         if (approve) {
             const asset = IERC20__factory.connect(assetToken.address, signer)
             const approveTx = await asset.approve(vaultToken.address, assets)
-            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.asset} assets`)
+            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
         const tx = await vault.deposit(assets, receiverAddress)
         await logTxDetails(
             tx,
             `${signerAddress} deposited ${formatUnits(assets, vaultToken.decimals)} ${
-                vaultToken.asset
+                vaultToken.assetSymbol
             } into ${symbol} vault minting to ${receiverAddress}`,
         )
         const receipt = await tx.wait()
@@ -79,9 +79,9 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, "address", vaultAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
         const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.asset, "address", vaultToken.asset)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
 
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const shares = simpleToExactAmount(amount, vaultToken.decimals)
@@ -90,7 +90,7 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
             const assets = await vault.previewMint(shares)
             const asset = IERC20__factory.connect(assetToken.address, signer)
             const approveTx = await asset.approve(vaultToken.address, assets)
-            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.asset} assets`)
+            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
         const tx = await vault.deposit(shares, receiverAddress)
@@ -127,9 +127,9 @@ subtask("vault-withdraw", "Withdraw assets from a vault.")
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, "address", vaultAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
         const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.asset, "address", vaultToken.asset)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
         const receiverAddress = owner ? resolveAddress(receiver, chain) : signerAddress
@@ -174,9 +174,9 @@ subtask("vault-redeem", "Redeem vault shares from a vault.")
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, "address", vaultAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
         const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.asset, "address", vaultToken.asset)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 // External
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -58,7 +58,6 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      * @param _nexus  Address of the Nexus contract that resolves protocol modules and roles.
      */
     constructor(address _nexus) ImmutableModule(_nexus) {
-        _initializeReentrancyGuard();
     }
 
     /**
@@ -67,6 +66,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      * @param _asyncSwapper Address of the async DEX swapper.
      */
     function initialize(address _syncSwapper, address _asyncSwapper) external initializer {
+        _initializeReentrancyGuard();
         _setSyncSwapper(_syncSwapper);
         _setAsyncSwapper(_asyncSwapper);
     }
@@ -432,22 +432,11 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     /***************************************
                 Async Functions
     ****************************************/
-
-    /**
-     * @notice Swap the collected rewards to desired asset.
-     * Off-chain order must be created providing a "receiver" of the swap.
-     *
-     * @dev Emits the `Swapped` event with the `batch`, `rewards` and `assets` return parameters.
-     *
-     * @param rewardToken Address of the rewards being sold.
-     * @param assetToken Address of the assets being purchased.
-     * @param data Is specific for the swap implementation. eg Cowswap, Matcha...
-     */
-    function initiateSwap(
+    function _initiateSwap(
         address rewardToken,
         address assetToken,
         bytes memory data
-    ) external nonReentrant onlyKeeperOrGovernor returns (uint256 batch, uint256 rewards) {
+    ) internal returns (uint256 batch, uint256 rewards) {
         (batch, rewards) = _beforeSwapValidation(rewardToken, assetToken);
 
         IERC20(rewardToken).safeIncreaseAllowance(address(asyncSwapper), rewards);
@@ -467,6 +456,76 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
 
     /**
      * @notice Swap the collected rewards to desired asset.
+     * Off-chain order must be created providing a "receiver" of the swap.
+     *
+     * @dev Emits the `Swapped` event with the `batch`, `rewards` and `assets` return parameters.
+     *
+     * @param rewardToken Address of the rewards being sold.
+     * @param assetToken Address of the assets being purchased.
+     * @param data Is specific for the swap implementation. eg Cowswap, Matcha...
+     */
+    function initiateSwap(
+        address rewardToken,
+        address assetToken,
+        bytes memory data
+    ) external nonReentrant onlyKeeperOrGovernor returns (uint256 batch, uint256 rewards) {
+        (batch, rewards) = _initiateSwap(rewardToken, assetToken, data);
+    }
+
+    /**
+     * @notice Swaps the collected rewards to desired assets.
+     * Off-chain order must be created providing a "receiver" of the swap.
+     *
+     * @dev Emits the `Swapped` event with the `batch`, `rewards` and `assets` return parameters.
+     *
+     * @param rewardTokens Address of the rewards being sold.
+     * @param assetTokens Address of the assets being purchased.
+     * @param datas Is specific for the swap implementation. eg Cowswap, Matcha...
+     */
+    function initiateSwaps(
+        address[] memory rewardTokens,
+        address[] memory assetTokens,
+        bytes[] memory datas
+    )
+        external
+        nonReentrant
+        onlyKeeperOrGovernor
+        returns (uint256[] memory batchs, uint256[] memory rewards)
+    {
+        uint256 len = rewardTokens.length;
+        require(
+            len == rewardTokens.length &&
+                len == assetTokens.length &&
+                len == datas.length &&
+                len > 0,
+            "Wrong input"
+        );
+        batchs = new uint256[](len);
+        rewards = new uint256[](len);
+
+        for (uint256 i = 0; i < len; ) {
+            (batchs[i], rewards[i]) = _initiateSwap(rewardTokens[i], assetTokens[i], datas[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function _settleSwap(
+        address rewardToken,
+        address assetToken,
+        uint256 assets,
+        bytes memory
+    ) internal returns (uint256 batch, uint256 rewards) {
+        (batch, rewards) = _beforeSwapValidation(rewardToken, assetToken);
+
+        _afterSwapHook(rewardToken, assetToken, batch, assets);
+
+        emit SwapSettled(batch, rewards, assets);
+    }
+
+    /**
+     * @notice Swap the collected rewards to desired asset.
      * initiateSwap must be called first before settleSwap
      *
      * @dev Emits the `SwapSettled` event with the `batch`, `rewards` and `assets` return parameters.
@@ -479,13 +538,57 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         address rewardToken,
         address assetToken,
         uint256 assets,
-        bytes memory
+        bytes memory data
     ) external onlyKeeperOrGovernor returns (uint256 batch, uint256 rewards) {
-        (batch, rewards) = _beforeSwapValidation(rewardToken, assetToken);
+        (batch, rewards) = _settleSwap(rewardToken, assetToken, assets, data);
+    }
 
-        _afterSwapHook(rewardToken, assetToken, batch, assets);
+    /**
+     * @notice Swaps the collected rewards to desired assets.
+     * initiateSwap must be called first before settleSwap
+     *
+     * @dev Emits the `SwapSettled` event with the `batch`, `rewards` and `assets` return parameters.
+     *
+     * @param rewardTokens Address of the rewards being sold.
+     * @param assetTokens Address of the assets being purchased.
+     * @param assets Amount of assets to swapped.
+     * @param datas Custom data for the swap.
+     */
 
-        emit SwapSettled(batch, rewards, assets);
+    function settleSwaps(
+        address[] memory rewardTokens,
+        address[] memory assetTokens,
+        uint256[] memory assets,
+        bytes[] memory datas
+    )
+        external
+        nonReentrant
+        onlyKeeperOrGovernor
+        returns (uint256[] memory batchs, uint256[] memory rewards)
+    {
+        uint256 len = rewardTokens.length;
+        require(
+            len == rewardTokens.length &&
+                len == assetTokens.length &&
+                len == assets.length &&
+                len == datas.length &&
+                len > 0,
+            "Wrong input"
+        );
+        batchs = new uint256[](len);
+        rewards = new uint256[](len);
+
+        for (uint256 i = 0; i < len; ) {
+            (batchs[i], rewards[i]) = _settleSwap(
+                rewardTokens[i],
+                assetTokens[i],
+                assets[i],
+                datas[i]
+            );
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /***************************************

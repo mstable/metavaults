@@ -6,11 +6,10 @@ import { Chain, tokens } from "./tokens"
 
 import type { Signer } from "ethers"
 
-import type { AssetAddressTypes, Token } from "./tokens"
+import type { Token } from "./tokens"
 
 const log = logger("addresses")
 
-// TODO - clean this list of names
 export const contractNames = [
     "Nexus",
     "DelayedProxyAdmin",
@@ -20,62 +19,16 @@ export const contractNames = [
     "VaultManager",
     "FundManager",
     "mStableDAO",
-    "BadgerSafe",
-    "SavingsManager",
     "Liquidator",
-    // Will become the EmissionsController
-    "RewardsDistributor",
-    "EmissionsController",
-    "PolygonPoSBridge",
-    "PolygonRootChainManager",
-    "PolygonChildChainManager",
-    "BoostDirector",
-    "VoterProxy",
-    "Collector",
-    "Ejector",
-    "Poker",
-    "SaveWrapper",
-    "RevenueRecipient",
-    "RevenueBuyBack",
-    "MassetManager",
-    "FeederManager",
-    "FeederLogic",
-    "FeederWrapper",
-    "FeederInterestValidator",
-    "BasketManager", // Legacy mUSD contract
-    "SignatureVerifier",
-    "QuestManager",
-    "QuestMaster",
-    "QuestSigner",
-    "StakedTokenMTA",
-    "StakedTokenBPT",
-    "PlatformTokenVendorFactory",
-    "BalancerVault",
-    "BalancerRecipient",
-    "BalancerStakingPoolId",
-    "AaveIncentivesController",
-    "AaveLendingPoolAddressProvider",
-    "AlchemixStakingPool",
-    "CompController",
-    "Disperse",
-    "DisperseForwarder",
-    "QuickSwapRouter",
-    "UniswapRouterV3",
-    "UniswapQuoterV3",
-    "UniswapEthToken",
-    "UniswapV2-MTA/WETH",
-    "MStableYieldSource", // Used for PoolTogether
     "OperationsSigner",
     "ENSRegistrarController",
     "ENSResolver",
-    "FraxVault",
-    "VisorRouter",
-    "VotiumBribe",
-    "VotiumForwarder",
     // v2
     "GPv2VaultRelayer",
     "GPv2Settlement",
     "CowSwapDex",
+    "1InchSwapDex",
+    "LiquidatorV2",
     // Pools
     "CurveMUSDPool",
     "CurveThreePool",
@@ -84,6 +37,9 @@ export const contractNames = [
     "ConvexBooster",
     "OneInchAggregationRouterV4",
     "OneInchAggregationExecutor",
+    "Curve3CrvCalculatorLibrary",
+    "Curve3CrvMetapoolCalculatorLibrary",
+    "Curve3CrvFactoryMetapoolCalculatorLibrary",
 ] as const
 export type ContractNames = typeof contractNames[number]
 
@@ -136,6 +92,12 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0x1111111254fb6c44bAC0beD2854e76F90643097d"
             case "OneInchAggregationExecutor":
                 return "0xF2F400C138F9fb900576263af0BC7fCde2B1b8a8"
+            case "VaultManager":
+                return "0x1116241647D2173342b108e6363fFe58762e3e97"
+            case "CowSwapDex":
+                return "0x8E9A9a122F402CD98727128BaF3dCCAF05189B67"
+            case "LiquidatorV2":
+                return "0xD298291059aed77686037aEfFCf497A321A4569e"
             default:
         }
     } else if (chain === Chain.polygon) {
@@ -162,16 +124,6 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xE1304aA964C5119C98E8AE554F031Bf3B21eC836"
             default:
         }
-    } else if (chain === Chain.ropsten) {
-        switch (contractName) {
-            case "Nexus":
-                return "0xeD04Cd19f50F893792357eA53A549E23Baf3F6cB"
-            case "DelayedProxyAdmin":
-                return "0x2d369F83E9DC764a759a74e87a9Bc542a2BbfdF0"
-            case "OperationsSigner":
-                return "0xb805220e070bca63441233a1ca569afe392bb840"
-            default:
-        }
     } else if (chain === Chain.goerli) {
         switch (contractName) {
             case "Nexus":
@@ -184,17 +136,6 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xC06B8183A6BC9FCa36B760f4B460aE3140cc6bD4"
             case "DelayedProxyAdmin":
                 return "0xdE0Fe341e324184d177617495F8D6d40b9edCe16"
-            default:
-        }
-    } else if (chain === Chain.rinkeby) {
-        switch (contractName) {
-            // V2
-            case "GPv2VaultRelayer":
-                return "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110"
-            case "GPv2Settlement":
-                return "0x9008D19f58AAbD9eD0D60971565AA8510560ab41"
-            case "CowSwapDex":
-                return "0x930a3dd309f91fabc45281dff9ab3a9b7b6692ed"
             default:
         }
     }
@@ -212,12 +153,6 @@ export const getChain = (hre: HardhatRuntime = {}): Chain => {
     if (hre?.network.name === "polygon_testnet") {
         return Chain.mumbai
     }
-    if (hre?.network.name === "ropsten") {
-        return Chain.ropsten
-    }
-    if (hre?.network.name === "rinkeby") {
-        return Chain.rinkeby
-    }
     if (hre?.network.name === "goerli") {
         return Chain.goerli
     }
@@ -230,29 +165,15 @@ export const getNetworkAddress = (contractName: ContractNames, hre: HardhatRunti
 }
 
 // Singleton instances of different contract names and token symbols
-const resolvedAddressesInstances: { [contractNameSymbol: string]: { [tokenType: string]: string } } = {}
-
-// Update the singleton instance so we don't need to resolve this next time
-const updateResolvedAddresses = (addressContractNameSymbol: string, tokenType: AssetAddressTypes, address: string) => {
-    if (resolvedAddressesInstances[addressContractNameSymbol]) {
-        resolvedAddressesInstances[addressContractNameSymbol][tokenType] = address
-    } else {
-        resolvedAddressesInstances[addressContractNameSymbol] = { [tokenType]: address }
-    }
-}
+const resolvedAddressesInstances: { [contractNameSymbol: string]: string } = {}
 
 // Resolves a contract name or token symbol to an ethereum address
-export const resolveAddress = (
-    addressContractNameSymbol: string,
-    chain = Chain.mainnet,
-    tokenType: AssetAddressTypes = "address",
-): string => {
+export const resolveAddress = (addressContractNameSymbol: string, chain = Chain.mainnet): string => {
     let address = addressContractNameSymbol
     // If not an Ethereum address
-    if (!addressContractNameSymbol.match(ethereumAddress) && tokenType !== "localhost") {
+    if (!addressContractNameSymbol.match(ethereumAddress)) {
         // If previously resolved then return from singleton instances
-        if (resolvedAddressesInstances[addressContractNameSymbol]?.[tokenType])
-            return resolvedAddressesInstances[addressContractNameSymbol][tokenType]
+        if (resolvedAddressesInstances[addressContractNameSymbol]) return resolvedAddressesInstances[addressContractNameSymbol]
 
         // If an mStable contract name
         address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
@@ -261,21 +182,20 @@ export const resolveAddress = (
             // If a token Symbol
             const token = tokens.find((t) => t.symbol === addressContractNameSymbol && t.chain === chain)
             if (!token) throw Error(`Invalid address, token symbol or contract name "${addressContractNameSymbol}" for chain ${chain}`)
-            if (!token[tokenType])
-                throw Error(`Can not find token type "${tokenType}" for "${addressContractNameSymbol}" on chain ${chain}`)
+            if (!token.address) throw Error(`Can not find address for token "${addressContractNameSymbol}" on chain ${chain}`)
 
-            address = token[tokenType]
-            log(`Resolved asset with symbol "${addressContractNameSymbol}" and type "${tokenType}" to address ${address}`)
+            address = token.address
+            log(`Resolved asset with symbol "${addressContractNameSymbol}" to address ${address}`)
 
             // Update the singleton instance so we don't need to resolve this next time
-            updateResolvedAddresses(addressContractNameSymbol, tokenType, address)
+            resolvedAddressesInstances[addressContractNameSymbol] = address
             return address
         }
 
         log(`Resolved contract name "${addressContractNameSymbol}" to address ${address}`)
 
         // Update the singleton instance so we don't need to resolve this next time
-        updateResolvedAddresses(addressContractNameSymbol, tokenType, address)
+        resolvedAddressesInstances[addressContractNameSymbol] = address
 
         return address
     }
@@ -283,24 +203,20 @@ export const resolveAddress = (
 }
 
 // Singleton instances of different contract names and token symbols
-const resolvedTokenInstances: { [address: string]: { [tokenType: string]: Token } } = {}
+const resolvedTokenInstances: { [address: string]: Token } = {}
 
-export const resolveToken = (symbol: string, chain = Chain.mainnet, tokenType: AssetAddressTypes = "address"): Token => {
+export const resolveToken = (symbol: string, chain = Chain.mainnet): Token => {
     // If previously resolved then return from singleton instances
-    if (resolvedTokenInstances[symbol]?.[tokenType]) return resolvedTokenInstances[symbol][tokenType]
+    if (resolvedTokenInstances[symbol]) return resolvedTokenInstances[symbol]
 
     // If a token Symbol
     const token = tokens.find((t) => t.symbol === symbol && t.chain === chain)
     if (!token) throw Error(`Can not find token symbol ${symbol} on chain ${chain}`)
-    if (!token[tokenType]) throw Error(`Can not find token type "${tokenType}" for ${symbol} on chain ${chain}`)
+    if (!token.address) throw Error(`Can not find token for ${symbol} on chain ${chain}`)
 
-    log(`Resolved token symbol ${symbol} and type "${tokenType}" to address ${token[tokenType]}`)
+    log(`Resolved token symbol ${symbol} to address ${token.address}`)
 
-    if (resolvedTokenInstances[symbol]) {
-        resolvedTokenInstances[symbol][tokenType] = token
-    } else {
-        resolvedTokenInstances[symbol] = { [tokenType]: token }
-    }
+    resolvedTokenInstances[symbol] = token
 
     return token
 }
@@ -315,27 +231,22 @@ export const resolveToken = (symbol: string, chain = Chain.mainnet, tokenType: A
  * @param {string} [address]
  * @return {*}  {Promise<Token>}
  */
-export const resolveVaultToken = async (
-    signer: Signer,
-    chain: Chain,
-    symbol: string,
-    tokenType: AssetAddressTypes,
-    address?: string,
-): Promise<Token> => {
+export const resolveVaultToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
     let token: Token
     if (address !== undefined) {
         const tkn = IERC20Metadata__factory.connect(address, signer)
         const vault = IERC4626Vault__factory.connect(address, signer)
         token = {
-            symbol: symbol,
-            address: address,
+            symbol,
+            address,
             chain,
             quantityFormatter: "USD",
-            asset: await vault.asset(),
             decimals: await tkn.decimals(),
+            assetSymbol: await tkn.symbol(),
+            assetAddress: await vault.asset(),
         }
     } else {
-        token = await resolveToken(symbol, chain, tokenType)
+        token = await resolveToken(symbol, chain)
     }
 
     return token
@@ -350,13 +261,7 @@ export const resolveVaultToken = async (
  * @param {string} [address]
  * @return {*}  {Promise<Token>}
  */
-export const resolveAssetToken = async (
-    signer: Signer,
-    chain: Chain,
-    symbol: string,
-    tokenType: AssetAddressTypes,
-    address?: string,
-): Promise<Token> => {
+export const resolveAssetToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
     let assetToken: Token
     if (address !== undefined) {
         const tkn = IERC20Metadata__factory.connect(address, signer)
@@ -368,7 +273,7 @@ export const resolveAssetToken = async (
             decimals: await tkn.decimals(),
         }
     } else {
-        assetToken = resolveToken(symbol, chain, tokenType)
+        assetToken = resolveToken(symbol, chain)
     }
     return assetToken
 }

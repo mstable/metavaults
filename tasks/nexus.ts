@@ -48,7 +48,7 @@ task("nexus-deploy").setAction(async (_, __, runSuper) => {
 })
 
 task("nexus-module", "Resolve address of a Nexus module")
-    .addParam("module", "Name of module. eg Liquidator", undefined, types.string)
+    .addParam("module", "Name of module. eg LiquidatorV2", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
@@ -62,3 +62,43 @@ task("nexus-module", "Resolve address of a Nexus module")
         const moduleAddress = await nexus.getModule(key)
         log(`Address of module ${taskArgs.module}: ${moduleAddress}`)
     })
+
+subtask("nexus-prop-mod", "Propose a new Nexus module")
+    .addParam("module", "Name of module. eg LiquidatorV2", undefined, types.string)
+    .addParam("address", "Name or address of the account or account the module should resolve to. eg LiquidatorV2", undefined, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, taskArgs.speed, false)
+
+        const nexusAddress = resolveAddress("Nexus", chain)
+
+        const nexus = Nexus__factory.connect(nexusAddress, signer)
+        const key = keccak256(toUtf8Bytes(taskArgs.module))
+        log(`Key for module ${taskArgs.module}: ${key}`)
+        const moduleAddress = resolveAddress(taskArgs.address, chain)
+        const tx = await nexus.proposeModule(key, moduleAddress)
+        logTxDetails(tx, `propose module ${taskArgs.module} with address ${moduleAddress}`)
+    })
+task("nexus-prop-mod").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
+subtask("nexus-acc-mod", "Accept a new Nexus module after 1 week")
+    .addParam("module", "Name of module. eg LiquidatorV2", undefined, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, taskArgs.speed, false)
+
+        const nexusAddress = resolveAddress("Nexus", chain)
+
+        const nexus = Nexus__factory.connect(nexusAddress, signer)
+        const key = keccak256(toUtf8Bytes(taskArgs.module))
+        log(`Key for module ${taskArgs.module}: ${key}`)
+        const tx = await nexus.acceptProposedModule(key)
+        logTxDetails(tx, `accept module ${taskArgs.module}`)
+    })
+task("nexus-acc-mod").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})

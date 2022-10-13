@@ -93,13 +93,11 @@ function getGnosisProtocolUrl(isDev: boolean): Partial<Record<Chain, string>> {
     if (isDev) {
         return {
             [Chain.mainnet]: "https://barn.api.cow.fi/mainnet/api",
-            [Chain.rinkeby]: "https://barn.api.cow.fi/rinkeby/api",
             // [Chain.GNOSIS_CHAIN]: 'https://barn.api.cow.fi/xdai/api',
         }
     }
     return {
         [Chain.mainnet]: "https://api.cow.fi/mainnet/api",
-        [Chain.rinkeby]: "https://api.cow.fi/rinkeby/api",
         // [Chain.GNOSIS_CHAIN]: 'https://api.cow.fi/xdai/api',
     }
 }

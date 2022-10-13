@@ -1,8 +1,8 @@
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { DAI, mUSD, musd3CRV, resolveAddress, ThreeCRV, USDC, usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { BN, simpleToExactAmount } from "@utils/math"
-import { musdConvexConstructorData } from "@utils/peripheral/convex-curve"
 import { expect } from "chai"
 import { ethers } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
@@ -81,8 +81,8 @@ describe("Curve 3Crv metapool calculations", async () => {
                 calculatorLibrary.address,
         }
         metapoolCalculator = await new Curve3CrvMetapoolCalculator__factory(libraryAddresses, staker1.signer).deploy(
-            musdConvexConstructorData.metapool,
-            musdConvexConstructorData.metapoolToken,
+            config.convex3CrvPools.musd.curveMetapool,
+            config.convex3CrvPools.musd.curveMetapoolToken,
         )
     }
 

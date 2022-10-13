@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 // External
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -46,7 +46,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
 
     function _keeperOrLiquidator() internal view {
         require(
-            msg.sender == _keeper() || msg.sender == _liquidator(),
+            msg.sender == _keeper() || msg.sender == _liquidatorV2(),
             "Only keeper or liquidator"
         );
     }

@@ -39,7 +39,7 @@ const ERROR = {
     NOTHING_TO_DONATE: "nothing to donate",
     NOT_SWAPPED: "not swapped",
     ALREADY_DONATED: "already donated",
-    DONATE_TOKEN_WRONG_INPUT: "Wrong input",
+    WRONG_INPUT: "Wrong input",
     DONATE_WRONG_TOKEN: "Donated token not asset",
 }
 
@@ -123,7 +123,7 @@ describe("Liquidator", async () => {
         liquidator = await new Liquidator__factory(sa.default.signer).deploy(nexus.address)
         await liquidator.initialize(syncSwapper.address, asyncSwapper.address)
         liquidator = liquidator.connect(sa.keeper.signer)
-        await nexus.setLiquidator(liquidator.address)
+        await nexus.setLiquidatorV2(liquidator.address)
 
         // Deploy mock vaults
         // Vault 1 has all rewards and asset 1
@@ -186,7 +186,45 @@ describe("Liquidator", async () => {
             liquidatorAssetsBalanceBefore.add(assets),
         )
     }
+    const verifyAsyncSwaps = async (swapsData: DexSwapData[]) => {
+        // 1.- Initiate Swap
+        // liquidator rewards balances is transfer to asyncSwapper
+        const orders = await Promise.all(
+            swapsData.map(async (swapData) => {
+                const [orderUid] = ethers.utils.defaultAbiCoder.decode(["bytes", "uint256"], swapData.data)
+                const pendingRewardsBefore = await liquidator.pendingRewards(swapData.fromAsset, swapData.toAsset)
+                return { fromAsset: swapData.fromAsset, toAsset: swapData.toAsset, data: swapData.data, orderUid, pendingRewardsBefore }
+            }),
+        )
+        const fromAssets = orders.map((o) => o.fromAsset)
+        const toAssets = orders.map((o) => o.toAsset)
+        const datas = orders.map((o) => o.data)
+        const assetsAmounts = swapsData.map((o) => o.minToAssetAmount)
 
+        const initiateTx = await liquidator.connect(sa.keeper.signer).initiateSwaps(fromAssets, toAssets, datas)
+
+        await Promise.all(
+            swapsData.map(async (swapData, i) => {
+                const pendingRewardsBefore = orders[i].pendingRewardsBefore
+                const rewards = pendingRewardsBefore.rewards
+                expect(initiateTx).to.emit(liquidator, "SwapInitiated").withArgs(pendingRewardsBefore.batch, rewards, 0)
+                // Simulate off-chain swap
+                // asyncSwapper assets balances is transfer from relayer
+                await simulateAsyncSwap(swapData, liquidator.address)
+            }),
+        )
+        const settleTx = await liquidator.connect(sa.keeper.signer).settleSwaps(fromAssets, toAssets, assetsAmounts, datas)
+
+        // Settle Swap
+        await Promise.all(
+            swapsData.map(async (swapData, i) => {
+                const pendingRewardsBefore = orders[i].pendingRewardsBefore
+                const rewards = pendingRewardsBefore.rewards
+                const assets = swapData.minToAssetAmount
+                await expect(settleTx).to.emit(liquidator, "SwapSettled").withArgs(pendingRewardsBefore.batch, rewards, assets)
+            }),
+        )
+    }
     const assertDonateTokens = async (assets: MockERC20[], amounts: BN[], vaultsAddress: string[]): Promise<ContractTransaction> => {
         const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(sa.default.signer, vaultsAddress)
         const tx = liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, vaults)
@@ -679,7 +717,7 @@ describe("Liquidator", async () => {
                     minToAssetAmount: asset1Amount,
                     data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
                 }
-                await verifyAsyncSwap(swapFromReward1ToAsset1)
+                await verifyAsyncSwaps([swapFromReward1ToAsset1])
 
                 const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
                 expect(pending.batch, "batch after").to.eq(1)
@@ -920,6 +958,22 @@ describe("Liquidator", async () => {
                 const tx = liquidator.connect(sa.keeper.signer).initiateSwap(rewards1.address, asset1.address, swap.data)
                 await expect(tx).to.revertedWith(ERROR.NO_PENDING_REWARDS)
             })
+            it("initiateSwaps not keep or governor", async () => {
+                const tx = liquidator.connect(sa.default.signer).initiateSwaps([rewards1.address], [asset1.address], ["0x"])
+                await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
+            })
+            it("initiateSwaps invalid input", async () => {
+                await expect(liquidator.connect(sa.keeper.signer).initiateSwaps([], [asset1.address], ["0x"])).to.revertedWith(
+                    ERROR.WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).initiateSwaps([rewards1.address], [], ["0x"])).to.revertedWith(
+                    ERROR.WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).initiateSwaps([], [asset1.address], [])).to.revertedWith(
+                    ERROR.WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).initiateSwaps([], [], [])).to.revertedWith(ERROR.WRONG_INPUT)
+            })
             it("settleSwap not keep or governor", async () => {
                 const tx = liquidator.connect(sa.default.signer).settleSwap(rewards1.address, asset1.address, asset1Amount, "0x")
                 await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
@@ -938,6 +992,24 @@ describe("Liquidator", async () => {
                         encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
                     )
                 await expect(tx).to.revertedWith(ERROR.NO_PENDING_REWARDS)
+            })
+            it("settleSwaps not keep or governor", async () => {
+                const tx = liquidator.connect(sa.default.signer).settleSwaps([asset1.address], [asset2.address], [asset1Amount], ["0x"])
+                await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
+            })
+            it("settleSwaps invalid input", async () => {
+                await expect(liquidator.connect(sa.keeper.signer).settleSwaps([], [asset1.address], [0], ["0x"])).to.revertedWith(
+                    ERROR.WRONG_INPUT,
+                )
+                await expect(liquidator.connect(sa.keeper.signer).settleSwaps([rewards1.address], [], [0], ["0x"])).to.revertedWith(
+                    ERROR.WRONG_INPUT,
+                )
+                await expect(
+                    liquidator.connect(sa.keeper.signer).settleSwaps([rewards1.address], [asset1.address], [], ["0x"]),
+                ).to.revertedWith(ERROR.WRONG_INPUT)
+                await expect(
+                    liquidator.connect(sa.keeper.signer).settleSwaps([rewards1.address], [asset1.address], [0], []),
+                ).to.revertedWith(ERROR.WRONG_INPUT)
             })
         })
     })
@@ -1061,13 +1133,11 @@ describe("Liquidator", async () => {
             })
             it("wrong input pair on reward tokens or purchase tokens", async () => {
                 await expect(liquidator.connect(sa.keeper.signer).donateTokens([], purchaseTokens, vaults)).to.revertedWith(
-                    ERROR.DONATE_TOKEN_WRONG_INPUT,
+                    ERROR.WRONG_INPUT,
                 )
-                await expect(liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, [], vaults)).to.revertedWith(
-                    ERROR.DONATE_TOKEN_WRONG_INPUT,
-                )
+                await expect(liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, [], vaults)).to.revertedWith(ERROR.WRONG_INPUT)
                 await expect(liquidator.connect(sa.keeper.signer).donateTokens(rewardTokens, purchaseTokens, [])).to.revertedWith(
-                    ERROR.DONATE_TOKEN_WRONG_INPUT,
+                    ERROR.WRONG_INPUT,
                 )
             })
         })

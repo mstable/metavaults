@@ -1,5 +1,5 @@
-import { deploy3CrvMetaVaults, deployCommon, deployCore } from "@tasks/deployment"
-import { config } from "@tasks/deployment/mainnet-config"
+import { deploy3CrvMetaVaults, deployCommon } from "@tasks/deployment"
+import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { logger } from "@tasks/utils/logger"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
@@ -22,8 +22,10 @@ import {
     DataEmitter__factory,
     IERC20__factory,
     IERC20Metadata__factory,
+    InstantProxyAdmin__factory,
     MockGPv2Settlement__factory,
     MockGPv2VaultRelayer__factory,
+    Nexus__factory,
     PeriodicAllocationPerfFeeMetaVault__factory,
 } from "types/generated"
 
@@ -60,8 +62,8 @@ const usdtWhaleAddress = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 const staker1Address = "0xA86e412109f77c45a3BC1c5870b880492Fb86A14" // Tokemak: Manager
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
 const rewardsWhaleAddress = "0x2faf487a4414fe77e2327f0bf4ae2a264a776ad2" // FTX Exchange
-const curveThreePoolAddress = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
-const convexBoosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
+const curveThreePoolAddress = resolveAddress("CurveThreePool")
+const convexBoosterAddress = resolveAddress("ConvexBooster")
 
 type Settlement = { vaultIndex: BN; assets: BN }
 interface Convex3CrvLiquidatorVaults {
@@ -529,19 +531,19 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
-        // Deploy core contracts  (nexus, proxy admin)
-        const core = await deployCore(hre, deployer, "instant", governor.address)
-        nexus = core.nexus
-        proxyAdmin = core.proxyAdmin as InstantProxyAdmin
+        const nexusAddress = resolveAddress("Nexus")
+        nexus = Nexus__factory.connect(nexusAddress, governor.signer)
+        const proxyAdminAddress = resolveAddress("InstantProxyAdmin")
+        proxyAdmin = InstantProxyAdmin__factory.connect(proxyAdminAddress, governor.signer)
 
         // Deploy mocked contracts
         ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
         const syncSwapper = await deployMockSyncSwapper(deployer, nexus)
 
         // Deploy common /  utilities  contracts
-        ;({ liquidator } = await deployCommon(hre, deployer, core, syncSwapper.address, swapper.address))
+        ;({ liquidator } = await deployCommon(hre, deployer, nexus, proxyAdmin, syncSwapper.address, swapper.address))
 
-        await proposeAcceptNexusModule(nexus, governor, "Liquidator", liquidator.address)
+        await proposeAcceptNexusModule(nexus, governor, "LiquidatorV2", liquidator.address)
         liquidator = liquidator.connect(governor.signer)
 
         //  1 - deployConvex3CrvLiquidatorVault,  2 - deployPeriodicAllocationPerfFeeMetaVaults,  3 - deployCurve3CrvMetaVault
@@ -549,7 +551,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             convex3CrvVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curve3CrvMetaVaults,
-        } = await deploy3CrvMetaVaults(hre, deployer, core, vaultManager.address)
+        } = await deploy3CrvMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)
