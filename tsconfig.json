@@ -6,7 +6,7 @@
         "module": "CommonJS",
         "declaration": true,
         "esModuleInterop": true,
-        "moduleResolution": "Node", 
+        "moduleResolution": "Node",
         "sourceMap": true,
         "noImplicitAny": false,
         "allowJs": false,
@@ -17,11 +17,19 @@
         "paths": {
             "@utils/*": ["test-utils/*"],
             "@test/*": ["test/*"],
-            "@tasks/*": ["tasks/*"],
+            "@tasks/*": ["tasks/*"]
         },
         "typeRoots": ["node_modules/@types"]
     },
-    "include": ["./types/**/*.ts", "./tasks/**/*.ts", "./test/**/*.ts", "./test-fork/**/*.ts", "./test-utils/**/*.ts", "./*.js"],
+    "include": [
+        "./types/**/*.ts",
+        "./tasks/**/*.ts",
+        "./test/**/*.ts",
+        "./test-fork/**/*.ts",
+        "./test-utils/**/*.ts",
+        "./tmp/**/*.ts",
+        "./*.js"
+    ],
     "files": [
         "./index.ts",
         "./hardhat.config.ts",
@@ -29,6 +37,10 @@
         "./hardhat-fork-polygon.config.ts",
         "./tasks.config.ts",
         "./tasks-fork.config.ts",
-        "./tasks-fork-polygon.config.ts"
-    ]
+        "./tasks-fork-polygon.config.ts",
+        "./web-config.ts"
+    ],
+    "ts-node": {
+        "require": ["tsconfig-paths/register"]
+    }
 }
