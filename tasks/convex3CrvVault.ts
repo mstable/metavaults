@@ -6,10 +6,8 @@ import {
     Convex3CrvLiquidatorVault__factory,
     Curve3CrvFactoryMetapoolCalculatorLibrary__factory,
     Curve3CrvMetapoolCalculatorLibrary__factory,
-    Nexus__factory,
 } from "types/generated"
 
-import { setBalancesToAccounts } from "./deployment/convex3CrvVaults"
 import { config } from "./deployment/convex3CrvVaults-config"
 import { CRV, CVX } from "./utils"
 import { deployContract } from "./utils/deploy-utils"
@@ -200,7 +198,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("pool", "Symbol of the Convex pool. eg mUSD, FRAX, MIM, LUSD, BUSD", undefined, types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
-    .addOptionalParam("streamDuration", "Number of seconds the stream takes. default 6 days", ONE_DAY.mul(6), types.int)
+    .addOptionalParam("streamDuration", "Number of seconds the stream takes. default 7 days", ONE_DAY.mul(7), types.int)
     .addOptionalParam(
         "proxyAdmin",
         "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
@@ -209,7 +207,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     )
     .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", undefined, types.string)
     .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
-    .addOptionalParam("donationFee", "Liquidation fee scaled to 6 decimal places. default 1% = 10000", 10000, types.int)
+    .addOptionalParam("donationFee", "Liquidation fee scaled to 6 decimal places. default 1% = 10000", 70000, types.int)
     .addOptionalParam("donateToken", "Address or token symbol of token that rewards will be swapped to.", "DAI", types.string)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
@@ -280,101 +278,3 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
 task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
-
-task("convex-3crv-fork")
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
-    .setAction(async (taskArgs, hre) => {
-        const { speed } = taskArgs
-
-        // Deploy the Liquidator
-        // const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
-        // const cowSwapDex = await hre.run("cow-swap-dex-deploy", { speed })
-        // const liquidator = await hre.run("liq-deploy", {
-        //     speed,
-        //     syncSwapper: oneInchDexSwap.address,
-        //     asyncSwapper: cowSwapDex.address,
-        // })
-
-        // Register the new Liquidator in the Nexus
-        process.env.IMPERSONATE = resolveAddress("Governor")
-        // await hre.run("nexus-prop-mod", { speed, module: "LiquidatorV2", address: resolveAddress("LiquidatorV2") })
-        await hre.run("time-increase", { speed, weeks: 1 })
-        await hre.run("nexus-acc-mod", { speed, module: "LiquidatorV2" })
-        delete process.env.IMPERSONATE
-
-        // Deploy the Convex 3Crv Vaults
-        const Curve3CrvMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: false })
-        const Curve3CrvFactoryMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: true })
-        const musdConvexVault = await hre.run("convex-3crv-vault-deploy", {
-            speed,
-            symbol: "vcx3CRV-mUSD",
-            name: "3Crv Convex mUSD Vault",
-            pool: "mUSD",
-            calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary.address,
-        })
-        const fraxConvexVault = await hre.run("convex-3crv-vault-deploy", {
-            speed,
-            symbol: "vcx3CRV-FRAX",
-            name: "3Crv Convex FRAX Vault",
-            pool: "FRAX",
-            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
-        })
-        const lusdConvexVault = await hre.run("convex-3crv-vault-deploy", {
-            speed,
-            symbol: "vcx3CRV-LUSD",
-            name: "3Crv Convex LUSD Vault",
-            pool: "LUSD",
-            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
-        })
-        const busdConvexVault = await hre.run("convex-3crv-vault-deploy", {
-            speed,
-            symbol: "vcx3CRV-BUSD",
-            name: "3Crv Convex BUSD Vault",
-            pool: "BUSD",
-            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
-        })
-
-        // Deploy Convex 3Crv Meta Vault
-        const metaVault = await hre.run("convex-3crv-meta-vault-deploy", {
-            speed,
-            vaults: [
-                musdConvexVault.proxy.address,
-                fraxConvexVault.proxy.address,
-                lusdConvexVault.proxy.address,
-                busdConvexVault.proxy.address,
-            ].join(","),
-            singleSource: fraxConvexVault.proxy.address,
-        })
-
-        // Deploy Curve Meta Vaults
-        const threePoolLib = await hre.run("curve-3crv-lib-deploy", {
-            speed,
-        })
-        const daiCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
-            speed,
-            metaVault: metaVault.proxy.address,
-            symbol: "3pDAI",
-            name: "3Pooler Meta Vault (DAI)",
-            asset: "DAI",
-            calculatorLibrary: threePoolLib.address,
-        })
-        const usdcCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
-            speed,
-            metaVault: metaVault.proxy.address,
-            symbol: "3pUSDC",
-            name: "3Pooler Meta Vault (USDC)",
-            asset: "USDC",
-            calculatorLibrary: threePoolLib.address,
-        })
-        const usdtCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
-            speed,
-            metaVault: metaVault.proxy.address,
-            symbol: "3pUSDT",
-            name: "3Pooler Meta Vault (USDT)",
-            asset: "USDT",
-            calculatorLibrary: threePoolLib.address,
-        })
-
-        // simulate accounts and deposit tokens.
-        await setBalancesToAccounts(hre)
-    })
