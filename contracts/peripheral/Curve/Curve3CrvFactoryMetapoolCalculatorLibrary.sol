@@ -24,7 +24,7 @@ import { ICurveMetapool } from "./ICurveMetapool.sol";
  */
 library Curve3CrvFactoryMetapoolCalculatorLibrary {
     /// @notice Curve's 3Pool used as a base pool by the Curve metapools.
-    ICurve3Pool public constant BASE_POOL = ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    address public constant BASE_POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
 
     /// @notice Number of coins in the pool.
     uint256 public constant N_COINS = 2;
@@ -415,7 +415,7 @@ library Curve3CrvFactoryMetapoolCalculatorLibrary {
      */
     function _baseVirtualPrice() internal view returns (uint256 baseVirtualPrice_) {
         // If not cached or cache older than 10 minutes then get latest virtual price from the base pool.
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurve3Pool(BASE_POOL).get_virtual_price();
     }
 
     /**
@@ -454,7 +454,9 @@ library Curve3CrvFactoryMetapoolCalculatorLibrary {
      */
     function convertUsdToBaseLp(uint256 usdAmount) external view returns (uint256 baseLp_) {
         if (usdAmount > 0) {
-            baseLp_ = (usdAmount * VIRTUAL_PRICE_SCALE) / BASE_POOL.get_virtual_price();
+            baseLp_ =
+                (usdAmount * VIRTUAL_PRICE_SCALE) /
+                ICurve3Pool(BASE_POOL).get_virtual_price();
         }
     }
 

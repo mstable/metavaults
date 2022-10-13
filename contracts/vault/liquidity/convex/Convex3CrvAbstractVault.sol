@@ -62,7 +62,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
     /// @notice Scale of the metapool liquidity provider token. eg 1e18 if 18 decimal places.
     uint256 public immutable metapoolTokenScale;
     /// @notice Curve's 3Pool used as a base pool by the Curve metapools.
-    ICurve3Pool public immutable basePool;
+    address public immutable basePool;
 
     /// @notice Convex's Booster contract that contains the Curve.fi LP pools.
     IConvexBooster public immutable booster;
@@ -527,7 +527,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         returns (uint256 expectedAssets)
     {
         // 3Crv virtual price in USD. Non-manipulable
-        uint256 threePoolVirtualPrice = basePool.get_virtual_price();
+        uint256 threePoolVirtualPrice = ICurve3Pool(basePool).get_virtual_price();
         // Metapool virtual price in USD. eg musd3Crv/USD
         uint256 metapoolVirtualPrice = ICurveMetapool(metapool).get_virtual_price();
 
@@ -547,7 +547,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         returns (uint256 expectedMetapoolTokens)
     {
         // 3Crv virtual price in USD. Non-manipulable
-        uint256 threePoolVirtualPrice = basePool.get_virtual_price();
+        uint256 threePoolVirtualPrice = ICurve3Pool(basePool).get_virtual_price();
         // Metapool virtual price in USD
         uint256 metapoolVirtualPrice = ICurveMetapool(metapool).get_virtual_price();
 
