@@ -44,6 +44,7 @@ bin/contracts
 
 # TSC
 dist
+dist-web
 
 package-lock.json
 
@@ -69,3 +70,5 @@ _flat
 testoutput.txt
 contracts/.deps
 contracts/**/**/**.json
+
+tmp
