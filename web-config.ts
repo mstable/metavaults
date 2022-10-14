@@ -29,7 +29,7 @@ const tsconfig = {
         declaration: true,
         esModuleInterop: true,
         moduleResolution: "Node",
-        sourceMap: true,
+        sourceMap: false,
         allowJs: false,
         resolveJsonModule: true,
         skipLibCheck: true,
@@ -67,7 +67,13 @@ const compile = () => {
             }),
             {},
         )
-        outputFileSync(join(paths.tmp, "tokens.ts"), `export const tokens = ${JSON.stringify(toks, null, 2)}`)
+        const types = tokens.reduce((acc, curr) => acc.add(curr.symbol.toLocaleLowerCase()), new Set())
+        outputFileSync(
+            join(paths.tmp, "tokens.ts"),
+            `export type SupportedToken = '${Array.from(types).join("'|'")}';
+export const tokens = ${JSON.stringify(toks, null, 2)}
+        `,
+        )
     } catch (e) {
         console.error("Error writing token.ts ", e)
     }
@@ -81,7 +87,9 @@ const compile = () => {
             }),
             {},
         )
-        outputFileSync(join(paths.tmp, "contracts.ts"), `export const contracts = ${JSON.stringify(contracts, null, 2)}`)
+        const types = contractNames.reduce((acc, curr) => acc.add(curr), new Set())
+        outputFileSync(join(paths.tmp, "contracts.ts"), `export type SupportedContract = '${Array.from(types).join("'|'")}';
+export const contracts = ${JSON.stringify(contracts, null, 2)}`)
     } catch (e) {
         console.error("Error writing contracts.ts ", e)
     }
@@ -89,8 +97,8 @@ const compile = () => {
     // abis
     let abis: string[]
     try {
-        sh.exec("yarn compile")
-        sh.exec("yarn compile-abis")
+        // sh.exec("yarn compile")
+        // sh.exec("yarn compile-abis")
         copySync(paths.abis, join(paths.tmp, "abis"))
         abis = readdirSync(join(paths.tmp, "abis"))
     } catch (e) {
