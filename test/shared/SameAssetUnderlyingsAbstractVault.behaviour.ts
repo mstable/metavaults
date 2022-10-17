@@ -513,7 +513,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 })
                 it("should be able to remove first vault with balance", async () => {
                     const { amounts, asset, vault, sa, variances } = ctx()
-                    const dataBefore = await snapVault(ctx())
+                    const bVault0MaxWithdrawBefore = await bVault0.maxWithdraw(vault.address)
                     const assetBalanceOfVaultBefore = await asset.balanceOf(vault.address)
                     if ((await asset.allowance(alice.address, vault.address)).lt(amounts.initialDeposit)) {
                         await asset.connect(alice.signer).approve(vault.address, amounts.initialDeposit)
@@ -529,7 +529,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const bVault0MaxWithdrawAfter = await bVault0.maxWithdraw(vault.address)
                     assertBNClose(
                         bVault0MaxWithdrawAfter,
-                        dataBefore.bVault0Data.vaultMaxWithdraw.add(amounts.initialDeposit),
+                        bVault0MaxWithdrawBefore.add(amounts.initialDeposit),
                         variances.bVault0,
                         "assets in underlying vault before",
                     )

@@ -71,10 +71,10 @@ const rewardsWhaleAddress = "0x2faf487a4414fe77e2327f0bf4ae2a264a776ad2" // FTX 
 
 type Settlement = { vaultIndex: BN; assets: BN }
 interface Convex3CrvLiquidatorVaults {
-    musd: Convex3CrvLiquidatorVault
-    frax: Convex3CrvLiquidatorVault
-    lusd: Convex3CrvLiquidatorVault
-    busd: Convex3CrvLiquidatorVault
+    musd?: Convex3CrvLiquidatorVault
+    frax?: Convex3CrvLiquidatorVault
+    lusd?: Convex3CrvLiquidatorVault
+    busd?: Convex3CrvLiquidatorVault
 }
 interface Curve3CrvBasicMetaVaults {
     dai: Curve3CrvBasicMetaVault
@@ -82,10 +82,10 @@ interface Curve3CrvBasicMetaVaults {
     usdt: Curve3CrvBasicMetaVault
 }
 interface Settlements {
-    musd: Settlement
-    frax: Settlement
-    lusd: Settlement
-    busd: Settlement
+    musd?: Settlement
+    frax?: Settlement
+    lusd?: Settlement
+    busd?: Settlement
 }
 
 async function deployMockSyncSwapper(deployer: Signer, nexus: Nexus) {
@@ -269,7 +269,6 @@ const snapConvex3CrvLiquidatorVaults = async (vaults: Convex3CrvLiquidatorVaults
     const vaultsData = {
         musd: await snapVault(vaults.musd),
         frax: await snapVault(vaults.frax),
-        lusd: await snapVault(vaults.lusd),
         busd: await snapVault(vaults.busd),
     }
     log(`
@@ -282,11 +281,6 @@ const snapConvex3CrvLiquidatorVaults = async (vaults: Convex3CrvLiquidatorVaults
             feeReceiverBalance: ${vaultsData.frax.feeReceiverBalance.toString()} , crvBalance: ${vaultsData.frax.crvBalance.toString()} , cvxBalance: ${vaultsData.frax.cvxBalance.toString()} 
             STREAM_DURATION: ${vaultsData.frax.STREAM_DURATION.toString()} , STREAM_PER_SECOND_SCALE: ${vaultsData.frax.STREAM_PER_SECOND_SCALE.toString()} 
             shareStream: ${vaultsData.frax.shareStream.toString()} , feeReceiver: ${vaultsData.frax.feeReceiver.toString()}             
-        }
-    lusd: { totalAssets: ${vaultsData.lusd.totalAssets.toString()}, totalSupply: ${vaultsData.lusd.totalSupply.toString()} , metaVaultBalance: ${vaultsData.lusd.metaVaultBalance.toString()} , 
-            feeReceiverBalance: ${vaultsData.lusd.feeReceiverBalance.toString()} , crvBalance: ${vaultsData.lusd.crvBalance.toString()} , cvxBalance: ${vaultsData.lusd.cvxBalance.toString()} 
-            STREAM_DURATION: ${vaultsData.lusd.STREAM_DURATION.toString()} , STREAM_PER_SECOND_SCALE: ${vaultsData.lusd.STREAM_PER_SECOND_SCALE.toString()} 
-            shareStream: ${vaultsData.lusd.shareStream.toString()} , feeReceiver: ${vaultsData.lusd.feeReceiver.toString()}         
         }
     busd: { totalAssets: ${vaultsData.busd.totalAssets.toString()}, totalSupply: ${vaultsData.busd.totalSupply.toString()} , metaVaultBalance: ${vaultsData.busd.metaVaultBalance.toString()} , 
             feeReceiverBalance: ${vaultsData.busd.feeReceiverBalance.toString()} , crvBalance: ${vaultsData.busd.crvBalance.toString()} , cvxBalance: ${vaultsData.busd.cvxBalance.toString()} 
@@ -391,12 +385,12 @@ const assertVaultSettle = async (
         curve3CrvBasicMetaVaults,
         account,
     )
-    const totalAssetsSettle = settlements.musd.assets.add(settlements.frax.assets.add(settlements.busd.assets.add(settlements.lusd.assets)))
+    const totalAssetsSettle = settlements.musd.assets.add(settlements.frax.assets.add(settlements.busd.assets))
     log(`Total assets to settle ${usdFormatter(totalAssetsSettle, 18, 14, 18)}`)
 
     const tx = await periodicAllocationPerfFeeMetaVault
         .connect(vaultManager.signer)
-        .settle([settlements.musd, settlements.frax, settlements.lusd, settlements.busd])
+        .settle([settlements.musd, settlements.frax, settlements.busd])
     await logTxDetails(tx, "settle to 4 underlying vaults")
 
     const vaultsDataAfter = await snapshotVaults(
@@ -454,7 +448,6 @@ const assertVaultSettle = async (
     }
     expectConvex3CrvLiquidatorVaultSettlement("musd")
     expectConvex3CrvLiquidatorVaultSettlement("frax")
-    expectConvex3CrvLiquidatorVaultSettlement("lusd")
     expectConvex3CrvLiquidatorVaultSettlement("busd")
 }
 
@@ -486,7 +479,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
     // mstable underlying vaults  <= => convex
     let musdConvexVault: Convex3CrvLiquidatorVault
     let fraxConvexVault: Convex3CrvLiquidatorVault
-    let lusdConvexVault: Convex3CrvLiquidatorVault
     let busdConvexVault: Convex3CrvLiquidatorVault
     // meta vault  <= => mstable underlying vaults
     let periodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVault
@@ -569,7 +561,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)
         fraxConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.frax.proxy.address, deployer)
-        lusdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.lusd.proxy.address, deployer)
         busdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.busd.proxy.address, deployer)
 
         // 2.- save plus meta vault
@@ -636,7 +627,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
         convex3CrvLiquidatorVaults = {
             musd: musdConvexVault,
             frax: fraxConvexVault,
-            lusd: lusdConvexVault,
             busd: busdConvexVault,
         }
         curve3CrvBasicMetaVaults = {
@@ -671,11 +661,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
         await crvToken.connect(rewardsWhale.signer).transfer(musdConvexVault.address, simpleToExactAmount(100))
         await crvToken.connect(rewardsWhale.signer).transfer(fraxConvexVault.address, simpleToExactAmount(100))
         await crvToken.connect(rewardsWhale.signer).transfer(busdConvexVault.address, simpleToExactAmount(100))
-        await crvToken.connect(rewardsWhale.signer).transfer(lusdConvexVault.address, simpleToExactAmount(100))
         await cvxToken.connect(rewardsWhale.signer).transfer(musdConvexVault.address, simpleToExactAmount(150))
         await cvxToken.connect(rewardsWhale.signer).transfer(fraxConvexVault.address, simpleToExactAmount(150))
         await cvxToken.connect(rewardsWhale.signer).transfer(busdConvexVault.address, simpleToExactAmount(150))
-        await cvxToken.connect(rewardsWhale.signer).transfer(lusdConvexVault.address, simpleToExactAmount(150))
     }
     const snapLiquidator = async () => {
         const crvBalance = await crvToken.balanceOf(liquidator.address)
@@ -708,14 +696,11 @@ describe("Save+ Basic and Meta Vaults", async () => {
         expect(rewardsAddress.includes(collectedRewardsEvent.args.rewardTokens[1][1].toLowerCase()), "reward token").to.eq(true)
         expect(rewardsAddress.includes(collectedRewardsEvent.args.rewardTokens[2][0].toLowerCase()), "reward token").to.eq(true)
         expect(rewardsAddress.includes(collectedRewardsEvent.args.rewardTokens[2][1].toLowerCase()), "reward token").to.eq(true)
-        expect(rewardsAddress.includes(collectedRewardsEvent.args.rewardTokens[3][0].toLowerCase()), "reward token").to.eq(true)
-        expect(rewardsAddress.includes(collectedRewardsEvent.args.rewardTokens[3][1].toLowerCase()), "reward token").to.eq(true)
 
         log(`CollectedRewards rewards {
                         musd: { rewards[0]: ${collectedRewardsEvent.args.rewards[0][0].toString()}, rewards[1]: ${collectedRewardsEvent.args.rewards[0][1].toString()} }
                         frax: { rewards[0]: ${collectedRewardsEvent.args.rewards[1][0].toString()}, rewards[1]: ${collectedRewardsEvent.args.rewards[1][1].toString()} }
-                        lusd: { rewards[0]: ${collectedRewardsEvent.args.rewards[2][0].toString()}, rewards[1]: ${collectedRewardsEvent.args.rewards[2][1].toString()} }
-                        busd: { rewards[0]: ${collectedRewardsEvent.args.rewards[3][0].toString()}, rewards[1]: ${collectedRewardsEvent.args.rewards[3][1].toString()} }
+                        busd: { rewards[0]: ${collectedRewardsEvent.args.rewards[2][0].toString()}, rewards[1]: ${collectedRewardsEvent.args.rewards[2][1].toString()} }
                      }`)
 
         const liqDataAfter = await snapLiquidator()
@@ -777,7 +762,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
             it("is the admin of all vaults proxies", async () => {
                 expect(await proxyAdmin.getProxyAdmin(musdConvexVault.address), "musd vault proxy admin").to.be.eq(proxyAdmin.address)
                 expect(await proxyAdmin.getProxyAdmin(fraxConvexVault.address), "frax vault proxy admin").to.be.eq(proxyAdmin.address)
-                expect(await proxyAdmin.getProxyAdmin(lusdConvexVault.address), "lusd vault proxy admin").to.be.eq(proxyAdmin.address)
                 expect(await proxyAdmin.getProxyAdmin(busdConvexVault.address), "busd vault proxy admin").to.be.eq(proxyAdmin.address)
             })
         })
@@ -790,9 +774,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
             it("frax should properly store valid arguments", async () => {
                 await assertConvex3CrvVaultConfiguration(fraxConvexVault, config.convex3CrvPools.frax)
-            })
-            it("lusd should properly store valid arguments", async () => {
-                await assertConvex3CrvVaultConfiguration(lusdConvexVault, config.convex3CrvPools.lusd)
             })
         })
         describe("Curve Convex 3Crv Meta Vault", async () => {
@@ -821,9 +802,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     fraxConvexVault.address,
                 )
                 expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(2), "underlying vault 2").to.equal(
-                    lusdConvexVault.address,
-                )
-                expect(await periodicAllocationPerfFeeMetaVault.resolveVaultIndex(3), "underlying vault 3").to.equal(
                     busdConvexVault.address,
                 )
                 expect(await periodicAllocationPerfFeeMetaVault.assetPerShareUpdateThreshold(), "assetPerShareUpdateThreshold").to.equal(
@@ -935,28 +913,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                 shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
             })
-            describe("convex3CrvLiquidatorVault - lusd", async () => {
-                const ctx: Partial<BaseVaultBehaviourContext> = {}
-                // 'RewardPool : Cannot stake 0'
-                before(async () => {
-                    // Anonymous functions cannot be used as fixtures so can't use arrow function
-                    ctx.fixture = async function fixture() {
-                        await loadOrExecFixture(setup)
-                        ctx.vault = lusdConvexVault as unknown as AbstractVault
-                        ctx.asset = threeCrvToken
-                        ctx.sa = sa
-                        ctx.variances = {
-                            convertToAssets: 0.5,
-                            convertToShares: 0.5,
-                            maxWithdraw: 2.8,
-                        }
-                        ctx.amounts = testAmounts(1000, ThreeCRV.decimals)
-                        ctx.dataEmitter = dataEmitter
-                    }
-                })
-
-                shouldBehaveLikeBaseVault(() => ctx as BaseVaultBehaviourContext)
-            })
             describe("curve3CrvBasicMetaVault - DAI", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
                 before(async () => {
@@ -1037,7 +993,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             totalAssets: simpleToExactAmount(21, 18),
                             totalSupply: simpleToExactAmount(1, 1),
                             bVault0: simpleToExactAmount(2, 20),
-                            bVault1: simpleToExactAmount(4, 20),
+                            bVault1: simpleToExactAmount(46, 19),
                         }
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
@@ -1048,12 +1004,13 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             simpleToExactAmount(50000, ThreeCRV.decimals),
                         )
                         const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
+                        const settleAssets = totalAssets.div(3)
+                        const remainingAssets = totalAssets.sub(settleAssets.mul(2))
                         // Settle evenly to underlying assets
-                        const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(4) }
-                        const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(4) }
-                        const lusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(4) }
-                        const busdSettlement = { vaultIndex: BN.from(3), assets: totalAssets.div(4) }
-                        const settlements = { musd: musdSettlement, frax: fraxSettlement, lusd: lusdSettlement, busd: busdSettlement }
+                        const musdSettlement = { vaultIndex: BN.from(0), assets: settleAssets }
+                        const fraxSettlement = { vaultIndex: BN.from(1), assets: settleAssets }
+                        const busdSettlement = { vaultIndex: BN.from(2), assets: remainingAssets }
+                        const settlements = { musd: musdSettlement, frax: fraxSettlement, busd: busdSettlement }
                         await assertVaultSettle(
                             vaultManager,
                             convex3CrvLiquidatorVaults,
@@ -1149,7 +1106,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.musd.totalSupply, "musd vault totalSupply").to.be.eq(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.frax.totalSupply, "frax vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convex3CrvLiquidatorVaults.lusd.totalSupply, "lusd vault totalSupply").to.be.eq(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.busd.totalSupply, "busd vault totalSupply").to.be.eq(0)
                 })
                 it("mint shares", async () => {
@@ -1169,7 +1125,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.musd.totalSupply, "musd vault totalSupply").to.be.eq(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.frax.totalSupply, "frax vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convex3CrvLiquidatorVaults.lusd.totalSupply, "lusd vault totalSupply").to.be.eq(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.busd.totalSupply, "busd vault totalSupply").to.be.eq(0)
                 })
                 it("settles to underlying vaults", async () => {
@@ -1177,11 +1132,10 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     // Settle evenly to underlying assets
                     log(`Total assets in Meta Vault ${usdFormatter(totalAssets, 18, 14, 18)}`)
                     log(`${usdFormatter(totalAssets.div(4), 18, 14, 18)} assets to each underlying vault`)
-                    const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(4) }
-                    const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(4) }
-                    const lusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(4) }
-                    const busdSettlement = { vaultIndex: BN.from(3), assets: totalAssets.div(4) }
-                    const settlements = { musd: musdSettlement, frax: fraxSettlement, lusd: lusdSettlement, busd: busdSettlement }
+                    const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(3) }
+                    const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(3) }
+                    const busdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(3) }
+                    const settlements = { musd: musdSettlement, frax: fraxSettlement, busd: busdSettlement }
                     await assertVaultSettle(
                         vaultManager,
                         convex3CrvLiquidatorVaults,
@@ -1198,7 +1152,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         convex3CrvLiquidatorVaults.musd.address,
                         convex3CrvLiquidatorVaults.frax.address,
                         convex3CrvLiquidatorVaults.busd.address,
-                        convex3CrvLiquidatorVaults.lusd.address, // 3
                     ])
                 })
                 it("swap rewards for tokens to donate", async () => {
@@ -1213,12 +1166,11 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     // The fee receiver has 0 shares up to now as no donations have been triggered yet
                     expect(vaultsDataBefore.convex3CrvLiquidatorVaults.musd.feeReceiverBalance, "musd vault feeReceiverBalance").to.be.eq(0)
                     expect(vaultsDataBefore.convex3CrvLiquidatorVaults.frax.feeReceiverBalance, "frax vault feeReceiverBalance").to.be.eq(0)
-                    expect(vaultsDataBefore.convex3CrvLiquidatorVaults.lusd.feeReceiverBalance, "lusd vault feeReceiverBalance").to.be.eq(0)
                     expect(vaultsDataBefore.convex3CrvLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.eq(0)
                     // When tokens are donated
                     await assertLiquidatorDonateTokens(
                         [daiToken, daiToken, daiToken, daiToken],
-                        [musdConvexVault.address, fraxConvexVault.address, busdConvexVault.address, lusdConvexVault.address],
+                        [musdConvexVault.address, fraxConvexVault.address, busdConvexVault.address],
                     )
                     const liqDataAfter = await snapLiquidator()
                     const vaultsDataAfter = await snapshotVaults(
@@ -1232,7 +1184,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     // The fee receiver gets some shares after donation.
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.musd.feeReceiverBalance, "musd vault feeReceiverBalance").to.be.gt(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.frax.feeReceiverBalance, "frax vault feeReceiverBalance").to.be.gt(0)
-                    expect(vaultsDataAfter.convex3CrvLiquidatorVaults.lusd.feeReceiverBalance, "lusd vault feeReceiverBalance").to.be.gt(0)
                     expect(vaultsDataAfter.convex3CrvLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.gt(0)
                 })
             })
@@ -1445,11 +1396,10 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
 
                     // Settle evenly to underlying assets
-                    const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(4) }
-                    const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(4) }
-                    const lusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(4) }
-                    const busdSettlement = { vaultIndex: BN.from(3), assets: totalAssets.div(4) }
-                    const settlements = { musd: musdSettlement, frax: fraxSettlement, lusd: lusdSettlement, busd: busdSettlement }
+                    const musdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(3) }
+                    const fraxSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(3) }
+                    const busdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(3) }
+                    const settlements = { musd: musdSettlement, frax: fraxSettlement, busd: busdSettlement }
 
                     await assertVaultSettle(
                         vaultManager,
@@ -1467,7 +1417,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         convex3CrvLiquidatorVaults.musd.address,
                         convex3CrvLiquidatorVaults.frax.address,
                         convex3CrvLiquidatorVaults.busd.address,
-                        convex3CrvLiquidatorVaults.lusd.address, // 3
                     ])
                 })
                 it("swap rewards for tokens to donate", async () => {
@@ -1479,7 +1428,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     // When tokens are donated
                     await assertLiquidatorDonateTokens(
                         [daiToken, daiToken, daiToken, daiToken],
-                        [musdConvexVault.address, fraxConvexVault.address, busdConvexVault.address, lusdConvexVault.address],
+                        [musdConvexVault.address, fraxConvexVault.address, busdConvexVault.address],
                     )
                 })
             })
