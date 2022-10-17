@@ -3,6 +3,7 @@ import config from "./hardhat.config"
 
 import "./tasks/dex"
 import "./tasks/liquidator"
+import "./tasks/liquidatorVault"
 import "./tasks/nexus"
 import "./tasks/proxyAdmin"
 import "./tasks/vault"

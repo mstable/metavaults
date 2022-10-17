@@ -132,7 +132,7 @@ export async function deployConvex3CrvVaults(
 ) {
     const fnDeployConvex3CrvVault = deployerConvex3CrvVault(hre, signer, nexus, vaultManager, proxyAdmin)
     const convex3CrvVaults: Convex3CrvVaultsDeployed = {}
-    const pools: string[] = ["musd", "frax", "lusd", "busd"]
+    const pools: string[] = ["musd", "frax", "busd"]
     const curve3CrvMetapoolCalculatorLibrary: Curve3CrvMetapoolCalculatorLibrary = await deployCurve3CrvMetapoolCalculatorLibrary(
         hre,
         signer,

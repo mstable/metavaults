@@ -1,8 +1,8 @@
 import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
-import { CRV, CVX, DAI, ThreeCRV } from "@tasks/utils/tokens"
+import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
-import { impersonate, impersonateAccount, loadOrExecFixture } from "@utils/fork"
+import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -21,13 +21,12 @@ import {
 
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
 
-import type { Signer } from "ethers"
 import type { Account } from "types/common"
 import type { Convex3CrvLiquidatorVault, DataEmitter, IConvexRewardsPool, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
-const deployerAddress = resolveAddress("OperationsSigner")
+const keeperAddress = resolveAddress("OperationsSigner")
 const governorAddress = resolveAddress("Governor")
 const nexusAddress = resolveAddress("Nexus")
 const feeReceiver = resolveAddress("mStableDAO")
@@ -42,7 +41,7 @@ const mockLiquidatorAddress = "0x28c6c06298d514db089934071355e5743bf21d60" // Bi
 const normalBlock = 14677900
 
 describe("Convex 3Crv Liquidator Vault", async () => {
-    let deployer: Signer
+    let keeper: Account
     let governor: Account
     let staker1: Account
     let staker2: Account
@@ -82,7 +81,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
                 ],
             })
         }
-        deployer = await impersonate(deployerAddress)
+        keeper = await impersonateAccount(keeperAddress)
         governor = await impersonateAccount(governorAddress)
         staker1 = await impersonateAccount(staker1Address)
         staker2 = await impersonateAccount(staker2Address)
@@ -107,13 +106,13 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     }
 
     const deployVault = async () => {
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(deployer).deploy()
+        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
         }
 
-        musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, deployer).deploy(
+        musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, keeper.signer).deploy(
             nexusAddress,
             ThreeCRV.address,
             musdConvexConstructorData,
@@ -134,12 +133,12 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     it("deploy and initialize Convex vault for mUSD pool", async () => {
         await setup(normalBlock)
 
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(deployer).deploy()
+        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
         }
-        musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, deployer).deploy(
+        musdConvexVault = await new Convex3CrvLiquidatorVault__factory(libraryAddresses, keeper.signer).deploy(
             nexusAddress,
             ThreeCRV.address,
             musdConvexConstructorData,
@@ -188,6 +187,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         // Vault rewards
         expect(await musdConvexVault.rewardToken(0), "1st rewards token").to.eq(CRV.address)
         expect(await musdConvexVault.rewardToken(1), "2nd rewards token").to.eq(CVX.address)
+        expect(await musdConvexVault.donateToken(CRV.address), "donate token for CRV").to.eq(DAI.address)
+        expect(await musdConvexVault.donateToken(CVX.address), "donate token for CVX").to.eq(DAI.address)
 
         // Vault has approved the liquidator to transfer the reward tokens
         expect(await crvToken.allowance(musdConvexVault.address, mockLiquidator.address), "CRV allowance").to.gt(0)
@@ -254,10 +255,6 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             // Deploy and initialize the vault
             await deployVault()
 
-            // Vault has approved the liquidator to transfer the reward tokens
-            expect(await crvToken.allowance(musdConvexVault.address, mockLiquidator.address), "CRV allowance").to.gt(0)
-            expect(await cvxToken.allowance(musdConvexVault.address, mockLiquidator.address), "CVX allowance").to.gt(0)
-
             await threeCrvToken.connect(staker1.signer).approve(musdConvexVault.address, depositAmount)
             await musdConvexVault.connect(staker1.signer)["deposit(uint256,address)"](depositAmount, staker1.address)
 
@@ -272,6 +269,45 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             const daiAmount = simpleToExactAmount(1000, DAI.decimals)
             await daiToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, daiAmount)
             await musdConvexVault.connect(mockLiquidator.signer).donate(DAI.address, daiAmount)
+        })
+    })
+    describe("set donate token", () => {
+        before(async () => {
+            await setup(normalBlock)
+
+            // Deploy and initialize the vault
+            await deployVault()
+            musdConvexVault = musdConvexVault.connect(keeper.signer)
+
+            expect(await musdConvexVault.donateToken(CRV.address), "donate token before").to.eq(DAI.address)
+        })
+        describe("should fail", () => {
+            it("for non 3Pool token", async () => {
+                const tx = musdConvexVault.setDonateToken(CRV.address)
+                await expect(tx).to.rejectedWith("donate token not in 3Pool")
+            })
+            it("if not keeper or governor", async () => {
+                const tx = musdConvexVault.connect(staker1.signer).setDonateToken(USDC.address)
+                await expect(tx).to.rejectedWith("Only keeper or governor")
+            })
+        })
+        it("to DAI using keeper", async () => {
+            const tx = await musdConvexVault.setDonateToken(DAI.address)
+            await expect(tx).to.emit(musdConvexVault, "DonateTokenUpdated").withArgs(DAI.address)
+
+            expect(await musdConvexVault.donateToken(DAI.address), "donate token after").to.eq(DAI.address)
+        })
+        it("to USDC using keeper", async () => {
+            const tx = await musdConvexVault.setDonateToken(USDC.address)
+            await expect(tx).to.emit(musdConvexVault, "DonateTokenUpdated").withArgs(USDC.address)
+
+            expect(await musdConvexVault.donateToken(USDC.address), "donate token after").to.eq(USDC.address)
+        })
+        it("to USDT using governor", async () => {
+            const tx = await musdConvexVault.connect(governor.signer).setDonateToken(USDT.address)
+            await expect(tx).to.emit(musdConvexVault, "DonateTokenUpdated").withArgs(USDT.address)
+
+            expect(await musdConvexVault.donateToken(USDT.address), "donate token after").to.eq(USDT.address)
         })
     })
 })

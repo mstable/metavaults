@@ -1,12 +1,15 @@
 import { task, types } from "hardhat/config"
+import { Curve3CrvFactoryMetapoolCalculatorLibrary__factory, Curve3CrvMetapoolCalculatorLibrary__factory } from "types"
 
 import { setBalancesToAccounts } from "./deployment/convex3CrvVaults"
+import { getSigner } from "./utils"
 import { resolveAddress } from "./utils/networkAddressFactory"
 
 task("convex-3crv-fork")
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { speed } = taskArgs
+        const signer = await getSigner(hre)
 
         // Deploy the Liquidator
         // const oneInchDexSwap = await hre.run("one-inch-dex-deploy", { speed })
@@ -25,8 +28,16 @@ task("convex-3crv-fork")
         delete process.env.IMPERSONATE
 
         // Deploy the Convex 3Crv Vaults
-        const Curve3CrvMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: false })
-        const Curve3CrvFactoryMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: true })
+        // const Curve3CrvMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: false })
+        // const Curve3CrvFactoryMetapoolCalculatorLibrary = await hre.run("convex-3crv-lib-deploy", { speed, factory: true })
+        const Curve3CrvMetapoolCalculatorLibrary = Curve3CrvMetapoolCalculatorLibrary__factory.connect(
+            resolveAddress("Curve3CrvMetapoolCalculatorLibrary"),
+            signer,
+        )
+        const Curve3CrvFactoryMetapoolCalculatorLibrary = Curve3CrvFactoryMetapoolCalculatorLibrary__factory.connect(
+            resolveAddress("Curve3CrvFactoryMetapoolCalculatorLibrary"),
+            signer,
+        )
         const musdConvexVault = await hre.run("convex-3crv-vault-deploy", {
             speed,
             symbol: "vcx3CRV-mUSD",
@@ -41,13 +52,13 @@ task("convex-3crv-fork")
             pool: "FRAX",
             calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
         })
-        const lusdConvexVault = await hre.run("convex-3crv-vault-deploy", {
-            speed,
-            symbol: "vcx3CRV-LUSD",
-            name: "3Crv Convex LUSD Vault",
-            pool: "LUSD",
-            calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
-        })
+        // const lusdConvexVault = await hre.run("convex-3crv-vault-deploy", {
+        //     speed,
+        //     symbol: "vcx3CRV-LUSD",
+        //     name: "3Crv Convex LUSD Vault",
+        //     pool: "LUSD",
+        //     calculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary.address,
+        // })
         const busdConvexVault = await hre.run("convex-3crv-vault-deploy", {
             speed,
             symbol: "vcx3CRV-BUSD",
@@ -62,16 +73,17 @@ task("convex-3crv-fork")
             vaults: [
                 musdConvexVault.proxy.address,
                 fraxConvexVault.proxy.address,
-                lusdConvexVault.proxy.address,
+                // lusdConvexVault.proxy.address,
                 busdConvexVault.proxy.address,
             ].join(","),
             singleSource: fraxConvexVault.proxy.address,
         })
 
         // Deploy Curve Meta Vaults
-        const threePoolLib = await hre.run("curve-3crv-lib-deploy", {
-            speed,
-        })
+        // const threePoolLib = await hre.run("curve-3crv-lib-deploy", {
+        //     speed,
+        // })
+        const threePoolLib = Curve3CrvMetapoolCalculatorLibrary__factory.connect(resolveAddress("Curve3CrvCalculatorLibrary"), signer)
         const daiCurveVault = await hre.run("curve-3crv-meta-vault-deploy", {
             speed,
             metaVault: metaVault.proxy.address,

@@ -44,12 +44,7 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
     convex3CrvVaults: Convex3CrvVaultsDeployed,
 ) {
     const { periodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVaultConf } = config
-    const underlyingVaults = [
-        convex3CrvVaults.musd.proxy.address,
-        convex3CrvVaults.frax.proxy.address,
-        convex3CrvVaults.lusd.proxy.address,
-        convex3CrvVaults.busd.proxy.address,
-    ]
+    const underlyingVaults = [convex3CrvVaults.musd.proxy.address, convex3CrvVaults.frax.proxy.address, convex3CrvVaults.busd.proxy.address]
     const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
         nexus,
         asset: PeriodicAllocationPerfFeeMetaVaultConf.asset,

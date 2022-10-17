@@ -98,6 +98,12 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0x8E9A9a122F402CD98727128BaF3dCCAF05189B67"
             case "LiquidatorV2":
                 return "0xD298291059aed77686037aEfFCf497A321A4569e"
+            case "Curve3CrvMetapoolCalculatorLibrary":
+                return "0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56"
+            case "Curve3CrvFactoryMetapoolCalculatorLibrary":
+                return "0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9"
+            case "Curve3CrvCalculatorLibrary":
+                return "0x092C1b41163c85054F008A486BA72347B919aFa7"
             default:
         }
     } else if (chain === Chain.polygon) {
