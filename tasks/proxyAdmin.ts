@@ -54,13 +54,13 @@ export async function deployProxyAdminInstant(
     return proxyAdmin
 }
 subtask("proxy-admin-instant-deploy", "Deploys an instant proxy admin contract")
-    .addOptionalParam("governor", "Governor address, overrides Governor lookup", undefined, types.string)
+    .addOptionalParam("governor", "Governor address override", "Governor", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { speed, governor } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
-        const governorAddress = resolveAddress(governor ?? "Governor", chain)
+        const governorAddress = resolveAddress(governor, chain)
 
         return deployProxyAdminInstant(hre, signer, governorAddress)
     })
@@ -69,13 +69,13 @@ task("proxy-admin-instant-deploy").setAction(async (_, __, runSuper) => {
 })
 
 subtask("proxy-admin-delayed-deploy", "Deploys an instant proxy admin contract")
-    .addOptionalParam("nexus", "Nexus address, overrides lookup", undefined, types.string)
+    .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { speed, nexus } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
-        const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
+        const nexusAddress = resolveAddress(nexus, chain)
 
         return deployProxyAdminDelayed(hre, signer, nexusAddress)
     })

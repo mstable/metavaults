@@ -247,18 +247,18 @@ subtask("vault-deploy", "Deploys a basic vault for testing")
     .addParam("name", "Vault name", undefined, types.string)
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("asset", "Token symbol or address of the vault's asset", undefined, types.string)
-    .addOptionalParam("nexus", "Nexus address, overrides lookup", undefined, types.string)
-    .addOptionalParam("proxyAdmin", "ProxyAdmin address, overrides lookup", undefined, types.string)
-    .addOptionalParam("vaultManager", "VaultManager address, overrides lookup", undefined, types.string)
+    .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
+    .addOptionalParam("proxyAdmin", "ProxyAdmin address, overrides lookup", "InstantProxyAdmin", types.string)
+    .addOptionalParam("vaultManager", "VaultManager address, overrides lookup", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { speed, name, symbol, asset, nexus, proxyAdmin, vaultManager } = taskArgs
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
-        const nexusAddress = resolveAddress(nexus ?? "Nexus", chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin ?? "InstantProxyAdmin", chain)
-        const vaultManagerAddress = resolveAddress(vaultManager ?? "VaultManager", chain)
+        const nexusAddress = resolveAddress(nexus, chain)
+        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const assetAddress = resolveAddress(asset, chain)
 
         // Vault

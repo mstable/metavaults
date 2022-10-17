@@ -36,11 +36,11 @@ export async function deployNexus(hre: HardhatRuntimeEnvironment, signer: Signer
 
 subtask("nexus-deploy", "Deploys a new Nexus contract")
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
-    .addOptionalParam("governor", "Governor address, overrides Governor lookup", undefined, types.string)
+    .addOptionalParam("governor", "Governor address override", "Governor", types.string)
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre, taskArgs.speed)
-        const governorAddress = taskArgs.governor !== undefined ? taskArgs.governor : resolveAddress("Governor", chain)
+        const governorAddress = resolveAddress(taskArgs.governor, chain)
         return deployNexus(hre, signer, governorAddress)
     })
 task("nexus-deploy").setAction(async (_, __, runSuper) => {

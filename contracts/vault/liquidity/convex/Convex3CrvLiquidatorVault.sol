@@ -48,6 +48,8 @@ contract Convex3CrvLiquidatorVault is
     /// @notice Token that the liquidator sells CRV and CVX rewards for. This must be a 3Pool asset. ie DAI, USDC or USDT.
     address internal donateToken_;
 
+    event DonateTokenUpdated(address token);
+
     /**
      * @param _nexus               Address of the Nexus contract that resolves protocol modules and roles..
      * @param _asset               Address of the vault's asset which is Curve's 3Pool LP token (3Crv).
@@ -97,11 +99,8 @@ contract Convex3CrvLiquidatorVault is
         uint8 decimals_ = InitializableToken(address(metapoolToken)).decimals();
         InitializableToken._initialize(_name, _symbol, decimals_);
 
-        require(
-            __donateToken == DAI || __donateToken == USDC || __donateToken == USDT,
-            "donate token not in 3Pool"
-        );
-        donateToken_ = __donateToken;
+        _setDonateToken(__donateToken);
+
         // Approve the Curve.fi 3Pool (3Crv) to transfer the 3Pool token
         IERC20(DAI).safeApprove(address(basePool), type(uint256).max);
         IERC20(USDC).safeApprove(address(basePool), type(uint256).max);
@@ -407,5 +406,28 @@ contract Convex3CrvLiquidatorVault is
         returns (uint256 shares)
     {
         shares = Convex3CrvAbstractVault._convertToShares(assets);
+    }
+
+    /***************************************
+                    Vault Admin
+    ****************************************/
+
+    /// @dev Sets the token the rewards are swapped for and donated back to the vault.
+    function _setDonateToken(address __donateToken) internal {
+        require(
+            __donateToken == DAI || __donateToken == USDC || __donateToken == USDT,
+            "donate token not in 3Pool"
+        );
+        donateToken_ = __donateToken;
+
+        emit DonateTokenUpdated(__donateToken);
+    }
+
+    /**
+     * @notice  Vault manager or governor sets the token the rewards are swapped for and donated back to the vault.
+     * @param __donateToken a token in the 3Pool (DAI, USDC or USDT).
+     */
+    function setDonateToken(address __donateToken) external onlyKeeperOrGovernor {
+        _setDonateToken(__donateToken);
     }
 }
