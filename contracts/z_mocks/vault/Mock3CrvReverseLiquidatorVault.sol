@@ -14,19 +14,19 @@ import { ImmutableModule } from "../../shared/ImmutableModule.sol";
  * @dev     VERSION: 1.0
  *          DATE:    2022-10-17
  */
-contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
+contract Mock3CrvReverseLiquidatorVault is ILiquidatorVault, ImmutableModule {
     using SafeERC20 for IERC20;
 
     // Reward tokens
-    address public CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
-    address public CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
-
-    // Cruve 3Pool tokens
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
 
-    /// @notice Token that the liquidator sells CRV and CVX rewards for. This must be a Curve 3Pool asset (DAI, USDC or USDT).
+    // Donated tokens
+    address public CRV = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address public CVX = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+
+    /// @notice Token that the liquidator sells DAI, USDC or USDT rewards for.
     address internal donateToken_;
     address public immutable liquidator;
 
@@ -67,26 +67,31 @@ contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
             address[] memory donateTokens
         )
     {
-        rewardTokens_ = new address[](2);
-        rewards = new uint256[](2);
-        donateTokens = new address[](2);
+        rewardTokens_ = new address[](3);
+        rewards = new uint256[](3);
+        donateTokens = new address[](3);
 
-        rewardTokens_[0] = CRV;
-        rewards[0] = IERC20(CRV).balanceOf(address(this));
+        rewardTokens_[0] = DAI;
+        rewards[0] = IERC20(DAI).balanceOf(address(this));
         donateTokens[0] = donateToken_;
 
-        rewardTokens_[1] = CVX;
-        rewards[1] = IERC20(CVX).balanceOf(address(this));
+        rewardTokens_[1] = USDC;
+        rewards[1] = IERC20(USDC).balanceOf(address(this));
         donateTokens[1] = donateToken_;
+
+        rewardTokens_[2] = USDT;
+        rewards[2] = IERC20(USDT).balanceOf(address(this));
+        donateTokens[2] = donateToken_;
     }
 
     /**
      * @notice Returns all reward tokens address added to the vault.
      */
-    function rewardTokens() external view override returns (address[] memory rewardTokens_) {
-        rewardTokens_ = new address[](2);
-        rewardTokens_[0] = CRV;
-        rewardTokens_[1] = CVX;
+    function rewardTokens() external pure override returns (address[] memory rewardTokens_) {
+        rewardTokens_ = new address[](3);
+        rewardTokens_[0] = DAI;
+        rewardTokens_[1] = USDC;
+        rewardTokens_[2] = USDT;
     }
 
     /**
@@ -103,10 +108,7 @@ contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
      * @param amount         The amount of tokens being donated.
      */
     function donate(address __donateToken, uint256 amount) external override {
-        require(
-            __donateToken == DAI || __donateToken == USDC || __donateToken == USDT,
-            "donate token not in 3Pool"
-        );
+        require(__donateToken == CRV || __donateToken == CVX, "invalid donate token");
 
         IERC20(__donateToken).safeTransferFrom(msg.sender, address(this), amount);
     }
@@ -120,16 +122,17 @@ contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
         address keeper = _keeper();
 
         // reward tokens to liquidator
-        IERC20(CRV).safeApprove(liquidator, type(uint256).max);
-        IERC20(CVX).safeApprove(liquidator, type(uint256).max);
+        IERC20(DAI).safeApprove(liquidator, type(uint256).max);
+        IERC20(USDC).safeApprove(liquidator, type(uint256).max);
+        IERC20(USDT).safeApprove(liquidator, type(uint256).max);
 
         // reward tokens to keeper
-        IERC20(CRV).safeApprove(keeper, type(uint256).max);
-        IERC20(CVX).safeApprove(keeper, type(uint256).max);
-        // donated tokens to keeper
         IERC20(DAI).safeApprove(keeper, type(uint256).max);
         IERC20(USDC).safeApprove(keeper, type(uint256).max);
         IERC20(USDT).safeApprove(keeper, type(uint256).max);
+        // donated tokens to keeper
+        IERC20(CRV).safeApprove(keeper, type(uint256).max);
+        IERC20(CVX).safeApprove(keeper, type(uint256).max);
     }
 
     /***************************************
@@ -138,10 +141,7 @@ contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
 
     /// @dev Sets the token the rewards are swapped for and donated back to the vault.
     function _setDonateToken(address _donateToken) internal {
-        require(
-            _donateToken == DAI || _donateToken == USDC || _donateToken == USDT,
-            "donate token not in 3Pool"
-        );
+        require(_donateToken == CRV || _donateToken == CVX, "invalid donate token");
         donateToken_ = _donateToken;
 
         emit DonateTokenUpdated(_donateToken);
@@ -149,7 +149,7 @@ contract Mock3CrvLiquidatorVault is ILiquidatorVault, ImmutableModule {
 
     /**
      * @notice  Vault manager or governor sets the token the rewards are swapped for and donated back to the vault.
-     * @param _donateToken a token in the 3Pool (DAI, USDC or USDT).
+     * @param _donateToken the address of either CRV or CVX.
      */
     function setDonateToken(address _donateToken) external onlyKeeperOrGovernor {
         _setDonateToken(_donateToken);

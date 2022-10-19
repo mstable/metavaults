@@ -619,4 +619,11 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         emit SwapperUpdated(address(asyncSwapper), _asyncSwapper);
         asyncSwapper = IDexAsyncSwap(_asyncSwapper);
     }
+
+    /**
+     * @notice Governor rescues tokens from the liquidator in case a vault's donateToken is failing.
+     */
+    function rescueToken(address token, uint256 amount) external onlyGovernor {
+        IERC20(token).safeTransfer(_governor(), amount);
+    }
 }

@@ -2,6 +2,7 @@ import { logger } from "@tasks/utils/logger"
 import { ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { BN } from "@utils/math"
 import axios from "axios"
+import { formatUnits } from "ethers/lib/utils"
 
 import { Chain } from "../utils/tokens"
 
@@ -237,12 +238,22 @@ async function postSellOrder(context: CowSwapContext, params: PostOrderParams): 
         signingScheme: "presign", // # Very important. this tells the api you are going to sign on chain
     }
     const ordersURL = getOrdersURL(context.chainId)
-    const response = await axios.post(ordersURL, orderPayload)
-    if (!(response.status === 201 || response.status === 200)) throw new Error(response.statusText)
-    const orderUid = response.data
-
-    log(`postSellOrder Order uid: ${orderUid}`)
-    return orderUid
+    try {
+        const response = await axios.post(ordersURL, orderPayload)
+        if (!(response.status === 201 || response.status === 200)) throw new Error(response.statusText)
+        const orderUid = response.data
+        log(`postSellOrder Order uid: ${orderUid}`)
+        return orderUid
+    } catch (err) {
+        if (err?.response?.data?.description) {
+            if (err?.response?.data?.errorType === "InsufficientFee") {
+                throw Error(`Failed to post order to CoW Swap with fee ${formatUnits(feeAmount)}: ${err.response.data.description}`)
+            }
+            throw Error(`Failed to post order to CoW Swap: ${err.response.data.description}`)
+        } else {
+            throw Error(`Failed to post order to CoW Swap`)
+        }
+    }
 }
 /**
  * Place a sell order on cowswap api.

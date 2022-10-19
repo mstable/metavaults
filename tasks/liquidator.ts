@@ -1,15 +1,16 @@
 import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
 import { ONE_DAY, ZERO, ZERO_ADDRESS } from "@utils/constants"
-import { BN } from "@utils/math"
+import { BN, simpleToExactAmount } from "@utils/math"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, Liquidator__factory } from "types/generated"
+import { AssetProxy__factory, IERC20Metadata__factory, Liquidator__factory } from "types/generated"
 
 import { getOrderDetails, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { buildDonateTokensInput } from "./utils/liquidatorUtil"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
@@ -79,79 +80,104 @@ task("liq-deploy").setAction(async (_, __, runSuper) => {
 
 subtask("liq-collect-rewards", "Collect rewards from vaults")
     .addParam("vaults", "Vault names separated by ','.", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
+        const { liquidator, speed, vaults } = taskArgs
         const chain = getChain(hre)
-        const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
-        const vaultsAddress = await resolveMultipleAddress(chain, taskArgs.vaults)
-        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
-        const tx = await liquidator.collectRewards(vaultsAddress)
-        await logTxDetails(tx, `liquidator.collectRewards${vaultsAddress})`)
+        const signer = await getSigner(hre, speed)
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const vaultsAddress = await resolveMultipleAddress(chain, vaults)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+        const tx = await liquidatorContract.collectRewards(vaultsAddress)
+        await logTxDetails(tx, `liquidator.collectRewards(${vaultsAddress})`)
     })
 task("liq-collect-rewards").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to asset")
-    .addParam("reward", "Name of the reward to sell", undefined, types.string)
-    .addParam("asset", "Name of the asset to buy", undefined, types.string)
-    .addParam("receiver", "The receiver address of the tokens purchased", undefined, types.string)
+subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to asset using CowSwap")
+    .addParam("reward", "Token symbol or address of the reward to sell", undefined, types.string)
+    .addParam("asset", "Token symbol or address of the asset to buy", undefined, types.string)
+    .addOptionalParam(
+        "receiver",
+        "Contract name or address of the contract or account to receive the tokens purchased",
+        "LiquidatorV2",
+        types.string,
+    )
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
+        const { asset, liquidator, receiver, reward, speed } = taskArgs
         const chain = getChain(hre)
-        const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
-        const fromAssetAddress = await resolveAddress(taskArgs.reward, chain)
-        const toAssetAddress = await resolveAddress(taskArgs.asset, chain)
-        const receiver = taskArgs.receiver
+        const signer = await getSigner(hre, speed)
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const fromAssetAddress = await resolveAddress(reward, chain)
+        const fromAsset = await resolveAssetToken(signer, chain, reward, fromAssetAddress)
+        const toAssetAddress = await resolveAddress(asset, chain)
+        const receiverAddress = await resolveAddress(receiver, chain)
 
-        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
 
         // Get Pending rewards
-        const { batch, rewards } = await liquidator.pendingRewards(fromAssetAddress, toAssetAddress)
-        log(`batch: ${batch.toString()}, rewards: ${rewards.toString()}`)
+        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAssetAddress, toAssetAddress)
+        log(`liquidator:\n  batch: ${batch}\n  rewards: ${formatUnits(rewards, fromAsset.decimals)} ${reward}`)
 
-        // Place  Sell Order on Cowswap API
+        // Place Sell Order on CoW Swap API
         const context: CowSwapContext = {
-            trader: liquidator.address,
+            trader: liquidatorAddress,
             deadline: ONE_DAY,
             chainId: chain,
         }
 
-        const sellOrderParams = { fromAsset: fromAssetAddress, toAsset: toAssetAddress, fromAssetAmount: rewards, receiver }
+        const sellOrderParams = {
+            fromAsset: fromAssetAddress,
+            toAsset: toAssetAddress,
+            fromAssetAmount: rewards,
+            receiver: receiverAddress,
+        }
+        log(
+            `Sell order params:\n from         : ${fromAssetAddress}\n from amount  : ${formatUnits(
+                rewards,
+            )}\n to           : ${toAssetAddress}\n receiver     : ${receiverAddress}`,
+        )
         const sellOrder = await placeSellOrder(context, sellOrderParams)
-        log(`Swap initiated orderUid ${sellOrder.orderUid}`)
+        log(`Swap initiated order uid ${sellOrder.orderUid}`)
 
         // Initiate the order and sign
         const { encodeInitiateSwap } = await import("@utils/peripheral/cowswap")
-        const data = encodeInitiateSwap(sellOrder.orderUid, sellOrder.fromAssetFeeAmount, receiver)
-        const tx = await liquidator.initiateSwap(fromAssetAddress, toAssetAddress, data)
+        const data = encodeInitiateSwap(sellOrder.orderUid, sellOrder.fromAssetFeeAmount, receiverAddress)
+        const tx = await liquidatorContract.initiateSwap(fromAssetAddress, toAssetAddress, data)
+        // const cowSwapDex = CowSwapDex__factory.connect("0x8E9A9a122F402CD98727128BaF3dCCAF05189B67", signer)
+        // const tx = await cowSwapDex["initiateSwap((address,uint256,address,uint256,bytes))"](data)
 
-        await logTxDetails(tx, `liquidator.initiateSwap(${fromAssetAddress},${toAssetAddress})`)
+        await logTxDetails(tx, `liquidator.initiateSwap(${fromAssetAddress}, ${toAssetAddress})`)
     })
 task("liq-init-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
 subtask("liq-settle-swap", "Calls settleSwap on liquidator to account for the swap")
-    .addOptionalParam("orderUid", "The order uid to settle", "orderUid", types.string)
+    .addParam("uid", "The order unique identifier to settle", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
+        const { liquidator, uid, speed } = taskArgs
         const chain = getChain(hre)
-        const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
-        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
-        const orderOwner = await liquidator.asyncSwapper()
+        const signer = await getSigner(hre, speed)
+
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+        const orderOwner = await liquidatorContract.asyncSwapper()
 
         // Get the order details from cowswap API
         const context: CowSwapContext = {
             chainId: chain,
         }
-        const trades = await getOrderDetails(context, taskArgs.orderUid)
+        const trades = await getOrderDetails(context, uid)
 
         if (trades.length == 0) {
-            throw new Error("OrderUid not available")
+            throw new Error("Order uid not available")
         }
         const fromAssetAddress = trades[0].sellToken
         const toAssetAddress = trades[0].buyToken
@@ -159,62 +185,96 @@ subtask("liq-settle-swap", "Calls settleSwap on liquidator to account for the sw
         // Settle the order
         const { encodeSettleSwap } = await import("@utils/peripheral/cowswap")
 
-        const data = encodeSettleSwap(taskArgs.orderUid, orderOwner, liquidator.address) // orderUid , owner , receiver
-        const tx = await liquidator.settleSwap(fromAssetAddress, toAssetAddress, toAssetAmount, data)
-        await logTxDetails(tx, `liquidator.settleSwap${fromAssetAddress},${toAssetAddress},${toAssetAmount})`)
+        const data = encodeSettleSwap(uid, orderOwner, liquidatorAddress) // orderUid , owner , receiver
+        const tx = await liquidatorContract.settleSwap(fromAssetAddress, toAssetAddress, toAssetAmount, data)
+        await logTxDetails(tx, `liquidator.settleSwap(${fromAssetAddress}, ${toAssetAddress}, ${toAssetAmount})`)
     })
 task("liq-settle-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
 subtask("liq-sync-swap", "Calls sync swap on liquidator to swap rewards to asset")
-    .addParam("reward", "Name of the reward to sell", undefined, types.string)
-    .addParam("asset", "Name of the asset to buy", undefined, types.string)
+    .addParam("reward", "Token symbol or address of the reward to sell", undefined, types.string)
+    .addParam("asset", "Token symbol or address of the asset to buy", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
+        const { asset, fromAsset, fromAssetAmount, toAsset, liquidator, reward, speed } = taskArgs
         const chain = getChain(hre)
-        const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
-        const fromAssetAddress = await resolveAddress(taskArgs.reward, chain)
-        const toAssetAddress = await resolveAddress(taskArgs.asset, chain)
+        const signer = await getSigner(hre, speed)
 
-        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const fromAssetAddress = await resolveAddress(reward, chain)
+        const toAssetAddress = await resolveAddress(asset, chain)
+
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
 
         // Get Pending rewards
-        const { batch, rewards } = await liquidator.pendingRewards(fromAssetAddress, toAssetAddress)
-        log(`batch: ${batch.toString()}, rewards: ${rewards.toString()}`)
+        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAssetAddress, toAssetAddress)
+        log(`batch: ${batch}, rewards: ${rewards}`)
         // Get quote
         const router = new OneInchRouter(chain)
         const minAssets = await router.getQuote({
-            fromTokenAddress: taskArgs.fromAsset,
-            toTokenAddress: taskArgs.toAsset,
-            amount: taskArgs.fromAssetAmount,
+            fromTokenAddress: fromAsset,
+            toTokenAddress: toAsset,
+            amount: fromAssetAmount,
         })
 
         // TODO - investigate and encode swaps
         // TODO - add slippage to minAssets
         const { encodeOneInchSwap } = await import("@utils/peripheral/oneInch")
-        const data = encodeOneInchSwap(ZERO_ADDRESS, liquidator.address, "0x")
-        const tx = await liquidator.swap(fromAssetAddress, toAssetAddress, minAssets, data)
-        await logTxDetails(tx, `liquidator.swap(${fromAssetAddress},${toAssetAddress}, ${minAssets})`)
+        const data = encodeOneInchSwap(ZERO_ADDRESS, liquidatorAddress, "0x")
+        const tx = await liquidatorContract.swap(fromAssetAddress, toAssetAddress, minAssets, data)
+        await logTxDetails(tx, `liquidator.swap(${fromAssetAddress}, ${toAssetAddress}, ${minAssets})`)
     })
 task("liq-sync-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
 subtask("liq-donate-tokens", "Donate purchased tokens to vaults")
-    .addParam("vaults", "Vault names separated by ','.", undefined, types.string)
+    .addParam("vaults", "Comma separated vault symbols or addresses", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
+        const { liquidator, speed, vaults } = taskArgs
         const chain = getChain(hre)
-        const signer = await getSigner(hre, taskArgs.speed)
-        const liquidatorAddress = resolveAddress("LiquidatorV2", chain)
-        const liquidator = Liquidator__factory.connect(liquidatorAddress, signer)
-        const vaultsAddress = await resolveMultipleAddress(chain, taskArgs.vaults)
-        const { rewardTokens, purchaseTokens, vaults } = await buildDonateTokensInput(signer, vaultsAddress)
-        const tx = await liquidator.donateTokens(rewardTokens, purchaseTokens, vaults)
-        await logTxDetails(tx, `liquidator.donateTokens${rewardTokens},${purchaseTokens},${vaults})`)
+        const signer = await getSigner(hre, speed)
+
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+        const vaultsAddress = await resolveMultipleAddress(chain, vaults)
+        // TODO need option to restrict the reward and purchase tokens
+        const { rewardTokens, purchaseTokens, vaults: vaultAddresses } = await buildDonateTokensInput(signer, vaultsAddress)
+        log(`rewardTokens: ${rewardTokens}`)
+        log(`purchaseTokens: ${purchaseTokens}`)
+        log(`purchaseVaultAddresses: ${vaultAddresses}`)
+
+        const tx = await liquidatorContract.donateTokens(rewardTokens, purchaseTokens, vaultAddresses)
+        await logTxDetails(tx, `liquidator.donateTokens(${rewardTokens}, ${purchaseTokens}, ${vaultAddresses})`)
     })
 task("liq-donate-tokens").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
+
+task("liq-rescue", "Rescues tokens from the Liquidator and sends it to governor")
+    .addParam("asset", "Token symbol or address of the asset to retrieve", undefined, types.string)
+    .addOptionalParam("amount", "Amount of tokens to rescue. Defaults to all assets.", undefined, types.float)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { amount, asset, liquidator, speed } = taskArgs
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const assetAddress = resolveAddress(asset, chain)
+
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+        const token = IERC20Metadata__factory.connect(assetAddress, signer)
+
+        const actualAssetAmount = await token.balanceOf(liquidator.address)
+
+        const rescueAmount = amount ? simpleToExactAmount(amount, await token.decimals()) : actualAssetAmount
+
+        await liquidatorContract.rescueToken(token.address, rescueAmount)
+    })
