@@ -33,7 +33,6 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
         address _relayer,
         address _settlement
     ) CowSwapSeller(_relayer, _settlement) ImmutableModule(_nexus) {
-        _initializeReentrancyGuard();
     }
 
     /**
@@ -72,6 +71,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
                 IERC20(swapData.fromAsset).balanceOf(msg.sender) >= fromAssetTotalAmount,
                 "not enough from assets"
             );
+            // Transfer rewards from the liquidator
             IERC20(swapData.fromAsset).safeTransferFrom(
                 msg.sender,
                 address(this),

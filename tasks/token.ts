@@ -99,7 +99,7 @@ task("token-transfer-from").setAction(async (_, __, runSuper) => {
 })
 
 subtask("token-allowance", "Logs the amount of tokens a spender can transfer from an owner")
-    .addParam("token", "Symbol of the token. eg mUSD, imUSD, GUSD, alUSD, MTA", undefined, types.string)
+    .addParam("token", "Symbol of the token. eg CRV, CVX, MTA", undefined, types.string)
     .addParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
     .addParam("spender", "Address or contract name that can transferFrom.", undefined, types.string)
     .setAction(async (taskArgs, hre) => {
