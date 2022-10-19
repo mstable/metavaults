@@ -60,16 +60,16 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
     .addOptionalParam("syncSwapper", "Sync Swapper address override", "1InchSwapDex", types.string)
     .addOptionalParam("asyncSwapper", "Async Swapper address override", "CowSwapDex", types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
-    .addOptionalParam("proxyAdmin", "Proxy admin address override", "InstantProxyAdmin", types.string)
+    .addOptionalParam("admin", "Proxy admin name or address override. eg DelayedProxyAdmin", "InstantProxyAdmin", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { nexus, proxyAdmin, syncSwapper, asyncSwapper, speed } = taskArgs
+        const { nexus, admin, syncSwapper, asyncSwapper, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const nexusAddress = resolveAddress(nexus, chain)
         const syncSwapperAddress = resolveAddress(syncSwapper, chain)
         const asyncSwapperAddress = resolveAddress(asyncSwapper, chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
 
         return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress)
     })
@@ -96,9 +96,9 @@ task("liq-collect-rewards").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to asset using CowSwap")
-    .addParam("reward", "Token symbol or address of the reward to sell", undefined, types.string)
-    .addParam("asset", "Token symbol or address of the asset to buy", undefined, types.string)
+subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
+    .addParam("from", "Token symbol or address of the reward to sell", undefined, types.string)
+    .addParam("to", "Token symbol or address of the asset to buy so it can be donated back to the vault", undefined, types.string)
     .addOptionalParam(
         "receiver",
         "Contract name or address of the contract or account to receive the tokens purchased",
@@ -108,20 +108,19 @@ subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to as
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { asset, liquidator, receiver, reward, speed } = taskArgs
+        const { from, to, liquidator, receiver, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const liquidatorAddress = resolveAddress(liquidator, chain)
-        const fromAssetAddress = await resolveAddress(reward, chain)
-        const fromAsset = await resolveAssetToken(signer, chain, reward, fromAssetAddress)
-        const toAssetAddress = await resolveAddress(asset, chain)
+        const fromAsset = await resolveAssetToken(signer, chain, from)
+        const toAssetAddress = await resolveAddress(to, chain)
         const receiverAddress = await resolveAddress(receiver, chain)
 
         const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
 
         // Get Pending rewards
-        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAssetAddress, toAssetAddress)
-        log(`liquidator:\n  batch: ${batch}\n  rewards: ${formatUnits(rewards, fromAsset.decimals)} ${reward}`)
+        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAsset.address, toAssetAddress)
+        log(`liquidator:\n  batch: ${batch}\n  rewards: ${formatUnits(rewards, fromAsset.decimals)} ${from}`)
 
         // Place Sell Order on CoW Swap API
         const context: CowSwapContext = {
@@ -131,13 +130,13 @@ subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to as
         }
 
         const sellOrderParams = {
-            fromAsset: fromAssetAddress,
+            fromAsset: fromAsset.address,
             toAsset: toAssetAddress,
             fromAssetAmount: rewards,
             receiver: receiverAddress,
         }
         log(
-            `Sell order params:\n from         : ${fromAssetAddress}\n from amount  : ${formatUnits(
+            `Sell order params:\n from         : ${fromAsset.address}\n from amount  : ${formatUnits(
                 rewards,
             )}\n to           : ${toAssetAddress}\n receiver     : ${receiverAddress}`,
         )
@@ -147,17 +146,17 @@ subtask("liq-init-swap", "Calls initiateSwap on liquidator to swap rewards to as
         // Initiate the order and sign
         const { encodeInitiateSwap } = await import("@utils/peripheral/cowswap")
         const data = encodeInitiateSwap(sellOrder.orderUid, sellOrder.fromAssetFeeAmount, receiverAddress)
-        const tx = await liquidatorContract.initiateSwap(fromAssetAddress, toAssetAddress, data)
+        const tx = await liquidatorContract.initiateSwap(fromAsset.address, toAssetAddress, data)
         // const cowSwapDex = CowSwapDex__factory.connect("0x8E9A9a122F402CD98727128BaF3dCCAF05189B67", signer)
         // const tx = await cowSwapDex["initiateSwap((address,uint256,address,uint256,bytes))"](data)
 
-        await logTxDetails(tx, `liquidator.initiateSwap(${fromAssetAddress}, ${toAssetAddress})`)
+        await logTxDetails(tx, `liquidator.initiateSwap(${fromAsset.address}, ${toAssetAddress})`)
     })
 task("liq-init-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-settle-swap", "Calls settleSwap on liquidator to account for the swap")
+subtask("liq-settle-swap", "Settle CoW Swap swap")
     .addParam("uid", "The order unique identifier to settle", undefined, types.string)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
@@ -193,39 +192,39 @@ task("liq-settle-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-sync-swap", "Calls sync swap on liquidator to swap rewards to asset")
-    .addParam("reward", "Token symbol or address of the reward to sell", undefined, types.string)
-    .addParam("asset", "Token symbol or address of the asset to buy", undefined, types.string)
+subtask("liq-sync-swap", "Swap rewards to donate tokens using 1Inch")
+    .addParam("from", "Token symbol or address of the reward to sell", undefined, types.string)
+    .addParam("to", "Token symbol or address of the asset to buy so they can be donated back to the vaults", undefined, types.string)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { asset, fromAsset, fromAssetAmount, toAsset, liquidator, reward, speed } = taskArgs
+        const { from, to, liquidator, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
 
         const liquidatorAddress = resolveAddress(liquidator, chain)
-        const fromAssetAddress = await resolveAddress(reward, chain)
-        const toAssetAddress = await resolveAddress(asset, chain)
+        const fromAsset = await resolveAssetToken(signer, chain, from)
+        const toAssetAddress = await resolveAddress(to, chain)
 
         const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
 
         // Get Pending rewards
-        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAssetAddress, toAssetAddress)
-        log(`batch: ${batch}, rewards: ${rewards}`)
+        const { batch, rewards } = await liquidatorContract.pendingRewards(fromAsset.address, toAssetAddress)
+        log(`liquidator:\n  batch: ${batch}\n  rewards: ${formatUnits(rewards, fromAsset.decimals)} ${from}`)
         // Get quote
         const router = new OneInchRouter(chain)
         const minAssets = await router.getQuote({
-            fromTokenAddress: fromAsset,
-            toTokenAddress: toAsset,
-            amount: fromAssetAmount,
+            fromTokenAddress: fromAsset.address,
+            toTokenAddress: toAssetAddress,
+            amount: rewards.toString(),
         })
 
         // TODO - investigate and encode swaps
         // TODO - add slippage to minAssets
         const { encodeOneInchSwap } = await import("@utils/peripheral/oneInch")
         const data = encodeOneInchSwap(ZERO_ADDRESS, liquidatorAddress, "0x")
-        const tx = await liquidatorContract.swap(fromAssetAddress, toAssetAddress, minAssets, data)
-        await logTxDetails(tx, `liquidator.swap(${fromAssetAddress}, ${toAssetAddress}, ${minAssets})`)
+        const tx = await liquidatorContract.swap(fromAsset.address, toAssetAddress, minAssets, data)
+        await logTxDetails(tx, `liquidator.swap(${fromAsset.address}, ${toAssetAddress}, ${minAssets})`)
     })
 task("liq-sync-swap").setAction(async (_, __, runSuper) => {
     await runSuper()

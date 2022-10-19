@@ -142,6 +142,14 @@ export const BUSD: Token = {
     quantityFormatter: "USD",
 }
 
+export const LUSD: Token = {
+    symbol: "LUSD",
+    address: "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+}
+
 // NonPeggedFeederPool contains priceGetter
 export const RAI: Token = {
     symbol: "RAI",
@@ -424,6 +432,7 @@ export const tokens = [
     DAI,
     GUSD,
     BUSD,
+    LUSD,
     RAI,
     FLX,
     FEI,
@@ -436,6 +445,7 @@ export const tokens = [
     TBTCv2,
     alUSD,
     ALCX,
+    FRAX,
     PFRAX,
     PUSDC,
     PUSDT,
