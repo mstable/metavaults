@@ -11,7 +11,7 @@ import { getSigner } from "./utils/signerFactory"
 
 import type { AssetProxy, BasicVault, ERC20, IERC4626Vault } from "types/generated"
 
-const log = logger("vault")
+const log = logger("task:vault")
 
 subtask("vault-deposit", "Deposit assets into a vault from the signer's account")
     .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
@@ -251,16 +251,16 @@ subtask("vault-deploy", "Deploys a basic vault for testing")
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("asset", "Token symbol or address of the vault's asset", undefined, types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
-    .addOptionalParam("proxyAdmin", "ProxyAdmin address, overrides lookup", "InstantProxyAdmin", types.string)
+    .addOptionalParam("admin", "ProxyAdmin address, overrides lookup", "InstantProxyAdmin", types.string)
     .addOptionalParam("vaultManager", "VaultManager address, overrides lookup", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { speed, name, symbol, asset, nexus, proxyAdmin, vaultManager } = taskArgs
+        const { speed, name, symbol, asset, nexus, admin, vaultManager } = taskArgs
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress(nexus, chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const assetAddress = resolveAddress(asset, chain)
 

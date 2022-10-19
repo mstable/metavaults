@@ -28,7 +28,7 @@ subtask("deploy-core-local", "Deploys common smart contracts")
     })
 subtask("deploy-basicVault", "Deploys a basic vault")
     .addParam("nexus", "Nexus address", undefined, types.string)
-    .addParam("proxyAdmin", "ProxyAdmin address", undefined, types.string)
+    .addParam("admin", "Proxy admin address", undefined, types.string)
     .addOptionalParam("recipient", "Initial mint recipient", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
     .setAction(async (taskArgs, hre) => {
@@ -36,7 +36,7 @@ subtask("deploy-basicVault", "Deploys a basic vault")
         const sa = await new StandardAccounts().initAccounts(accounts)
 
         const { asset, vault } = config
-        const { nexus, proxyAdmin } = taskArgs
+        const { admin, nexus, proxyAdmin, speed } = taskArgs
         // Deploy token and basic vault
         const token = await hre.run("token-deploy", {
             speed: taskArgs.speed,
@@ -50,12 +50,12 @@ subtask("deploy-basicVault", "Deploys a basic vault")
         const assetAddress = token.address
 
         const vaultProxy = await hre.run("vault-deploy", {
-            speed: taskArgs.speed,
+            speed,
             name: vault.name,
             symbol: vault.symbol,
             asset: assetAddress,
             nexus,
-            proxyAdmin,
+            proxyAdmin: admin,
             vaultManager: sa.vaultManager.address,
         })
 
