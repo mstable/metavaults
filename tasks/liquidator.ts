@@ -20,7 +20,7 @@ import type { AssetProxy, Liquidator } from "types/generated"
 import type { CowSwapContext } from "./peripheral/cowswapApi"
 import type { Chain } from "./utils"
 
-const log = logger("liq")
+const log = logger("task:liq")
 
 const resolveMultipleAddress = async (chain: Chain, vaultsStr: string) =>
     Promise.all(vaultsStr.split(",").map((vaultName) => resolveAddress(vaultName, chain)))

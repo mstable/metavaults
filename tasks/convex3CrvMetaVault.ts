@@ -126,14 +126,9 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
     .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
     .addOptionalParam("symbol", "Vault symbol", "mv3CRV", types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
-    .addOptionalParam(
-        "proxyAdmin",
-        "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
-        "InstantProxyAdmin",
-        types.string,
-    )
+    .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
-    .addOptionalParam("perfFee", "Performance fee scaled to 6 decimal places. default 5% = 50000", 50000, types.int)
+    .addOptionalParam("fee", "Performance fee scaled to 6 decimal places. default 4% = 40000", 40000, types.int)
     .addOptionalParam(
         "singleThreshold",
         "Max percentage of assets withdraws will source from a single vault in basis points. default 10%",
@@ -143,15 +138,14 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
     .addOptionalParam("updateThreshold", "Asset per share update threshold. default 100k", 100000, types.int)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { name, symbol, asset, vaults, proxyAdmin, feeReceiver, perfFee, singleSource, singleThreshold, updateThreshold, speed } =
-            taskArgs
+        const { name, symbol, asset, vaults, admin, feeReceiver, fee, singleSource, singleThreshold, updateThreshold, speed } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress("Nexus", chain)
         const assetToken = resolveToken(asset, chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress("VaultManager", chain)
 
         const underlyings = vaults.split(",")
@@ -169,7 +163,7 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
             vaultManager: vaultManagerAddress,
             proxyAdmin: proxyAdminAddress,
             feeReceiver: feeReceiverAddress,
-            performanceFee: perfFee,
+            performanceFee: fee,
             underlyingVaults: underlyingAddresses,
             sourceParams: {
                 singleVaultSharesThreshold: singleThreshold,

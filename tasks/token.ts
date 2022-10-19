@@ -10,7 +10,7 @@ import { logger } from "./utils/logger"
 import { getChain, resolveAddress, resolveAssetToken, resolveToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
-const log = logger("token")
+const log = logger("task:token")
 
 subtask("token-approve", "Approve address or contract to spend (transferFrom) an amount of tokens from the signer's account")
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
