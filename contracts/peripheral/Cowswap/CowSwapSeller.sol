@@ -7,7 +7,6 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libs
-import { InitializableReentrancyGuard } from "../../shared/InitializableReentrancyGuard.sol";
 import { ICowSettlement } from "./ICowSettlement.sol";
 
 /**
@@ -17,7 +16,7 @@ import { ICowSettlement } from "./ICowSettlement.sol";
  * @dev     VERSION: 1.0
  *          DATE:    2022-05-11
  */
-abstract contract CowSwapSeller is InitializableReentrancyGuard {
+abstract contract CowSwapSeller {
     using SafeERC20 for IERC20;
 
     /// @notice Contract GPv2VaultRelayer to give allowance to perform swaps
@@ -60,7 +59,6 @@ abstract contract CowSwapSeller is InitializableReentrancyGuard {
      * @param _settlement  Address of the GPv2Settlement contract that pre-signs orders.
      */
     constructor(address _relayer, address _settlement) {
-        _initializeReentrancyGuard();
         RELAYER = _relayer;
         SETTLEMENT = ICowSettlement(_settlement);
     }

@@ -4,7 +4,7 @@ import type { Provider } from "@ethersproject/providers"
 import type { Signer } from "ethers"
 
 /**
- * Builds  the argument in order to request to the liquidator to donate tokens.
+ * Builds the argument in order to request to the liquidator to donate tokens.
  *
  * @param {(Signer | Provider)} signer
  * @param {string[]} vaultsAddress The list of vaults to donate tokens.

@@ -1,12 +1,17 @@
 import { subtask, task, types } from "hardhat/config"
-import { Convex3CrvLiquidatorVault__factory, ILiquidatorVault__factory, Mock3CrvLiquidatorVault__factory } from "types/generated"
+import {
+    Convex3CrvLiquidatorVault__factory,
+    ILiquidatorVault__factory,
+    Mock3CrvLiquidatorVault__factory,
+    Mock3CrvReverseLiquidatorVault__factory,
+} from "types/generated"
 
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
-import type { Mock3CrvLiquidatorVault } from "types/generated"
+import type { Mock3CrvLiquidatorVault, Mock3CrvReverseLiquidatorVault } from "types/generated"
 
 subtask("liq-vault-donate-token", "Get the donation token of a liquidator vault")
     .addParam("vault", "Symbol or address of the vault.", undefined, types.string)
@@ -108,30 +113,48 @@ task("liq-vault-donate").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-vault-mock-deploy", "Deploys an instant proxy admin contract")
-    .addParam("token", "Symbol or address of the donated token", undefined, types.string)
+subtask("liq-vault-mock-deploy", "Deploys a mock liquidator vault for testing the liquidator")
+    .addParam("donate", "Token symbol or address of the donated token", undefined, types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
+    .addOptionalParam("reverse", "Swaps DAI, USDC and USDT to CRV or CVX", false, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { nexus, token, speed } = taskArgs
+        const { liquidator, nexus, donate, reverse, speed } = taskArgs
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress(nexus, chain)
-        const donatedTokenAddress = resolveAddress(token, chain)
-        const constructorArguments = [nexusAddress, donatedTokenAddress]
+        const donatedTokenAddress = resolveAddress(donate, chain)
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const constructorArguments = [nexusAddress, donatedTokenAddress, liquidatorAddress]
 
-        const mockVault = await deployContract<Mock3CrvLiquidatorVault>(
-            new Mock3CrvLiquidatorVault__factory(signer),
-            "Mock3CrvLiquidatorVault",
-            constructorArguments,
-        )
+        let mockVault
+        if (!reverse) {
+            mockVault = await deployContract<Mock3CrvLiquidatorVault>(
+                new Mock3CrvLiquidatorVault__factory(signer),
+                "Mock3CrvLiquidatorVault",
+                constructorArguments,
+            )
 
-        await verifyEtherscan(hre, {
-            address: mockVault.address,
-            contract: "contracts/z_mocks/vault/Mock3CrvLiquidatorVault.sol:Mock3CrvLiquidatorVault",
-            constructorArguments,
-        })
+            await verifyEtherscan(hre, {
+                address: mockVault.address,
+                contract: "contracts/z_mocks/vault/Mock3CrvLiquidatorVault.sol:Mock3CrvLiquidatorVault",
+                constructorArguments,
+            })
+        } else {
+            mockVault = await deployContract<Mock3CrvReverseLiquidatorVault>(
+                new Mock3CrvReverseLiquidatorVault__factory(signer),
+                "Mock3CrvReverseLiquidatorVault",
+                constructorArguments,
+            )
+
+            await verifyEtherscan(hre, {
+                address: mockVault.address,
+                contract: "contracts/z_mocks/vault/Mock3CrvReverseLiquidatorVault.sol:Mock3CrvReverseLiquidatorVault",
+                constructorArguments,
+            })
+        }
         return mockVault
     })
 task("liq-vault-mock-deploy").setAction(async (_, __, runSuper) => {
