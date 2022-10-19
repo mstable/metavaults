@@ -15,7 +15,7 @@ import { logger } from "./utils/logger"
 import { getChain, resolveAddress } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
-const log = logger("tasks:mv")
+const log = logger("task:mv")
 
 subtask("mv-set-perf-fee", "Governor sets a vault's performance fee")
     .addParam("vault", "Symbol or address of the meta vault.", undefined, types.string)

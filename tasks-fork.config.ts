@@ -1,6 +1,7 @@
 // eslint-disable-next-line simple-import-sort/imports
 import config from "./hardhat-fork.config"
 
+import "./tasks/curve"
 import "./tasks/dex"
 import "./tasks/liquidator"
 import "./tasks/liquidatorVault"

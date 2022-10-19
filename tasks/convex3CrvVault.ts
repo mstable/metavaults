@@ -198,41 +198,28 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("pool", "Symbol of the Convex pool. eg mUSD, FRAX, MIM, LUSD, BUSD", undefined, types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
-    .addOptionalParam("streamDuration", "Number of seconds the stream takes. default 7 days", ONE_DAY.mul(7), types.int)
+    .addOptionalParam("stream", "Number of days the stream takes.", 7, types.int)
+    .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
     .addOptionalParam(
-        "proxyAdmin",
-        "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin",
-        "InstantProxyAdmin",
+        "calculatorLibrary",
+        "Name or address of the Curve calculator library. Curve3CrvFactoryMetapoolCalculatorLibrary | Curve3CrvMetapoolCalculatorLibrary",
+        undefined,
         types.string,
     )
-    .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", undefined, types.string)
     .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
-    .addOptionalParam("donationFee", "Liquidation fee scaled to 6 decimal places. default 1% = 10000", 70000, types.int)
     .addOptionalParam("donateToken", "Address or token symbol of token that rewards will be swapped to.", "DAI", types.string)
+    .addOptionalParam("fee", "Liquidation fee scaled to 6 decimal places. default 16% = 160000", 160000, types.int)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const {
-            name,
-            symbol,
-            pool,
-            asset,
-            streamDuration,
-            proxyAdmin,
-            calculatorLibrary,
-            slippage,
-            donateToken,
-            donationFee,
-            feeReceiver,
-            speed,
-        } = taskArgs
+        const { name, symbol, pool, asset, stream, admin, calculatorLibrary, slippage, donateToken, fee, feeReceiver, speed } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress("Nexus", chain)
         const assetAddress = resolveAddress(asset, chain)
-        const proxyAdminAddress = resolveAddress(proxyAdmin, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress("VaultManager", chain)
         const convexBoosterAddress = resolveAddress("ConvexBooster", chain)
 
@@ -261,7 +248,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             asset: assetAddress,
             factory: convex3CrvPool.isFactory,
             constructorData,
-            streamDuration,
+            streamDuration: ONE_DAY.mul(stream).toNumber(),
             name,
             symbol,
             vaultManager: vaultManagerAddress,
@@ -269,7 +256,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             slippageData: { mint: slippage, deposit: slippage, redeem: slippage, withdraw: slippage },
             donateToken: donateTokenAddress,
             rewardTokens,
-            donationFee,
+            donationFee: fee,
             feeReceiver: feeReceiverAddress,
         })
 

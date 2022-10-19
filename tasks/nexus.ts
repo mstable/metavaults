@@ -13,7 +13,7 @@ import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { Nexus } from "types/generated"
 
-const log = logger("nexus")
+const log = logger("task:nexus")
 
 export async function deployNexus(hre: HardhatRuntimeEnvironment, signer: Signer, governorAddress: string) {
     const constructorArguments = [governorAddress]

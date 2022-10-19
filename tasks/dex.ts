@@ -17,7 +17,7 @@ import type { CowSwapDex, OneInchDexSwap } from "types/generated"
 
 import type { CowSwapContext } from "./peripheral/cowswapApi"
 
-const log = logger("dex")
+const log = logger("task:dex")
 const DEX_SWAP_DATA = "(address,uint256,address,uint256,bytes)"
 const INITIATE_SWAP_SINGLE = `initiateSwap(${DEX_SWAP_DATA})`
 

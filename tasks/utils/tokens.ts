@@ -38,7 +38,8 @@ export const TVG: Token = {
     chain: Chain.goerli,
     decimals: 18,
     quantityFormatter: "USD",
-    assetSymbol: "TAG",
+    assetSymbol: TAG.symbol,
+    assetAddress: TAG.address,
 }
 
 // mStable on mainnet
@@ -48,6 +49,15 @@ export const mUSD: Token = {
     chain: Chain.mainnet,
     decimals: 18,
     quantityFormatter: "USD",
+}
+export const imUSD: Token = {
+    symbol: "imUSD",
+    address: "0x30647a72Dc82d7Fbb1123EA74716aB8A317Eac19",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetSymbol: "mUSD",
+    assetAddress: mUSD.address,
 }
 export const mBTC: Token = {
     symbol: "mBTC",
@@ -63,6 +73,15 @@ export const PmUSD: Token = {
     chain: Chain.polygon,
     decimals: 18,
     quantityFormatter: "USD",
+}
+export const PimUSD: Token = {
+    symbol: "imUSD",
+    address: "0x5290Ad3d83476CA6A2b178Cd9727eE1EF72432af",
+    chain: Chain.polygon,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetSymbol: PmUSD.symbol,
+    assetAddress: PmUSD.address,
 }
 export const MmUSD: Token = {
     symbol: "mUSD",
@@ -423,7 +442,9 @@ export const tokens = [
     PMTA,
     vMTA,
     mUSD,
+    imUSD,
     PmUSD,
+    PimUSD,
     MmUSD,
     mBTC,
     sUSD,
