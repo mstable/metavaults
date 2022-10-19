@@ -1,4 +1,5 @@
 import { ethereumAddress } from "@utils/regex"
+import { isAddress } from "ethers/lib/utils"
 import { IERC20Metadata__factory, IERC4626Vault__factory } from "types"
 
 import { logger } from "./logger"
@@ -237,13 +238,17 @@ export const resolveToken = (symbol: string, chain = Chain.mainnet): Token => {
  * @param {string} [address]
  * @return {*}  {Promise<Token>}
  */
-export const resolveVaultToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
+export const resolveVaultToken = async (signer: Signer, chain: Chain, addressContractNameSymbol: string): Promise<Token> => {
     let token: Token
-    if (address !== undefined) {
+    // resolve mStable contract name or address
+    const address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
+
+    // If a contract address
+    if (isAddress(address)) {
         const tkn = IERC20Metadata__factory.connect(address, signer)
         const vault = IERC4626Vault__factory.connect(address, signer)
         token = {
-            symbol,
+            symbol: await tkn.symbol(),
             address,
             chain,
             quantityFormatter: "USD",
@@ -252,34 +257,37 @@ export const resolveVaultToken = async (signer: Signer, chain: Chain, symbol: st
             assetAddress: await vault.asset(),
         }
     } else {
-        token = await resolveToken(symbol, chain)
+        token = await resolveToken(addressContractNameSymbol, chain)
     }
 
     return token
 }
 /**
- * Resolves a token by symbol or by its address if it is provided.
+ * Resolves a token by symbol, name or address.
  *
  * @param {Signer} signer
  * @param {Chain} chain
- * @param {string} symbol
- * @param {AssetAddressTypes} tokenType
- * @param {string} [address]
+ * @param {string} addressContractNameSymbol Contract address, name identifier or symbol
  * @return {*}  {Promise<Token>}
  */
-export const resolveAssetToken = async (signer: Signer, chain: Chain, symbol: string, address?: string): Promise<Token> => {
-    let assetToken: Token
-    if (address !== undefined) {
-        const tkn = IERC20Metadata__factory.connect(address, signer)
-        assetToken = {
-            symbol: symbol,
-            address: address,
+export const resolveAssetToken = async (signer: Signer, chain: Chain, addressContractNameSymbol: string): Promise<Token> => {
+    let token: Token
+    // resolve mStable contract name or address
+    const address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
+
+    // If a contract address
+    if (isAddress(address)) {
+        const tkn = IERC20Metadata__factory.connect(addressContractNameSymbol, signer)
+        token = {
+            symbol: await tkn.symbol(),
+            address,
             chain,
             quantityFormatter: "USD",
             decimals: await tkn.decimals(),
         }
     } else {
-        assetToken = resolveToken(symbol, chain)
+        // If a token symbol
+        token = resolveToken(addressContractNameSymbol, chain)
     }
-    return assetToken
+    return token
 }

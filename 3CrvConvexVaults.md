@@ -48,18 +48,18 @@ The [Liquidator](./contracts/vault/liquidator) module is responsible for collect
 
 The high level flow of value (tokens) between contracts. The arrows are the movement of tokens (value) and not contract calls like typical sequence diagrams.
 
-## Deposit DAI to 3Pooler Vault
+## Deposit DAI to DAI 3Pool Convex Meta Vault
 
-A shareholder deposits DAI into the 3Pooler vault.
-The 3Pooler vault adds the DAI to Curve's 3Pool in exchange for the 3Pool Liquidity Provider (LP) token (3Crv).
-The 3Pooler contract deposits the 3Crv into the underlying Meta Vault and receives the minted Meta Vault shares (mv3Crv). Note the Meta Vault does not deposit the 3Crv into any underlying vaults. This is done in a separate settlement transaction by the Vault Manager. 
-Finally, the 3Pooler contract mints shares (3pDAI) to the shareholder.
+A shareholder deposits DAI into the DAI 3Pool Convex Meta Vault.
+The DAI 3Pool Convex Meta Vault adds the DAI to Curve's 3Pool in exchange for the 3Pool Liquidity Provider (LP) token (3Crv).
+The DAI 3Pool Convex Meta Vault deposits the 3Crv into the underlying Meta Vault and receives the minted Meta Vault shares (mv3CRV-CVX). Note the underlying Meta Vault does not deposit the 3Crv into any underlying vaults. This is done in a separate settlement transaction by the Vault Manager. 
+Finally, the DAI 3Pool Convex Meta Vault mints shares (mvDAI-3PCV) to the shareholder.
 
 ![Deposit 3Pooler](./docs/savePlusValueFlowDeposit3Pooler.png)
 
 ## Deposit 3Crv to Meta Vault
 
-A shareholder deposits 3Crv into the Meta Vault and receives vault shares (mv3CRV). The shares are minted using the assets per share after the last settlement.
+A shareholder deposits 3Crv into the Meta Vault and receives vault shares (mv3CRV-CVX). The shares are minted using the assets per share after the last settlement.
 
 Every 5 days, the Vault Manager settles all deposits to the underlying vaults. This can be to a single vault or across all underlying vaults. The vault manager has the discretion at settlement to decide on what proportions of the deposited 3Crv are invested to which underlying vault.
 
@@ -86,13 +86,13 @@ The Vault Manager executes a number of transactions to collect the rewards (CRV 
 
 The Vault Manager can specify a swap between underlying vaults including the shares or assets amount, the underlying vault to withdraw from and the vault the assets should be deposited into. Multiple swaps can be done in the one rebalance transaction.
 
-The below example the Vault Manager partially swaps investment in the Convex 3Crv Meta Vault (mv3CRV) from the Convex mUSD Vault (v3CRV-CX1) to the Convex FRAX Vault (v3CRV-CX2).
+The below example the Vault Manager partially swaps investment in the Convex 3Crv Meta Vault (mv3CRV-CVX) from the Convex mUSD Vault (vcv3CRV-mUSD) to the Convex FRAX Vault (vcv3CRV-FRAX).
 
 ![Rebalance of Meta Vault](./docs/savePlusValueFlowRebalance.png)
 
 ## Withdraw 3Crv from Meta Vault
 
-A shareholder withdraws 3Crv from Meta Vault in exchange for vault shares (mv3CRV).
+A shareholder withdraws 3Crv from Meta Vault in exchange for vault shares (mv3CRV-CVX).
 
 If there are any assets in the meta vault from recent deposits waiting settlement, these will be used for the withdraw.
 
