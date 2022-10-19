@@ -14,7 +14,7 @@ import type { AssetProxy, BasicVault, ERC20, IERC4626Vault } from "types/generat
 const log = logger("vault")
 
 subtask("vault-deposit", "Deposit assets into a vault from the signer's account")
-    .addParam("symbol", "Token symbol of the vault. eg imUSD, ", undefined, types.string)
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .addParam("amount", "Amount as assets to deposit.", undefined, types.float)
     .addOptionalParam("approve", "Will approve the vault to transfer the assets", false, types.boolean)
     .addOptionalParam(
@@ -23,18 +23,17 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
         undefined,
         types.string,
     )
-    .addOptionalParam("vaultAddress", "Vault address, overrides lookup of symbol parameter", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { symbol, receiver, amount, approve, speed, vaultAddress } = taskArgs
+        const { vault, amount, approve, receiver, speed } = taskArgs
 
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
-        const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, vault)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const assets = simpleToExactAmount(amount, assetToken.decimals)
@@ -45,12 +44,13 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
             await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
-        const tx = await vault.deposit(assets, receiverAddress)
+        const tx = await vaultContract.deposit(assets, receiverAddress)
+
         await logTxDetails(
             tx,
-            `${signerAddress} deposited ${formatUnits(assets, vaultToken.decimals)} ${
-                vaultToken.assetSymbol
-            } into ${symbol} vault minting to ${receiverAddress}`,
+            `${signerAddress} deposited ${formatUnits(assets, vaultToken.decimals)} ${vaultToken.assetSymbol} into ${
+                vaultToken.symbol
+            } vault minting to ${receiverAddress}`,
         )
         const receipt = await tx.wait()
         const event = receipt.events.find((e) => e.event == "Deposit")
@@ -61,7 +61,7 @@ task("vault-deposit").setAction(async (_, __, runSuper) => {
 })
 
 subtask("vault-mint", "Mint vault shares by depositing assets from the signer's account")
-    .addParam("symbol", "Token symbol of the vault. eg imUSD, ", undefined, types.string)
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .addParam("amount", "Amount as vault shares to mint.", undefined, types.float)
     .addOptionalParam("approve", "Will approve the vault to transfer the assets", false, types.boolean)
     .addOptionalParam(
@@ -70,31 +70,34 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
         undefined,
         types.string,
     )
-    .addOptionalParam("vaultAddress", "Vault address, overrides lookup of symbol parameter", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { symbol, receiver, amount, approve, speed, vaultAddress } = taskArgs
+        const { vault, amount, approve, receiver, speed } = taskArgs
 
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
-        const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, vault)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const shares = simpleToExactAmount(amount, vaultToken.decimals)
 
         if (approve) {
-            const assets = await vault.previewMint(shares)
+            const assets = await vaultContract.previewMint(shares)
             const asset = IERC20__factory.connect(assetToken.address, signer)
             const approveTx = await asset.approve(vaultToken.address, assets)
             await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
-        const tx = await vault.deposit(shares, receiverAddress)
-        await logTxDetails(tx, `${signerAddress} minted ${formatUnits(shares, vaultToken.decimals)} ${symbol} shares to ${receiverAddress}`)
+        const tx = await vaultContract.deposit(shares, receiverAddress)
+
+        await logTxDetails(
+            tx,
+            `${signerAddress} minted ${formatUnits(shares, vaultToken.decimals)} ${vaultToken.symbol} shares to ${receiverAddress}`,
+        )
         const receipt = await tx.wait()
         const event = receipt.events.find((e) => e.event == "Deposit")
         log(`${formatUnits(event.args.assets, assetToken.decimals)} assets deposited`)
@@ -103,8 +106,8 @@ task("vault-mint").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("vault-withdraw", "Withdraw assets from a vault.")
-    .addParam("symbol", "Token symbol of the vault. eg imUSD, ", undefined, types.string)
+subtask("vault-withdraw", "Withdraw assets from a vault")
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .addParam("amount", "Amount as assets to withdraw.", undefined, types.float)
     .addOptionalParam(
         "receiver",
@@ -118,29 +121,29 @@ subtask("vault-withdraw", "Withdraw assets from a vault.")
         undefined,
         types.string,
     )
-    .addOptionalParam("vaultAddress", "Vault address, overrides lookup of symbol parameter", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { symbol, receiver, owner, amount, speed, vaultAddress } = taskArgs
+        const { vault, amount, receiver, owner, speed } = taskArgs
 
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
-        const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, vault)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
         const receiverAddress = owner ? resolveAddress(receiver, chain) : signerAddress
         const assets = simpleToExactAmount(amount, assetToken.decimals)
 
-        const tx = await vault.withdraw(assets, receiverAddress, ownerAddress)
+        const tx = await vaultContract.withdraw(assets, receiverAddress, ownerAddress)
+
         await logTxDetails(
             tx,
-            `${signerAddress} withdrew ${formatUnits(assets, assetToken.decimals)} ${
-                vaultToken.assetSymbol
-            } from ${symbol} vault and owner ${ownerAddress} to ${receiverAddress}`,
+            `${signerAddress} withdrew ${formatUnits(assets, assetToken.decimals)} ${vaultToken.assetSymbol} from ${
+                vaultToken.symbol
+            } vault and owner ${ownerAddress} to ${receiverAddress}`,
         )
         const receipt = await tx.wait()
         const event = receipt.events.find((e) => e.event == "Withdraw")
@@ -150,8 +153,8 @@ task("vault-withdraw").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("vault-redeem", "Redeem vault shares from a vault.")
-    .addParam("symbol", "Token symbol of the vault. eg imUSD, ", undefined, types.string)
+subtask("vault-redeem", "Redeem vault shares from a vault")
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .addParam("amount", "Amount as vault shares to burn.", undefined, types.float)
     .addOptionalParam(
         "receiver",
@@ -165,30 +168,29 @@ subtask("vault-redeem", "Redeem vault shares from a vault.")
         undefined,
         types.string,
     )
-    .addOptionalParam("vaultAddress", "Vault address, overrides lookup of symbol parameter", undefined, types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { symbol, receiver, owner, amount, speed, vaultAddress } = taskArgs
+        const { vault, amount, receiver, owner, speed } = taskArgs
 
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const signerAddress = await signer.getAddress()
 
-        const vaultToken = await resolveVaultToken(signer, chain, symbol, vaultAddress)
-        const vault = IERC4626Vault__factory.connect(vaultToken.address, signer)
-        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol, vaultToken.assetAddress)
+        const vaultToken = await resolveVaultToken(signer, chain, vault)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
         const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const shares = simpleToExactAmount(amount, vaultToken.decimals)
 
-        const tx = await vault.redeem(shares, receiverAddress, ownerAddress)
+        const tx = await vaultContract.redeem(shares, receiverAddress, ownerAddress)
+
         await logTxDetails(
             tx,
-            `${signerAddress} redeemed ${formatUnits(
-                shares,
-                vaultToken.decimals,
-            )} ${symbol} shares from ${ownerAddress} to ${receiverAddress}`,
+            `${signerAddress} redeemed ${formatUnits(shares, vaultToken.decimals)} ${
+                vaultToken.symbol
+            } shares from ${ownerAddress} to ${receiverAddress}`,
         )
         const receipt = await tx.wait()
         const event = receipt.events.find((e) => e.event == "Withdraw")
@@ -199,7 +201,7 @@ task("vault-redeem").setAction(async (_, __, runSuper) => {
 })
 
 subtask("vault-balance", "Logs the vault balance of an owner")
-    .addParam("symbol", "Symbol of the vault. eg imUSD, ", undefined, types.string)
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .addOptionalParam(
         "owner",
         "Address or contract name of the vault share's owner. Default to the signer's address",
@@ -207,37 +209,38 @@ subtask("vault-balance", "Logs the vault balance of an owner")
         types.string,
     )
     .setAction(async (taskArgs, hre) => {
+        const { vault, owner } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const vaultToken = resolveToken(taskArgs.symbol, chain)
-        const vault = ERC20__factory.connect(vaultToken.address, signer)
+        const vaultToken = resolveToken(vault, chain)
+        const vaultContract = ERC20__factory.connect(vaultToken.address, signer)
 
-        const ownerAddress = resolveAddress(taskArgs.owner, chain)
+        const ownerAddress = resolveAddress(owner ?? (await signer.getAddress()), chain)
 
-        const amount = await vault.balanceOf(ownerAddress)
-        log(`Share balance of ${ownerAddress} is ${formatUnits(amount, vaultToken.decimals)} ${taskArgs.symbol}`)
+        const amount = await vaultContract.balanceOf(ownerAddress)
+        log(`Share balance of ${ownerAddress} is ${formatUnits(amount, vaultToken.decimals)} ${vaultToken.symbol}`)
     })
 task("vault-balance").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("vault-snap", "Logs vault details")
-    .addParam("symbol", "Symbol of the vault. eg imUSD", undefined, types.string)
+subtask("vault-snap", "Logs basic vault details")
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
     .setAction(async (taskArgs, hre) => {
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const vaultToken = resolveToken(taskArgs.symbol, chain)
-        const vault = IERC4626Vault__factory.connect(vaultToken.address, signer) as ERC20 & IERC4626Vault
+        const vaultToken = resolveToken(taskArgs.vault, chain)
+        const assetToken = resolveToken(vaultToken.assetAddress, chain)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer) as ERC20 & IERC4626Vault
 
-        const decimals = await vault.decimals()
-        log(`Asset       : ${await vault.asset()}`)
-        log(`Symbol      : ${await vault.symbol()}`)
-        log(`Name        : ${await vault.name()}`)
-        log(`Decimals    : ${decimals}`)
-        log(`Total Supply: ${formatUnits(await vault.totalSupply(), decimals)}`)
-        log(`Total Assets: ${formatUnits(await vault.totalAssets(), decimals)}`)
+        log(`Asset       : ${await vaultContract.asset()}`)
+        log(`Symbol      : ${vaultToken.symbol}`)
+        log(`Name        : ${await vaultContract.name()}`)
+        log(`Decimals    : ${vaultToken.decimals}`)
+        log(`Total Supply: ${formatUnits(await vaultContract.totalSupply(), vaultToken.decimals)}`)
+        log(`Total Assets: ${formatUnits(await vaultContract.totalAssets(), assetToken.decimals)}`)
     })
 task("vault-snap").setAction(async (_, __, runSuper) => {
     await runSuper()
