@@ -48,7 +48,7 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
 
         await logTxDetails(
             tx,
-            `${signerAddress} deposited ${formatUnits(assets, vaultToken.decimals)} ${vaultToken.assetSymbol} into ${
+            `${signerAddress} deposited ${formatUnits(assets, assetToken.decimals)} ${assetToken.assetSymbol} into ${
                 vaultToken.symbol
             } vault minting to ${receiverAddress}`,
         )

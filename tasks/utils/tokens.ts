@@ -457,8 +457,8 @@ export const mvUSDC3PCV: Token = {
     chain: Chain.mainnet,
     decimals: 18,
     quantityFormatter: "USD",
-    assetAddress: DAI.address,
-    assetSymbol: DAI.symbol,
+    assetAddress: USDC.address,
+    assetSymbol: USDC.symbol,
 }
 
 export const TAG: Token = {
