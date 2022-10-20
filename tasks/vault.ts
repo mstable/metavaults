@@ -92,7 +92,7 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
             await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
-        const tx = await vaultContract.deposit(shares, receiverAddress)
+        const tx = await vaultContract.mint(shares, receiverAddress)
 
         await logTxDetails(
             tx,
@@ -134,7 +134,7 @@ subtask("vault-withdraw", "Withdraw assets from a vault")
         const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
-        const receiverAddress = owner ? resolveAddress(receiver, chain) : signerAddress
+        const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const assets = simpleToExactAmount(amount, assetToken.decimals)
 
         const tx = await vaultContract.withdraw(assets, receiverAddress, ownerAddress)

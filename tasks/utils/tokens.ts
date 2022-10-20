@@ -23,25 +23,6 @@ export function isToken(asset: unknown): asset is Token {
     return token.symbol !== undefined && token.address.match(ethereumAddress) && token.chain !== undefined && token.decimals !== undefined
 }
 
-// Vault
-export const TAG: Token = {
-    symbol: "TAG",
-    address: "0x5A036AFae87e6AEBf4eBc01bbEfb3F009eB01772",
-    chain: Chain.goerli,
-    decimals: 18,
-    quantityFormatter: "USD",
-}
-
-export const TVG: Token = {
-    symbol: "TVG",
-    address: "0x0145A7fB49402b29BE7C52D38aeACB5e1aCAe11b",
-    chain: Chain.goerli,
-    decimals: 18,
-    quantityFormatter: "USD",
-    assetSymbol: TAG.symbol,
-    assetAddress: TAG.address,
-}
-
 // mStable on mainnet
 export const mUSD: Token = {
     symbol: "mUSD",
@@ -429,6 +410,75 @@ export const mBPT: Token = {
     quantityFormatter: "USD",
 }
 
+// Vaults
+export const vcx3CRVmUSD: Token = {
+    symbol: "vcx3CRV-mUSD",
+    address: "0xB9B47E72819934d7A5d60Bf08cD2C78072383EBb",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetAddress: ThreeCRV.address,
+    assetSymbol: ThreeCRV.symbol,
+}
+
+export const vcx3CRVFRAX: Token = {
+    symbol: "vcx3CRV-FRAX",
+    address: "0x98c5910823C2E67d54e4e0C03de44043DbfA7ca8",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetAddress: ThreeCRV.address,
+    assetSymbol: ThreeCRV.symbol,
+}
+
+export const vcx3CRVBUSD: Token = {
+    symbol: "vcx3CRV-BUSD",
+    address: "0x87Ed92648fAE3b3930577c92c8A247b127ED8949",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetAddress: ThreeCRV.address,
+    assetSymbol: ThreeCRV.symbol,
+}
+
+export const mv3CRVCVX: Token = {
+    symbol: "mv3CRV-CVX",
+    address: "0x9614a4C61E45575b56c7e0251f63DCDe797d93C5",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetAddress: ThreeCRV.address,
+    assetSymbol: ThreeCRV.symbol,
+}
+
+export const mvUSDC3PCV: Token = {
+    symbol: "mvUSDC-3PCV",
+    address: "0x455fB969dC06c4Aa77e7db3f0686CC05164436d2",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetAddress: DAI.address,
+    assetSymbol: DAI.symbol,
+}
+
+export const TAG: Token = {
+    symbol: "TAG",
+    address: "0x5A036AFae87e6AEBf4eBc01bbEfb3F009eB01772",
+    chain: Chain.goerli,
+    decimals: 18,
+    quantityFormatter: "USD",
+}
+
+export const TVG: Token = {
+    symbol: "TVG",
+    address: "0x0145A7fB49402b29BE7C52D38aeACB5e1aCAe11b",
+    chain: Chain.goerli,
+    decimals: 18,
+    quantityFormatter: "USD",
+    assetSymbol: TAG.symbol,
+    assetAddress: TAG.address,
+}
+
 export const tokens = [
     TAG,
     TVG,
@@ -477,4 +527,9 @@ export const tokens = [
     BAL,
     PBAL,
     musd3CRV,
+    vcx3CRVmUSD,
+    vcx3CRVFRAX,
+    vcx3CRVBUSD,
+    mv3CRVCVX,
+    mvUSDC3PCV,
 ]

@@ -149,11 +149,13 @@ export async function deployConvex3CrvLiquidatorVault(
         `Convex3CrvLiquidatorVault ${name} (${symbol})`,
         constructorArguments,
     )
+
     await verifyEtherscan(hre, {
         address: vaultImpl.address,
         contract: "contracts/vault/liquidity/convex/Convex3CrvLiquidatorVault.sol:Convex3CrvLiquidatorVault",
         constructorArguments: constructorArguments,
     })
+
     // Proxy
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
@@ -167,12 +169,6 @@ export async function deployConvex3CrvLiquidatorVault(
     ])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
-
-    await verifyEtherscan(hre, {
-        address: proxy.address,
-        contract: "contracts/upgradability/Proxies.sol:AssetProxy",
-        constructorArguments: proxyConstructorArguments,
-    })
 
     return { proxy, impl: vaultImpl }
 }
@@ -210,9 +206,24 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addOptionalParam("donateToken", "Address or token symbol of token that rewards will be swapped to.", "DAI", types.string)
     .addOptionalParam("fee", "Liquidation fee scaled to 6 decimal places. default 16% = 160000", 160000, types.int)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
+    .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { name, symbol, pool, asset, stream, admin, calculatorLibrary, slippage, donateToken, fee, feeReceiver, speed } = taskArgs
+        const {
+            name,
+            symbol,
+            pool,
+            asset,
+            stream,
+            admin,
+            calculatorLibrary,
+            slippage,
+            donateToken,
+            fee,
+            feeReceiver,
+            vaultManager,
+            speed,
+        } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -220,7 +231,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const nexusAddress = resolveAddress("Nexus", chain)
         const assetAddress = resolveAddress(asset, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
-        const vaultManagerAddress = resolveAddress("VaultManager", chain)
+        const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const convexBoosterAddress = resolveAddress("ConvexBooster", chain)
 
         const convex3CrvPool = config.convex3CrvPools[pool.toLowerCase()]

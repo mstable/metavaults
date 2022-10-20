@@ -74,12 +74,6 @@ export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, s
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    await verifyEtherscan(hre, {
-        address: proxy.address,
-        contract: "contracts/upgradability/Proxies.sol:AssetProxy",
-        constructorArguments: proxyConstructorArguments,
-    })
-
     return { proxy, impl: vaultImpl }
 }
 
@@ -130,17 +124,18 @@ task("curve-3crv-lib-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
 
-subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Crv Meta Vault")
-    .addParam("metaVault", "Underlying Meta Vault override", "mv3CRV", types.string)
+subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Pool Meta Vault")
     .addParam("name", "Meta Vault name", undefined, types.string)
     .addParam("symbol", "Meta Vault symbol", undefined, types.string)
     .addParam("asset", "Token address or symbol of the vault's asset. eg DAI, USDC or USDT", undefined, types.string)
+    .addOptionalParam("metaVault", "Underlying Meta Vault override", "mv3CRV-CVX", types.string)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
     .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", "Curve3CrvCalculatorLibrary", types.string)
     .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
+    .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, speed } = taskArgs
+        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, vaultManager, speed } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -148,7 +143,7 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Crv Meta Vault")
         const nexusAddress = resolveAddress("Nexus", chain)
         const assetToken = resolveToken(asset, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
-        const vaultManagerAddress = resolveAddress("VaultManager", chain)
+        const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const metaVaultAddress = resolveAddress(metaVault, chain)
         const calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
 
