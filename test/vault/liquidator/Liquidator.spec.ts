@@ -162,8 +162,7 @@ describe("Liquidator", async () => {
         const pendingRewardsBefore = await liquidator.pendingRewards(reward.address, asset.address)
         const rewards = pendingRewardsBefore.rewards
         const initiateData = swapData.data
-        const initiateTx = await liquidator.connect(sa.keeper.signer).initiateSwap(reward.address, asset.address, initiateData)
-        expect(initiateTx).to.emit(liquidator, "SwapInitiated").withArgs(pendingRewardsBefore.batch, rewards, 0)
+        await liquidator.connect(sa.keeper.signer).initiateSwap(reward.address, asset.address, initiateData)
         expect(await reward.balanceOf(liquidator.address), "rewards transfer from").to.eq(liquidatorRewardBalanceBefore.sub(rewards))
         expect(await reward.balanceOf(asyncSwapper.address), "rewards transfer to").to.eq(swapperRewardBalanceBefore.add(rewards))
 
@@ -201,13 +200,10 @@ describe("Liquidator", async () => {
         const datas = orders.map((o) => o.data)
         const assetsAmounts = swapsData.map((o) => o.minToAssetAmount)
 
-        const initiateTx = await liquidator.connect(sa.keeper.signer).initiateSwaps(fromAssets, toAssets, datas)
+        await liquidator.connect(sa.keeper.signer).initiateSwaps(fromAssets, toAssets, datas)
 
         await Promise.all(
-            swapsData.map(async (swapData, i) => {
-                const pendingRewardsBefore = orders[i].pendingRewardsBefore
-                const rewards = pendingRewardsBefore.rewards
-                expect(initiateTx).to.emit(liquidator, "SwapInitiated").withArgs(pendingRewardsBefore.batch, rewards, 0)
+            swapsData.map(async (swapData) => {
                 // Simulate off-chain swap
                 // asyncSwapper assets balances is transfer from relayer
                 await simulateAsyncSwap(swapData, liquidator.address)

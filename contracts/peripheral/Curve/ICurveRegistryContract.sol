@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.17;
 
+/* solhint-disable  func-name-mixedcase, var-name-mixedcase */
 interface ICurveRegistryContract {
     function find_pool_for_coins(address _from, address _to) external view returns (address);
 
