@@ -104,8 +104,8 @@ task("token-transfer-from").setAction(async (_, __, runSuper) => {
 
 subtask("token-allowance", "Logs the amount of tokens a spender can transfer from an owner")
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
-    .addParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
     .addParam("spender", "Address or contract name that can transferFrom.", undefined, types.string)
+    .addOptionalParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
     .setAction(async (taskArgs, hre) => {
         const { owner, spender, token } = taskArgs
         const chain = getChain(hre)
@@ -114,7 +114,7 @@ subtask("token-allowance", "Logs the amount of tokens a spender can transfer fro
         const tokenConfig = resolveToken(token, chain)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
-        const ownerAddress = resolveAddress(owner, chain)
+        const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
         const spenderAddress = resolveAddress(spender, chain)
 
         const amount = await tokenContract.allowance(ownerAddress, spenderAddress)
@@ -131,7 +131,7 @@ task("token-allowance").setAction(async (_, __, runSuper) => {
 
 subtask("token-balance", "Logs the token balance of an owner")
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
-    .addParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
+    .addOptionalParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
     .setAction(async (taskArgs, hre) => {
         const { owner, token } = taskArgs
         const chain = getChain(hre)
@@ -140,7 +140,7 @@ subtask("token-balance", "Logs the token balance of an owner")
         const tokenConfig = resolveToken(token, chain)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
-        const ownerAddress = resolveAddress(owner, chain)
+        const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
 
         const amount = await tokenContract.balanceOf(ownerAddress)
 

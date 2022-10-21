@@ -1,8 +1,11 @@
 import { simpleToExactAmount } from "@utils/math"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
+import { AssetProxy__factory, IERC20__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
 
 import { config } from "./deployment/convex3CrvVaults-config"
+import { usdFormatter } from "./utils"
+import { getBlock } from "./utils/blocks"
 import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
@@ -106,16 +109,10 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    await verifyEtherscan(hre, {
-        address: proxy.address,
-        contract: "contracts/upgradability/Proxies.sol:AssetProxy",
-        constructorArguments: proxyConstructorArguments,
-    })
-
     return { proxy, impl: vaultImpl }
 }
 
-subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
+subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
     .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
     .addParam(
         "singleSource",
@@ -124,7 +121,7 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
         types.string,
     )
     .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
-    .addOptionalParam("symbol", "Vault symbol", "mv3CRV", types.string)
+    .addOptionalParam("symbol", "Vault symbol", "mv3CRV-CVX", types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
@@ -136,9 +133,23 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
         types.int,
     )
     .addOptionalParam("updateThreshold", "Asset per share update threshold. default 100k", 100000, types.int)
+    .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { name, symbol, asset, vaults, admin, feeReceiver, fee, singleSource, singleThreshold, updateThreshold, speed } = taskArgs
+        const {
+            name,
+            symbol,
+            asset,
+            vaults,
+            admin,
+            feeReceiver,
+            fee,
+            singleSource,
+            singleThreshold,
+            updateThreshold,
+            vaultManager,
+            speed,
+        } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -146,7 +157,7 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
         const nexusAddress = resolveAddress("Nexus", chain)
         const assetToken = resolveToken(asset, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
-        const vaultManagerAddress = resolveAddress("VaultManager", chain)
+        const vaultManagerAddress = resolveAddress(vaultManager, chain)
 
         const underlyings = vaults.split(",")
         const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
@@ -174,6 +185,96 @@ subtask("convex-3crv-meta-vault-deploy", "Deploys Convex 3Crv Meta Vault")
 
         return { proxy, impl }
     })
-task("convex-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
+task("convex-3crv-mv-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
+subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
+    .addParam("vault", "Vault symbol or address", undefined, types.string)
+    .addOptionalParam("owner", "Address, contract name or token symbol to get balances for. Defaults to signer", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
+    .setAction(async (taskArgs, hre) => {
+        const { vault, owner, block, speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const blk = await getBlock(hre.ethers, block)
+
+        const vaultToken = resolveToken(vault, chain)
+        const vaultContract = PeriodicAllocationPerfFeeMetaVault__factory.connect(vaultToken.address, signer)
+        const assetToken = resolveToken(vaultToken.assetSymbol, chain)
+        const assetContract = IERC20__factory.connect(assetToken.address, signer)
+
+        await hre.run("vault-snap", {
+            vault,
+            owner,
+        })
+
+        console.log(`\nPeriodicAllocationPerfFeeMetaVault`)
+        const assetsInVault = await assetContract.balanceOf(vaultToken.address, {
+            blockTag: blk.blockNumber,
+        })
+        const totalAssets = await vaultContract.totalAssets({
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in vault         : ${usdFormatter(assetsInVault, assetToken.decimals)} ${formatUnits(
+                assetsInVault.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const assetsInUnderlyings = totalAssets.sub(assetsInVault)
+        console.log(
+            `Assets in underlyings   : ${usdFormatter(assetsInUnderlyings, assetToken.decimals)} ${formatUnits(
+                assetsInUnderlyings.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        console.log(
+            `stored assets/share     : ${formatUnits(
+                await vaultContract.assetsPerShare({
+                    blockTag: blk.blockNumber,
+                }),
+                26,
+            )}`,
+        )
+        const current = await vaultContract.calculateAssetPerShare({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`current assets/share    : ${formatUnits(current.assetsPerShare_, 26)}`)
+        const fee = await vaultContract.performanceFee({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Performance fee         : ${fee.toNumber() / 10000}%`)
+        console.log(
+            `Fee receiver            : ${await vaultContract.feeReceiver({
+                blockTag: blk.blockNumber,
+            })}`,
+        )
+        console.log(
+            `Active underlying vaults: ${await vaultContract.activeUnderlyingVaults({
+                blockTag: blk.blockNumber,
+            })}`,
+        )
+        console.log(
+            `Total underlying vaults : ${await vaultContract.totalUnderlyingVaults({
+                blockTag: blk.blockNumber,
+            })}`,
+        )
+        const sourceParams = await vaultContract.sourceParams()
+        console.log(`Single vault threshold  : ${sourceParams.singleVaultSharesThreshold / 100}%`)
+        console.log(
+            `Vault Manager           : ${await vaultContract.vaultManager({
+                blockTag: blk.blockNumber,
+            })}`,
+        )
+        console.log(
+            `Paused                  : ${await vaultContract.paused({
+                blockTag: blk.blockNumber,
+            })}`,
+        )
+    })
+task("convex-3crv-mv-snap").setAction(async (_, __, runSuper) => {
     return runSuper()
 })

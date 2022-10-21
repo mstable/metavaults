@@ -1,15 +1,24 @@
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, BasicVault__factory, ERC20__factory, IERC20__factory, IERC4626Vault__factory } from "types/generated"
+import {
+    AssetProxy__factory,
+    BasicVault__factory,
+    ERC20__factory,
+    IERC20__factory,
+    IERC20Metadata__factory,
+    IERC4626Vault__factory,
+} from "types/generated"
 
+import { usdFormatter } from "./utils"
+import { getBlock } from "./utils/blocks"
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
 import { getChain, resolveAddress, resolveAssetToken, resolveToken, resolveVaultToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
-import type { AssetProxy, BasicVault, ERC20, IERC4626Vault } from "types/generated"
+import type { AssetProxy, BasicVault } from "types/generated"
 
 const log = logger("task:vault")
 
@@ -48,7 +57,7 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
 
         await logTxDetails(
             tx,
-            `${signerAddress} deposited ${formatUnits(assets, vaultToken.decimals)} ${vaultToken.assetSymbol} into ${
+            `${signerAddress} deposited ${formatUnits(assets, assetToken.decimals)} ${assetToken.assetSymbol} into ${
                 vaultToken.symbol
             } vault minting to ${receiverAddress}`,
         )
@@ -92,7 +101,7 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
             await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
         }
 
-        const tx = await vaultContract.deposit(shares, receiverAddress)
+        const tx = await vaultContract.mint(shares, receiverAddress)
 
         await logTxDetails(
             tx,
@@ -134,7 +143,7 @@ subtask("vault-withdraw", "Withdraw assets from a vault")
         const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : signerAddress
-        const receiverAddress = owner ? resolveAddress(receiver, chain) : signerAddress
+        const receiverAddress = receiver ? resolveAddress(receiver, chain) : signerAddress
         const assets = simpleToExactAmount(amount, assetToken.decimals)
 
         const tx = await vaultContract.withdraw(assets, receiverAddress, ownerAddress)
@@ -227,20 +236,45 @@ task("vault-balance").setAction(async (_, __, runSuper) => {
 
 subtask("vault-snap", "Logs basic vault details")
     .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
+    .addOptionalParam("owner", "Address, contract name or token symbol to get balances for. Defaults to signer", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
     .setAction(async (taskArgs, hre) => {
+        const { vault, owner, block } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const vaultToken = resolveToken(taskArgs.vault, chain)
-        const assetToken = resolveToken(vaultToken.assetAddress, chain)
-        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer) as ERC20 & IERC4626Vault
+        const blk = await getBlock(hre.ethers, block)
 
-        log(`Asset       : ${await vaultContract.asset()}`)
-        log(`Symbol      : ${vaultToken.symbol}`)
-        log(`Name        : ${await vaultContract.name()}`)
-        log(`Decimals    : ${vaultToken.decimals}`)
-        log(`Total Supply: ${formatUnits(await vaultContract.totalSupply(), vaultToken.decimals)}`)
-        log(`Total Assets: ${formatUnits(await vaultContract.totalAssets(), assetToken.decimals)}`)
+        const vaultToken = resolveToken(vault, chain)
+        const assetToken = resolveToken(vaultToken.assetSymbol, chain)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const vaultTokenContract = IERC20Metadata__factory.connect(vaultToken.address, signer)
+        const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
+
+        console.log(`Address       : ${vaultToken.address}`)
+        console.log(`Symbol        : ${vaultToken.symbol}`)
+        console.log(`Name          : ${await vaultTokenContract.name()}`)
+        console.log(`Decimals      : ${vaultToken.decimals}`)
+        console.log(`Asset         : ${assetToken.symbol} ${assetToken.address}`)
+        console.log(`Asset decimals: ${assetToken.symbol}`)
+        const totalShares = await vaultContract.totalSupply({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Block number  : ${blk.blockNumber} ${blk.blockTime}`)
+        console.log(`Total Supply  : ${usdFormatter(totalShares, vaultToken.decimals)}`)
+        const totalAssets = await vaultContract.totalAssets({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Total Assets  : ${usdFormatter(totalAssets, assetToken.decimals)}`)
+        console.log(`Owner acct    : ${owner} ${owner !== ownerAddress ? ownerAddress : ""}`)
+        const shareBal = await vaultContract.balanceOf(ownerAddress, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Share balance : ${usdFormatter(shareBal, vaultToken.decimals)}`)
+        const assetBal = await vaultContract.maxWithdraw(ownerAddress, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Asset balance : ${usdFormatter(assetBal, assetToken.decimals)}`)
     })
 task("vault-snap").setAction(async (_, __, runSuper) => {
     await runSuper()
