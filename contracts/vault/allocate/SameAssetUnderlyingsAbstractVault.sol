@@ -76,8 +76,6 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         vaultIndexMap = vaultIndexMapMem;
     }
 
-    // 0000001011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111100010000
-
     /**
      * @notice Includes all the assets in this vault plus all the underlying vaults.
      * The amount of assets in each underlying vault is calculated using the vault's share of the

@@ -5,7 +5,7 @@ import { ICurve3Pool__factory, IERC20__factory } from "types/generated"
 
 import { logTxDetails } from "./utils/deploy-utils"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 import { DAI, ThreeCRV, USDC, USDT } from "./utils/tokens"
 
@@ -15,7 +15,7 @@ subtask("curve-add", "Add liquidity to Curve 3Pool")
     .addOptionalParam("dai", "Amount of DAI to add", 0, types.int)
     .addOptionalParam("usdc", "Amount of USDC to add", 0, types.int)
     .addOptionalParam("usdt", "Amount of USDT to add", 0, types.int)
-    .addOptionalParam("slippage", "Max allowed slippage as a percentage to 2 decimal places.", 1, types.float)
+    .addOptionalParam("slippage", "Max allowed slippage as a percentage to 2 decimal places.", 1.0, types.float)
     .addOptionalParam("pool", "Name or address of the Curve pool", "CurveThreePool", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
@@ -50,5 +50,47 @@ subtask("curve-add", "Add liquidity to Curve 3Pool")
     })
 
 task("curve-add").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
+
+subtask("curve-swap", "Swap tokens using Curve 3Pool")
+    .addParam("amount", "Amount to swap from", undefined, types.int)
+    .addParam("from", "Token symbol or address that is being swapped from", undefined, types.string)
+    .addParam("to", "Token symbol or address that is being swapped to", undefined, types.string)
+    .addOptionalParam("slippage", "Max allowed slippage as a percentage to 2 decimal places.", 1.0, types.float)
+    .addOptionalParam("pool", "Name or address of the Curve pool", "CurveThreePool", types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { amount, from, to, pool, slippage, speed } = taskArgs
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const poolAddress = resolveAddress(pool, chain)
+        const poolContract = ICurve3Pool__factory.connect(poolAddress, signer)
+
+        const fromToken = resolveToken(from, chain)
+        const fromAmount = simpleToExactAmount(amount, fromToken.decimals)
+        const toToken = resolveToken(to, chain)
+
+        const indexes = {
+            [DAI.address]: 0,
+            [USDC.address]: 1,
+            [USDT.address]: 2,
+        }
+
+        const fromIndex = indexes[fromToken.address]
+        const toIndex = indexes[toToken.address]
+
+        const fairAmount = await poolContract.get_dy(fromIndex, toIndex, fromAmount)
+        log(`Fair swap of ${amount} ${fromToken.symbol} to ${toToken.symbol} is ${formatUnits(fairAmount, toToken.decimals)}`)
+        const slippageScaled = slippage * 100
+        const minAmount = fairAmount.mul(10000 - slippageScaled).div(10000)
+
+        const tx = await poolContract.exchange(fromIndex, toIndex, fromAmount, minAmount)
+
+        await logTxDetails(tx, `Swap ${amount} ${fromToken.symbol} to ${toToken.symbol} using pool ${pool.address}`)
+    })
+
+task("curve-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
