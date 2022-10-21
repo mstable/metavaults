@@ -40,14 +40,6 @@ abstract contract CowSwapSeller {
         uint256 toAssetAmount;
     }
 
-    /// @notice Event emitted when a order is initliased.
-    event SwapInitiated(
-        bytes indexed orderUid,
-        address indexed fromAsset,
-        uint256 fromAssetAmount,
-        uint256 fromAssetFeeAmount
-    );
-
     /// @notice Event emitted when a order is cancelled.
     event SwapCancelled(bytes indexed orderUid);
 
@@ -75,17 +67,11 @@ abstract contract CowSwapSeller {
         address fromAsset = orderData.fromAsset;
         IERC20(fromAsset).safeIncreaseAllowance(
             RELAYER,
-            orderData.fromAssetAmount + orderData.fromAssetFeeAmount
+            orderData.fromAssetAmount
         );
 
         // Once allowance is set, let's setPresignature and the order will happen
         SETTLEMENT.setPreSignature(orderUid, true);
-        emit SwapInitiated(
-            orderUid,
-            fromAsset,
-            orderData.fromAssetAmount,
-            orderData.fromAssetFeeAmount
-        );
     }
 
     /**

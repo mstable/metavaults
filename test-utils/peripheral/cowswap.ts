@@ -7,11 +7,10 @@ import type { BigNumber as BN } from "ethers"
  * @param {string} orderUid  the order id of the swap
  * @param {BN} fromAssetFeeAmount  the fee amount of the from asset
  * @param {string} receiver  the address receiver of the swap
- * @param {boolean} onlySign  if it should only sign the tx, rather than transferIn assets and sign
  * @return {string}  The encoded data for the call
  */
-export const encodeInitiateSwap = (orderUid: string, fromAssetFeeAmount: BN, receiver: string, onlySign = false): string =>
-    ethers.utils.defaultAbiCoder.encode(["bytes", "uint256", "address", "bool"], [orderUid, fromAssetFeeAmount, receiver, onlySign])
+export const encodeInitiateSwap = (orderUid: string, fromAssetFeeAmount: BN, receiver: string): string =>
+    ethers.utils.defaultAbiCoder.encode(["bytes", "uint256", "address"], [orderUid, fromAssetFeeAmount, receiver])
 /**
  * Encode the data for a Cowswap initiate swap call
  *

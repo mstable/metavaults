@@ -61,29 +61,26 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      */
     function _initiateSwap(DexSwapData memory swapData) internal {
         // unpack the CowSwap specific params from the generic swap.data field
-        (bytes memory orderUid, uint256 fromAssetFeeAmount, address receiver, bool onlySign) = abi
-            .decode(swapData.data, (bytes, uint256, address, bool));
+        (bytes memory orderUid, uint256 fromAssetFeeAmount, address receiver) = abi
+            .decode(swapData.data, (bytes, uint256, address));
 
-        if (!onlySign) {
-            uint256 fromAssetTotalAmount = swapData.fromAssetAmount + fromAssetFeeAmount;
-            // transfer in the fromAsset
-            require(
-                IERC20(swapData.fromAsset).balanceOf(msg.sender) >= fromAssetTotalAmount,
-                "not enough from assets"
-            );
-            // Transfer rewards from the liquidator
-            IERC20(swapData.fromAsset).safeTransferFrom(
-                msg.sender,
-                address(this),
-                fromAssetTotalAmount
-            );
-        }
+        // transfer in the fromAsset
+        require(
+            IERC20(swapData.fromAsset).balanceOf(msg.sender) >= swapData.fromAssetAmount,
+            "not enough from assets"
+        );
+        // Transfer rewards from the liquidator
+        IERC20(swapData.fromAsset).safeTransferFrom(
+            msg.sender,
+            address(this),
+            swapData.fromAssetAmount
+        );
 
         CowSwapData memory orderData = CowSwapData({
             fromAsset: swapData.fromAsset,
             toAsset: swapData.toAsset,
             receiver: receiver,
-            fromAssetAmount: swapData.fromAssetAmount,
+            fromAssetAmount: swapData.fromAssetAmount - fromAssetFeeAmount,
             fromAssetFeeAmount: fromAssetFeeAmount
         });
 
