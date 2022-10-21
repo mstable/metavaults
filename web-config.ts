@@ -83,7 +83,7 @@ export const tokens = ${JSON.stringify(toks, null, 2)}
         const contracts = Object.entries(chainMapping).reduce(
             (acc, [chain, id]) => ({
                 ...acc,
-                [id]: contractNames.reduce((a, name) => ({ ...a, [name]: getChainAddress(name, Number(chain)).toLowerCase() }), {}),
+                [id]: contractNames.reduce((a, name) => ({ ...a, [name]: getChainAddress(name, Number(chain))?.toLowerCase() }), {}),
             }),
             {},
         )
