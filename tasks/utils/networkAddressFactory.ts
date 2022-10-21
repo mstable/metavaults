@@ -96,7 +96,7 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
             case "VaultManager":
                 return "0x1116241647D2173342b108e6363fFe58762e3e97"
             case "CowSwapDex":
-                return "0x8E9A9a122F402CD98727128BaF3dCCAF05189B67"
+                return "0x86f800375B525300AD609644068a0753Bf8De1e2"
             case "LiquidatorV2":
                 return "0xD298291059aed77686037aEfFCf497A321A4569e"
             case "Curve3CrvMetapoolCalculatorLibrary":
