@@ -1,11 +1,11 @@
 import { ethereumAddress } from "@utils/regex"
 
 export enum Chain {
-    mainnet,
-    goerli,
-    sepolia,
-    polygon,
-    mumbai,
+    mainnet = 1,
+    goerli = 5,
+    sepolia = 11155111,
+    polygon = 137,
+    mumbai = 80001,
 }
 
 export interface Token {

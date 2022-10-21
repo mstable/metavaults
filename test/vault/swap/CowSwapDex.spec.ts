@@ -170,43 +170,15 @@ describe("CowSwapDex", () => {
             const tx = await cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](swapData)
 
             // Verify events, storage change, balance, etc.
-            await expect(tx)
-                .to.emit(cowSwapDex, "SwapInitiated")
-                .withArgs(orderUid1, swapData.fromAsset, swapData.fromAssetAmount, fromAssetFeeAmount)
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid1, true)
 
             // As the swap is async only "fromAsset" is updated
             expect(await rewards1.balanceOf(sa.keeper.address), "msg.sender sends rewards to dex").to.equal(
-                keeperRewards1BalBefore.sub(swapData.fromAssetAmount).sub(fromAssetFeeAmount),
+                keeperRewards1BalBefore.sub(swapData.fromAssetAmount),
             )
             expect(await rewards1.balanceOf(cowSwapDex.address), "dex asset balance increase").to.equal(
-                dexRewards1BalBefore.add(swapData.fromAssetAmount).add(fromAssetFeeAmount),
+                dexRewards1BalBefore.add(swapData.fromAssetAmount),
             )
-            expect(await asset1.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets1BalBefore)
-        })
-        it("re-try a swap without sending rewards", async () => {
-            // Given
-            swapData = {
-                ...swapData,
-                data: encodeInitiateSwap(orderUid1, fromAssetFeeAmount, sa.keeper.address, true),
-            }
-
-            const keeperRewards1BalBefore = await rewards1.balanceOf(sa.keeper.address)
-            const dexRewards1BalBefore = await rewards1.balanceOf(cowSwapDex.address)
-            const keeperAssets1BalBefore = await asset1.balanceOf(sa.keeper.address)
-
-            // Test
-            const tx = await cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](swapData)
-
-            // Verify events, storage change, balance, etc.
-            await expect(tx)
-                .to.emit(cowSwapDex, "SwapInitiated")
-                .withArgs(orderUid1, swapData.fromAsset, swapData.fromAssetAmount, fromAssetFeeAmount)
-            await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid1, true)
-
-            // As the swap is async and the flag onlySign is true, no balance should be updated
-            expect(await rewards1.balanceOf(sa.keeper.address), "keeper rewards does not change").to.equal(keeperRewards1BalBefore)
-            expect(await rewards1.balanceOf(cowSwapDex.address), "dex asset balance does not change").to.equal(dexRewards1BalBefore)
             expect(await asset1.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets1BalBefore)
         })
         describe("fails", async () => {
@@ -219,8 +191,8 @@ describe("CowSwapDex", () => {
                 const fromAssetAmount = await rewards1.balanceOf(sa.keeper.address)
                 const wrongSwapData = {
                     ...swapData,
-                    fromAssetAmount,
-                    data: encodeInitiateSwap(orderUid1, fromAssetFeeAmount, sa.keeper.address, false),
+                    fromAssetAmount: fromAssetAmount.add(1),
+                    data: encodeInitiateSwap(orderUid1, fromAssetFeeAmount, sa.keeper.address),
                 }
                 await expect(cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](wrongSwapData), "!balance").to.be.revertedWith(
                     "not enough from assets",
@@ -234,22 +206,22 @@ describe("CowSwapDex", () => {
         const swapsData: Array<DexSwapData> = []
 
         before(async () => {
-            const swapDate2 = {
+            const swapData2 = {
                 fromAsset: rewards2.address,
                 fromAssetAmount: reward2Total.div(10),
                 toAsset: asset2.address,
                 minToAssetAmount: asset2Total.div(10),
                 data: encodeInitiateSwap(orderUid2, fromAssetFeeAmount, sa.keeper.address),
             }
-            const swapDate3 = {
+            const swapData3 = {
                 fromAsset: rewards3.address,
                 fromAssetAmount: reward3Total.div(10),
                 toAsset: asset3.address,
                 minToAssetAmount: asset3Total.div(10),
                 data: encodeInitiateSwap(orderUid3, fromAssetFeeAmount, sa.keeper.address),
             }
-            swapsData.push(swapDate2)
-            swapsData.push(swapDate3)
+            swapsData.push(swapData2)
+            swapsData.push(swapData3)
         })
 
         it("swap should swap multiple orders", async () => {
@@ -266,30 +238,23 @@ describe("CowSwapDex", () => {
             const tx = await cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_BATCH](swapsData)
 
             // Verify events, storage change, balance, etc.
-            await expect(tx)
-                .to.emit(cowSwapDex, "SwapInitiated")
-                .withArgs(orderUid2, swapsData[0].fromAsset, swapsData[0].fromAssetAmount, fromAssetFeeAmount)
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid2, true)
-
-            await expect(tx)
-                .to.emit(cowSwapDex, "SwapInitiated")
-                .withArgs(orderUid3, swapsData[1].fromAsset, swapsData[1].fromAssetAmount, fromAssetFeeAmount)
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid3, true)
 
             // As the swap is async only "fromAsset" is updated
             expect(await rewards2.balanceOf(sa.keeper.address), "msg.sender sends rewards to dex").to.equal(
-                keeperRewards2BalBefore.sub(swapsData[0].fromAssetAmount).sub(fromAssetFeeAmount),
+                keeperRewards2BalBefore.sub(swapsData[0].fromAssetAmount),
             )
             expect(await rewards2.balanceOf(cowSwapDex.address), "dex asset balance increase").to.equal(
-                dexRewards2BalBefore.add(swapsData[0].fromAssetAmount).add(fromAssetFeeAmount),
+                dexRewards2BalBefore.add(swapsData[0].fromAssetAmount),
             )
             expect(await asset2.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets2BalBefore)
 
             expect(await rewards3.balanceOf(sa.keeper.address), "msg.sender sends rewards to dex").to.equal(
-                keeperRewards3BalBefore.sub(swapsData[1].fromAssetAmount).sub(fromAssetFeeAmount),
+                keeperRewards3BalBefore.sub(swapsData[1].fromAssetAmount),
             )
             expect(await rewards3.balanceOf(cowSwapDex.address), "dex asset balance increase").to.equal(
-                dexRewards3BalBefore.add(swapsData[1].fromAssetAmount).add(fromAssetFeeAmount),
+                dexRewards3BalBefore.add(swapsData[1].fromAssetAmount),
             )
             expect(await asset3.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets3BalBefore)
         })
@@ -300,7 +265,7 @@ describe("CowSwapDex", () => {
                 )
             })
             it("if balance is not enough", async () => {
-                const wrongSwapData = { ...swapsData[0], fromAssetAmount: await rewards2.balanceOf(sa.keeper.address) }
+                const wrongSwapData = { ...swapsData[0], fromAssetAmount: await (await rewards2.balanceOf(sa.keeper.address)).add(1) }
                 const wrongSwapsData = [wrongSwapData]
                 await expect(cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_BATCH](wrongSwapsData), "!balance").to.be.revertedWith(
                     "not enough from assets",

@@ -1,4 +1,4 @@
-# Meta Vaults Security Audit Scope
+# First Meta Vaults Security Audit
 
 Scope of the security audit of [mStable](https://mstable.org/)'s new Meta Vaults by [Hacken](https://hacken.io/), September 2022.
 
