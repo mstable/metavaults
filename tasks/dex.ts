@@ -1,5 +1,5 @@
 import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
-import { ONE_DAY, ZERO } from "@utils/constants"
+import { ONE_DAY } from "@utils/constants"
 import { simpleToExactAmount } from "@utils/math"
 import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, IERC20Metadata__factory, OneInchDexSwap__factory } from "types/generated"
@@ -28,6 +28,7 @@ export async function deployCowSwapDex(hre: HardhatRuntimeEnvironment, signer: S
 
     const constructorArguments = [nexusAddress, relayerAddress, settlementAddress]
     const dex = await deployContract<CowSwapDex>(new CowSwapDex__factory(signer), "CowSwapDex", constructorArguments)
+
     await verifyEtherscan(hre, {
         address: dex.address,
         contract: "contracts/vault/swap/CowSwapDex.sol:CowSwapDex",
