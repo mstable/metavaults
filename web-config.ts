@@ -59,7 +59,7 @@ const compile = () => {
                 [chainMapping[curr.chain]]: {
                     ...acc[chainMapping[curr.chain]],
                     [curr.symbol.toLowerCase()]: {
-                        address: curr.address,
+                        address: curr.address.toLowerCase(),
                         name: curr.symbol,
                         decimals: curr.decimals,
                     },
@@ -83,13 +83,16 @@ export const tokens = ${JSON.stringify(toks, null, 2)}
         const contracts = Object.entries(chainMapping).reduce(
             (acc, [chain, id]) => ({
                 ...acc,
-                [id]: contractNames.reduce((a, name) => ({ ...a, [name]: getChainAddress(name, Number(chain)) }), {}),
+                [id]: contractNames.reduce((a, name) => ({ ...a, [name]: getChainAddress(name, Number(chain))?.toLowerCase() }), {}),
             }),
             {},
         )
         const types = contractNames.reduce((acc, curr) => acc.add(curr), new Set())
-        outputFileSync(join(paths.tmp, "contracts.ts"), `export type SupportedContract = '${Array.from(types).join("'|'")}';
-export const contracts = ${JSON.stringify(contracts, null, 2)}`)
+        outputFileSync(
+            join(paths.tmp, "contracts.ts"),
+            `export type SupportedContract = '${Array.from(types).join("'|'")}';
+export const contracts = ${JSON.stringify(contracts, null, 2)}`,
+        )
     } catch (e) {
         console.error("Error writing contracts.ts ", e)
     }
@@ -97,8 +100,8 @@ export const contracts = ${JSON.stringify(contracts, null, 2)}`)
     // abis
     let abis: string[]
     try {
-        // sh.exec("yarn compile")
-        // sh.exec("yarn compile-abis")
+        sh.exec("yarn compile")
+        sh.exec("yarn compile-abis")
         copySync(paths.abis, join(paths.tmp, "abis"))
         abis = readdirSync(join(paths.tmp, "abis"))
     } catch (e) {
