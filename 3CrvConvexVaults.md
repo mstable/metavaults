@@ -4,9 +4,15 @@ The first set of mStable meta vaults are for staking 3Pool-based (3Crv) [Curve](
 
 # Contracts
 
-![savePlusDeployment](./docs/savePlusDeployment.png)
+Dependencies
 
-## DAI/USDC/USDT 3Pooler Meta Vaults
+![Convex 3Crv Dependencies](./docs/convex3CrvDependencies.png)
+
+Mainnet Deployment
+
+![Convex 3Crv contracts](./docs/convex3CrvContracts.png)
+
+## DAI/USDC/USDT 3Pool Meta Vaults
 
 Abstract ERC-4626 vaults with DAI, USDC or USDT asset invested in Curve's [3Pool](https://curve.fi/3pool), and then the 3Pool LP token (3Crv) is invested in an underlying 3Pool-based (3Crv) Meta Vault.
 

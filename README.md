@@ -177,9 +177,15 @@ export NODE_URL=https://mainnet.infura.io/v3/yourApiKey
 yarn task token-transfer --network mainnet --asset MTA --recipient mStableDAO -- amount 1000
 ```
 
-<br />
+## Other mStable Meta Vault repositories
 
-mStable version 1 app and documentation.
+-   https://github.com/mstable/mStable-defender
+-   https://github.com/mstable/metavault-subgraph
+-   https://github.com/mstable/frontend
+-   https://github.com/mstable/mStable-data
+-   https://github.com/mstable/mStable-process-docs/tree/main/vaults
+
+## mStable version 1 app and documentation.
 
 -   https://mstable.org
 -   https://app.mstable.org
