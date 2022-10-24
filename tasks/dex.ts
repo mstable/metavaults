@@ -1,25 +1,25 @@
 import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
-import { ONE_DAY } from "@utils/constants"
+import { ONE_DAY, ONE_HOUR, ONE_MIN } from "@utils/constants"
 import { simpleToExactAmount } from "@utils/math"
+import { encodeInitiateSwap } from "@utils/peripheral/cowswap"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, IERC20Metadata__factory, OneInchDexSwap__factory } from "types/generated"
 
-import { getFeeAndQuote, getQuote, placeSellOrder } from "./peripheral/cowswapApi"
+import { getFeeAndQuote, getQuote, postSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { CowSwapDex, OneInchDexSwap } from "types/generated"
 
-import type { CowSwapContext } from "./peripheral/cowswapApi"
+import type { CowSwapContext, PostOrderParams } from "./peripheral/cowswapApi"
 
 const log = logger("task:dex")
-const DEX_SWAP_DATA = "(address,uint256,address,uint256,bytes)"
-const INITIATE_SWAP_SINGLE = `initiateSwap(${DEX_SWAP_DATA})`
 
 export async function deployCowSwapDex(hre: HardhatRuntimeEnvironment, signer: Signer, nexusAddress: string) {
     const chain = getChain(hre)
@@ -80,76 +80,109 @@ task("cowswap-fee-quote", "@deprecated Calls CowSwap api to get the fee and quot
 task("cowswap-quote", "Calls CowSwap api to get the fee and quote of an order")
     .addParam("from", "Token symbol or address of the asset to sell", undefined, types.string)
     .addParam("to", "Token symbol or address of the asset to buy", undefined, types.string)
-    .addParam("fromAmount", "Amount of the asset to sell", undefined, types.float)
-    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .addParam("amount", "Amount of from tokens to sell", undefined, types.float)
     .setAction(async (taskArgs, hre) => {
-        const { from, fromAmount, to } = taskArgs
+        const { from, amount, to } = taskArgs
         const chain = getChain(hre)
+        const signer = await getSigner(hre)
 
-        const sellTokenAddress = resolveAddress(from, chain)
-        const buyTokenAddress = resolveAddress(to, chain)
-        const sellAmount = simpleToExactAmount(fromAmount)
+        const sellToken = await resolveAssetToken(signer, chain, from)
+        const buyToken = await resolveAssetToken(signer, chain, to)
+        const sellAmount = simpleToExactAmount(amount)
 
-        const quote = await getQuote(chain, sellTokenAddress, buyTokenAddress, sellAmount)
+        const response = await getQuote(chain, sellToken.address, buyToken.address, sellAmount)
 
-        log(`cowswap-fee-quote
-                    fromAsset: ${sellTokenAddress}     toAsset: ${buyTokenAddress} expiration: ${quote.expiration}
-                    fromAssetAmount: ${fromAmount}  fromAssetAmountAfterFee: ${quote.quote.sellAmount}
-                    feeAmount: ${quote.quote.feeAmount}           buyAmountAfterFee: ${quote.quote.buyAmount} `)
+        log(`CoW Swap quote`)
+        log(`from amount: ${formatUnits(sellAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`sell amount: ${formatUnits(response.quote.sellAmount, sellToken.decimals)} ${sellToken.symbol}`)
+        log(`fee        : ${formatUnits(response.quote.feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`buy amount : ${formatUnits(response.quote.buyAmount, buyToken.decimals)} ${buyToken.symbol}`)
+        log(`rate       : ${formatUnits(response.quote.buyAmount.mul(10000).div(sellAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
     })
 
 task("dex-init-swap", "Initiates a CoW Swap swap")
-    .addParam("from", "Token symbol or address of the assets to sell", undefined, types.string)
-    .addParam("to", "Token symbol or address of the assets to buy", undefined, types.string)
-    .addParam("fromAmount", "Amount of the asset to sell", undefined, types.float)
-    .addOptionalParam("receiver", "Contract name or address to receive the tokens purchased", "LiquidatorV2", types.string)
+    .addParam("from", "Token symbol or address of the assets to sell.", undefined, types.string)
+    .addParam("to", "Token symbol or address of the assets to buy.", undefined, types.string)
+    .addParam("amount", "Amount of from tokens to sell.", undefined, types.float)
+    .addOptionalParam("transfer", "Transfer sell tokens from liquidator?.", true, types.boolean)
+    .addOptionalParam("receiver", "Contract name or address to receive the tokens purchased.", "LiquidatorV2", types.string)
+    .addOptionalParam("dex", "Contract name or address CoW Swap will get the sell tokens from.", "CowSwapDex", types.string)
+    .addOptionalParam("approve", "Signer approves Cow Swap Dex contract to transfer sell tokens.", false, types.boolean)
+    .addOptionalParam("minutes", "Number of minutes until the order expires.", undefined, types.int)
+    .addOptionalParam("hours", "Number of hours until the order expires.", undefined, types.int)
+    .addOptionalParam("days", "Number of days until the order expires.", undefined, types.int)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { from, fromAmount, to, receiver, speed } = taskArgs
+        const { approve, dex, from, amount, to, transfer, receiver, minutes, hours, days, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
 
-        const cowSwapDexAddress = resolveAddress("CowSwapDex", chain)
+        const cowSwapDexAddress = resolveAddress(dex, chain)
         const cowSwapDex = CowSwapDex__factory.connect(cowSwapDexAddress, signer)
 
-        const sellTokenAddress = resolveAddress(from, chain)
-        const buyTokenAddress = resolveAddress(to, chain)
+        const sellToken = await resolveAssetToken(signer, chain, from)
+        const sellAmount = simpleToExactAmount(amount, sellToken.decimals)
+        const buyToken = await resolveAssetToken(signer, chain, to)
         const receiverAddress = resolveAddress(receiver, chain)
 
         // Approve Dex to spend tokens
-        const fromAssetToken = IERC20Metadata__factory.connect(sellTokenAddress, signer)
-        const sellAmount = simpleToExactAmount(fromAmount, await fromAssetToken.decimals())
-        if ((await fromAssetToken.allowance(await signer.getAddress(), cowSwapDex.address)).lt(sellAmount)) {
-            await fromAssetToken.connect(signer).approve(cowSwapDex.address, hre.ethers.constants.MaxUint256)
+        if (approve) {
+            const sellTokenContract = IERC20Metadata__factory.connect(sellToken.address, signer)
+            if ((await sellTokenContract.allowance(await signer.getAddress(), cowSwapDexAddress)).lt(sellAmount)) {
+                await sellTokenContract.approve(cowSwapDex.address, sellAmount)
+            }
         }
 
-        // Place  Sell Order on Cowswap API
+        let deadline = ONE_DAY
+        if (days) {
+            deadline = ONE_DAY.mul(days)
+        } else if (hours) {
+            deadline = ONE_HOUR.mul(hours)
+        } else if (minutes) {
+            deadline = ONE_MIN.mul(minutes)
+        }
+
+        const quoteOrder = await getQuote(chain, sellToken.address, buyToken.address, sellAmount)
+
+        // # These two values are needed to create an order
+        const feeAmount = quoteOrder.quote.feeAmount
+        const toAssetAmountAfterFee = quoteOrder.quote.buyAmount
+
+        log(`from amount: ${formatUnits(sellAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`fee        : ${formatUnits(feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`to amount  : ${formatUnits(toAssetAmountAfterFee, buyToken.decimals)} ${buyToken.symbol}`)
+        // TODO need to handle different decimals. eg CRV and CVX to USDT or USDC
+        log(`rate       : ${formatUnits(toAssetAmountAfterFee.mul(10000).div(sellAmount), 4)} ${sellToken.symbol}/${buyToken.symbol}`)
+
+        // post sell order to CowSwap API
         const context: CowSwapContext = {
             trader: cowSwapDex.address,
-            deadline: ONE_DAY,
+            deadline,
             chainId: chain,
         }
-
-        const sellOrderParams = {
-            fromAsset: sellTokenAddress,
-            toAsset: buyTokenAddress,
-            fromAssetAmount: fromAmount,
+        const orderParam: PostOrderParams = {
+            fromAsset: sellToken.address,
+            toAsset: buyToken.address,
+            fromAssetAmount: sellAmount,
+            feeAmount,
+            toAssetAmountAfterFee,
             receiver: receiverAddress,
         }
-        const sellOrder = await placeSellOrder(context, sellOrderParams)
-        log(`Swap order uid ${sellOrder.orderUid}`)
+        const orderUid = await postSellOrder(context, orderParam)
+
+        log(`Order uid  : ${orderUid}`)
 
         // Initiate the order and sign
-        const { encodeInitiateSwap } = await import("@utils/peripheral/cowswap")
-        const data = encodeInitiateSwap(sellOrder.orderUid, sellOrder.fromAssetFeeAmount, receiverAddress)
+        const data = encodeInitiateSwap(orderUid, transfer)
         const swapData = {
-            fromAsset: sellTokenAddress,
-            fromAssetAmount: fromAmount.sub(sellOrder.fromAssetFeeAmount),
-            toAsset: buyTokenAddress,
-            minToAssetAmount: sellOrder.toAssetAmountAfterFee,
+            fromAsset: sellToken.address,
+            fromAssetAmount: sellAmount,
+            toAsset: buyToken.address,
+            minToAssetAmount: toAssetAmountAfterFee,
             data: data,
         }
-        const tx = await cowSwapDex.connect(signer)[INITIATE_SWAP_SINGLE](swapData)
+
+        const tx = await cowSwapDex.connect(signer)["initiateSwap((address,uint256,address,uint256,bytes))"](swapData)
         await logTxDetails(tx, `cowSwapDex.initiateSwap`)
     })
 

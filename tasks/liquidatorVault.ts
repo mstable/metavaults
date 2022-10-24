@@ -8,7 +8,7 @@ import {
 
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
-import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { Mock3CrvLiquidatorVault, Mock3CrvReverseLiquidatorVault } from "types/generated"
@@ -104,7 +104,7 @@ subtask("liq-vault-donate", "Donated tokens to a liquidator vault")
 
         const vaultAddress = await resolveAddress(vault, chain)
         const liquidatorVault = ILiquidatorVault__factory.connect(vaultAddress, signer)
-        const donatedToken = resolveToken(token)
+        const donatedToken = await resolveAssetToken(signer, chain, token)
 
         const tx = await liquidatorVault.donate(donatedToken.address, amount)
         await logTxDetails(tx, `donate ${amount} ${donatedToken.symbol}`)

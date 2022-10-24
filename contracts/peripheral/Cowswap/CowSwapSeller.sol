@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 // External
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libs
 import { ICowSettlement } from "./ICowSettlement.sol";
@@ -25,26 +24,8 @@ abstract contract CowSwapSeller {
     /// @notice GPv2Settlement contract
     ICowSettlement public immutable SETTLEMENT;
 
-    struct CowSwapData {
-        address fromAsset;
-        address toAsset;
-        address receiver;
-        uint256 fromAssetAmount;
-        uint256 fromAssetFeeAmount;
-    }
-
-    struct CowSwapTrade {
-        address owner;
-        address receiver;
-        address toAsset;
-        uint256 toAssetAmount;
-    }
-
     /// @notice Event emitted when a order is cancelled.
     event SwapCancelled(bytes indexed orderUid);
-
-    /// @notice Event emitted when a order is initliased.
-    event SwapSettled(bytes indexed orderUid, address indexed toAsset, uint256 toAssetAmount);
 
     /**
      * @param _relayer  Address of the GPv2VaultRelayer contract to set allowance to perform swaps
@@ -56,54 +37,41 @@ abstract contract CowSwapSeller {
     }
 
     /**
-     * @notice Initializes a  cow swap order by setting the allowance of the token and presigning the order.
+     * @notice Initializes a cow swap order by setting the allowance of the token and presigning the order.
      * @dev This is the function to perform a swap on Cowswap via this smart contract.
-     * Emits the `SwapInitiated` event with the `orderUid` details.
-     * @param orderUid The order uid of the swap.
-     * @param orderData The data of the cow swap order {fromAsset, toAsset, fromAssetAmount, fromAssetFeeAmount}.
+     * @param orderUid CowSwap's unique identifier of the swap order.
+     * @param fromAsset address of the token to sell.
+     * @param fromAssetAmount amount of tokens to sell including fees.
+     * @param transfer flag if tokens have not already been allowed to be transferred by the cow swap relay.
      */
-    function _initiateCowswapOrder(bytes memory orderUid, CowSwapData memory orderData) internal {
-        // Because swap is looking good, check we have the amount, then give allowance to the Cowswap Router
-        address fromAsset = orderData.fromAsset;
-        IERC20(fromAsset).safeIncreaseAllowance(
-            RELAYER,
-            orderData.fromAssetAmount
-        );
+    function _initiateCowswapOrder(bytes memory orderUid, address fromAsset, uint256 fromAssetAmount, bool transfer) internal {
+        if (transfer) {
+            // allow the cow swap router to transfer sell tokens from this contract
+            IERC20(fromAsset).safeIncreaseAllowance(
+                RELAYER,
+                fromAssetAmount
+            );
+        }
 
-        // Once allowance is set, let's setPresignature and the order will happen
+        // sign the order on-chain so the order will happen
         SETTLEMENT.setPreSignature(orderUid, true);
     }
 
     /**
-     * @notice Initializes cow swap orders in bulk.
-     * @dev It invokes the `_initiateCowswapOrder` function for each order in the array.
-     * Emits the `SwapInitiated` event with the `orderUid` details for each  order.
-     * @param orderUids Array of order uids.
-     * @param ordersData Array of cow swap order data [{fromAsset, toAsset, fromAssetAmount, fromAssetFeeAmount}].
-     */
-    function _initiateCowswapOrder(bytes[] memory orderUids, CowSwapData[] calldata ordersData)
-        internal
-    {
-        require(ordersData.length == orderUids.length, "invalid input");
-        uint256 len = orderUids.length;
-        for (uint256 i = 0; i < len; ) {
-            _initiateCowswapOrder(orderUids[i], ordersData[i]);
-            // Increment index with low gas consumption, no need to check for overflow.
-            unchecked {
-                i += 1;
-            }
-        }
-    }
-
-    /**
-     * @notice Allows to cancel a cowswap order perhaps if it took too long or was with invalid parameters
+     * @notice Allows to cancel a cow swap order perhaps if it took too long or was with invalid parameters
      * @dev  This function performs no checks, there's a high change it will revert if you send it with fluff parameters
      * Emits the `SwapCancelled` event with the `orderUid`.
      * @param orderUid The order uid of the swap.
      */
     function _cancelCowSwapOrder(bytes memory orderUid) internal {
-        emit SwapCancelled(orderUid);
+        // IERC20(fromAsset).safeDecreaseAllowance(
+        //     RELAYER,
+        //     fromAssetAmount
+        // );
+
         SETTLEMENT.setPreSignature(orderUid, false);
+
+        emit SwapCancelled(orderUid);
     }
 
     /**
@@ -121,15 +89,5 @@ abstract contract CowSwapSeller {
                 i += 1;
             }
         }
-    }
-
-    /**
-     * @notice Settle a cowswap order by sending the tokens to the owner.
-     * @dev  emits the `SwapSettled` event with the `orderUid` details.
-     * @param orderUid The swap order uids
-     * @param tradeData The cow swap order data {owner, fromAsset, fromAssetAmount, fromAssetFeeAmount,toAsset , toAssetAmount }.
-     */
-    function _settleCowSwapOrder(bytes memory orderUid, CowSwapTrade memory tradeData) internal {
-        emit SwapSettled(orderUid, tradeData.toAsset, tradeData.toAssetAmount);
     }
 }

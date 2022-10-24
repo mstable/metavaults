@@ -4,12 +4,9 @@ pragma solidity 0.8.17;
 // External
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libs
-import { InitializableReentrancyGuard } from "../../shared/InitializableReentrancyGuard.sol";
 import { ImmutableModule } from "../../shared/ImmutableModule.sol";
-import { ICowSettlement } from "../../peripheral/Cowswap/ICowSettlement.sol";
 import { CowSwapSeller } from "../../peripheral/Cowswap/CowSwapSeller.sol";
 import { DexSwapData, IDexAsyncSwap } from "../../interfaces/IDexSwap.sol";
 
@@ -61,30 +58,24 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      */
     function _initiateSwap(DexSwapData memory swapData) internal {
         // unpack the CowSwap specific params from the generic swap.data field
-        (bytes memory orderUid, uint256 fromAssetFeeAmount, address receiver) = abi
-            .decode(swapData.data, (bytes, uint256, address));
+        (bytes memory orderUid, bool transfer) = abi
+            .decode(swapData.data, (bytes, bool));
 
-        // transfer in the fromAsset
-        require(
-            IERC20(swapData.fromAsset).balanceOf(msg.sender) >= swapData.fromAssetAmount,
-            "not enough from assets"
-        );
-        // Transfer rewards from the liquidator
-        IERC20(swapData.fromAsset).safeTransferFrom(
-            msg.sender,
-            address(this),
-            swapData.fromAssetAmount
-        );
+        if (transfer) {
+            // transfer in the fromAsset
+            require(
+                IERC20(swapData.fromAsset).balanceOf(msg.sender) >= swapData.fromAssetAmount,
+                "not enough from assets"
+            );
+            // Transfer rewards from the liquidator
+            IERC20(swapData.fromAsset).safeTransferFrom(
+                msg.sender,
+                address(this),
+                swapData.fromAssetAmount
+            );
+        }
 
-        CowSwapData memory orderData = CowSwapData({
-            fromAsset: swapData.fromAsset,
-            toAsset: swapData.toAsset,
-            receiver: receiver,
-            fromAssetAmount: swapData.fromAssetAmount - fromAssetFeeAmount,
-            fromAssetFeeAmount: fromAssetFeeAmount
-        });
-
-        _initiateCowswapOrder(orderUid, orderData);
+        _initiateCowswapOrder(orderUid, swapData.fromAsset, swapData.fromAssetAmount, transfer);
     }
 
     /**

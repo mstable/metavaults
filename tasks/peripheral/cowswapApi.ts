@@ -16,13 +16,13 @@ export interface CowSwapContext {
     deadline?: BN
     chainId: Chain
 }
-interface SellOrderParams {
+export interface SellOrderParams {
     fromAsset: string
     toAsset: string
     fromAssetAmount: BN
     receiver: string
 }
-interface PostOrderParams {
+export interface PostOrderParams {
     fromAsset: string
     toAsset: string
     fromAssetAmount: BN
@@ -30,14 +30,14 @@ interface PostOrderParams {
     toAssetAmountAfterFee: BN
     receiver: string
 }
-interface FeeAndQuote {
+export interface FeeAndQuote {
     fee: {
         amount: BN
         expirationDate: Date
     }
     buyAmountAfterFee: BN
 }
-interface QuoteOrder {
+export interface QuoteOrder {
     quote: {
         sellToken: string
         buyToken: string
@@ -158,18 +158,23 @@ export const getQuote = async (chainId: Chain, fromAsset: string, toAsset: strin
         sellAmountBeforeFee: fromAssetAmount.toString(),
     }
 
-    const response = await axios.post(quoteURL, quotePayload)
-    const quote = { ...response.data.quote }
-    quote.sellAmount = BN.from(quote.sellAmount)
-    quote.buyAmount = BN.from(quote.buyAmount)
-    quote.feeAmount = BN.from(quote.feeAmount)
+    try {
+        const response = await axios.post(quoteURL, quotePayload)
+        const quote = { ...response.data.quote }
 
-    const quoteOrder: QuoteOrder = {
-        ...response.data,
-        quote: { ...quote },
-        expiration: new Date(response.data.expiration), // Example '2022-07-05T14:54:43.359280952Z'
+        quote.sellAmount = BN.from(quote.sellAmount)
+        quote.buyAmount = BN.from(quote.buyAmount)
+        quote.feeAmount = BN.from(quote.feeAmount)
+
+        const quoteOrder: QuoteOrder = {
+            ...response.data,
+            quote: { ...quote },
+            expiration: new Date(response.data.expiration), // Example '2022-07-05T14:54:43.359280952Z'
+        }
+        return quoteOrder
+    } catch (err) {
+        throw Error(`Failed to post quote to CoW Swap`, { cause: err })
     }
-    return quoteOrder
 }
 /**
  * Gets the fee and quote the order
@@ -187,15 +192,19 @@ export const getFeeAndQuote = async (chainId: Chain, fromAsset: string, toAsset:
         buyToken: toAsset,
         sellAmountBeforeFee: fromAssetAmount.toString(),
     }
-    const response = await axios.get(feeAndQuoteURL, { params: feeAndQuoteParams })
-    const feeAndQuote: FeeAndQuote = {
-        fee: {
-            amount: BN.from(response.data.fee.amount),
-            expirationDate: new Date(response.data.fee.expirationDate), // Example '2022-07-05T14:54:43.359280952Z'
-        },
-        buyAmountAfterFee: BN.from(response.data.buyAmountAfterFee),
+    try {
+        const response = await axios.get(feeAndQuoteURL, { params: feeAndQuoteParams })
+        const feeAndQuote: FeeAndQuote = {
+            fee: {
+                amount: BN.from(response.data.fee.amount),
+                expirationDate: new Date(response.data.fee.expirationDate), // Example '2022-07-05T14:54:43.359280952Z'
+            },
+            buyAmountAfterFee: BN.from(response.data.buyAmountAfterFee),
+        }
+        return feeAndQuote
+    } catch (err) {
+        throw Error(`Failed to get fee and quote from CoW Swap`, { cause: err })
     }
-    return feeAndQuote
 }
 
 /**
@@ -215,15 +224,16 @@ const validateQuote = (feeAmount: BN, toAssetAmountAfterFee: BN) => {
  * @param {PostOrderParams} params
  * @return {Promise<string>} The order uid Unique identifier for the order: 56 bytes encoded as hex with 0x prefix. Bytes 0 to 32 are the order digest, bytes 30 to 52 the owner address and bytes 52..56 valid to,
  */
-async function postSellOrder(context: CowSwapContext, params: PostOrderParams): Promise<string> {
+export const postSellOrder = async (context: CowSwapContext, params: PostOrderParams): Promise<string> => {
     const { fromAsset, toAsset, fromAssetAmount, feeAmount, toAssetAmountAfterFee, receiver } = params
 
     // # Contract used to sign the order context.trader
-    const deadline = context.deadline.add(Math.floor(new Date().getTime() / 1000)).toNumber()
+    const currentUnixTime = Math.floor(new Date().getTime() / 1000)
+    const deadline = context.deadline.add(currentUnixTime).toNumber()
     const orderPayload = {
         sellToken: fromAsset,
         buyToken: toAsset,
-        sellAmount: fromAssetAmount.sub(feeAmount).toString(),
+        sellAmount: fromAssetAmount.toString(),
         buyAmount: toAssetAmountAfterFee.toString(),
         validTo: deadline,
         appData: DEFAULT_APP_DATA_HASH,
@@ -242,16 +252,18 @@ async function postSellOrder(context: CowSwapContext, params: PostOrderParams): 
         const response = await axios.post(ordersURL, orderPayload)
         if (!(response.status === 201 || response.status === 200)) throw new Error(response.statusText)
         const orderUid = response.data
-        log(`postSellOrder Order uid: ${orderUid}`)
+        log(`Order uid: ${orderUid}`)
         return orderUid
     } catch (err) {
         if (err?.response?.data?.description) {
             if (err?.response?.data?.errorType === "InsufficientFee") {
-                throw Error(`Failed to post order to CoW Swap with fee ${formatUnits(feeAmount)}: ${err.response.data.description}`)
+                throw Error(`Failed to post order to CoW Swap with fee ${formatUnits(feeAmount)}: ${err.response.data.description}`, {
+                    cause: err,
+                })
             }
-            throw Error(`Failed to post order to CoW Swap: ${err.response.data.description}`)
+            throw Error(`Failed to post order to CoW Swap: ${err.response.data.description}`, { cause: err })
         } else {
-            throw Error(`Failed to post order to CoW Swap`)
+            throw Error(`Failed to post order to CoW Swap`, { cause: err })
         }
     }
 }
@@ -278,6 +290,7 @@ export const placeSellOrder = async (
 
     // # placeSellOrder order
     const orderUid = await postSellOrder(context, { fromAsset, toAsset, fromAssetAmount, feeAmount, toAssetAmountAfterFee, receiver })
+
     return { orderUid, fromAssetFeeAmount: feeAmount, toAssetAmountAfterFee }
 }
 
@@ -309,6 +322,7 @@ const placeSellOrderLegacy = async (
  */
 export const getOrderDetails = async (context: CowSwapContext, orderUid: string) => {
     // https://api.cow.fi/mainnet/api/v1/trades?orderUid=0xc21b7756caf1f6df13e9947767204620371ca791a4b91db8620f04905d25b608e0b3700e0aadcb18ed8d4bff648bc99896a18ad160ef0bca
+    // https://api.cow.fi/mainnet/api/v1/orders/0xef86243d05ef15b02484dff412699997360173d88e49cc1c55c6c68a6eb8e5ad86f800375b525300ad609644068a0753bf8de1e26353d6eb
     const tradesURL = getTradesURL(context.chainId)
     const tradesParams = { orderUid }
     // One order can be filled with multiple trades

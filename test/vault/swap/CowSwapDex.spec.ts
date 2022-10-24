@@ -103,7 +103,6 @@ describe("CowSwapDex", () => {
         fromAssetAmount: tradeData.fromAssetAmount,
     })
     const toSwapData = async (orderUid: string, tradeData: DexTradeData) => {
-        const fromAssetFeeAmount = reward1Total.div(1000)
         const fromAsset = MockERC20__factory.connect(tradeData.fromAsset, sa.keeper.signer)
         const fromAssetAmount = await fromAsset.balanceOf(cowSwapDex.address)
         return {
@@ -112,7 +111,7 @@ describe("CowSwapDex", () => {
             toAsset: tradeData.toAsset,
             minToAssetAmount: BN.from(0),
             //                     encodeSettleSwap
-            data: encodeInitiateSwap(orderUid, fromAssetFeeAmount, sa.keeper.address),
+            data: encodeInitiateSwap(orderUid),
         }
     }
     async function simulateAsyncSwap(swaps: Array<DexSwapData>) {
@@ -149,7 +148,6 @@ describe("CowSwapDex", () => {
 
     // Off-chain creates orders => Liquidator / Keeper perform on-chain swaps
     describe("swap single order", async () => {
-        const fromAssetFeeAmount = reward1Total.div(1000)
         let swapData: DexSwapData
         before(async () => {
             swapData = {
@@ -157,7 +155,7 @@ describe("CowSwapDex", () => {
                 fromAssetAmount: reward1Total.div(10),
                 toAsset: asset1.address,
                 minToAssetAmount: asset1Total.div(10),
-                data: encodeInitiateSwap(orderUid1, fromAssetFeeAmount, sa.keeper.address),
+                data: encodeInitiateSwap(orderUid1),
             }
         })
         it("reward to asset", async () => {
@@ -192,7 +190,7 @@ describe("CowSwapDex", () => {
                 const wrongSwapData = {
                     ...swapData,
                     fromAssetAmount: fromAssetAmount.add(1),
-                    data: encodeInitiateSwap(orderUid1, fromAssetFeeAmount, sa.keeper.address),
+                    data: encodeInitiateSwap(orderUid1),
                 }
                 await expect(cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](wrongSwapData), "!balance").to.be.revertedWith(
                     "not enough from assets",
@@ -202,7 +200,6 @@ describe("CowSwapDex", () => {
     })
 
     describe("swap batch orders", async () => {
-        const fromAssetFeeAmount = reward2Total.div(1000)
         const swapsData: Array<DexSwapData> = []
 
         before(async () => {
@@ -211,14 +208,14 @@ describe("CowSwapDex", () => {
                 fromAssetAmount: reward2Total.div(10),
                 toAsset: asset2.address,
                 minToAssetAmount: asset2Total.div(10),
-                data: encodeInitiateSwap(orderUid2, fromAssetFeeAmount, sa.keeper.address),
+                data: encodeInitiateSwap(orderUid2),
             }
             const swapData3 = {
                 fromAsset: rewards3.address,
                 fromAssetAmount: reward3Total.div(10),
                 toAsset: asset3.address,
                 minToAssetAmount: asset3Total.div(10),
-                data: encodeInitiateSwap(orderUid3, fromAssetFeeAmount, sa.keeper.address),
+                data: encodeInitiateSwap(orderUid3),
             }
             swapsData.push(swapData2)
             swapsData.push(swapData3)

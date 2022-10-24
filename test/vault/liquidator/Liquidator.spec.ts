@@ -1,4 +1,4 @@
-import { ZERO, ZERO_ADDRESS } from "@utils/constants"
+import { ZERO_ADDRESS } from "@utils/constants"
 import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -663,7 +663,6 @@ describe("Liquidator", async () => {
         it("from single vault with single reward", async () => {
             await setup()
             const asset1Amount = vault3reward1.mul(2)
-            const fromAssetFeeAmount = ZERO // zero fee to simplify test
             await rewards1.transfer(vault3.address, vault3reward1)
             await liquidator.collectRewards([vault3.address])
             const swapFromReward1ToAsset1: DexSwapData = {
@@ -671,7 +670,7 @@ describe("Liquidator", async () => {
                 fromAssetAmount: vault3reward1,
                 toAsset: asset1.address,
                 minToAssetAmount: asset1Amount,
-                data: encodeInitiateSwap("0x3132333431", fromAssetFeeAmount, liquidator.address),
+                data: encodeInitiateSwap("0x3132333431"),
             }
             const pendingRewardsBefore = await liquidator.pendingRewards(rewards1.address, asset1.address)
             await verifyAsyncSwap(swapFromReward1ToAsset1)
@@ -711,7 +710,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: rewardsAmount,
                     toAsset: asset1.address,
                     minToAssetAmount: asset1Amount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwaps([swapFromReward1ToAsset1])
 
@@ -754,7 +753,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: rewardsAmount,
                     toAsset: asset2.address,
                     minToAssetAmount: asset2Amount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwap(swapFromReward1ToAsset2)
 
@@ -781,7 +780,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: rewardsAmount,
                     toAsset: asset1.address,
                     minToAssetAmount: asset1Amount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwap(swapFromReward2ToAsset1)
 
@@ -829,7 +828,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: (await liquidator.pendingRewards(rewards1.address, asset1.address)).rewards,
                     toAsset: asset1.address,
                     minToAssetAmount: reward1Amount.mul(2),
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 const swapFromReward2ToAsset1 = {
                     ...swapFromReward1ToAsset1,
@@ -877,7 +876,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: rewardsAmount,
                     toAsset: asset1.address,
                     minToAssetAmount: assetAmount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwap(swap)
                 const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
@@ -909,7 +908,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: rewardsAmount,
                     toAsset: asset2.address,
                     minToAssetAmount: assetAmount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwap(swap)
                 const pending = await liquidator.pendingRewards(rewards1.address, asset2.address)
@@ -948,7 +947,7 @@ describe("Liquidator", async () => {
                     fromAssetAmount: (await liquidator.pendingRewards(rewards1.address, asset1.address)).rewards,
                     toAsset: asset1.address,
                     minToAssetAmount: asset1Amount,
-                    data: encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
+                    data: encodeInitiateSwap("0x3132333431"),
                 }
                 await verifyAsyncSwap(swap)
                 const tx = liquidator.connect(sa.keeper.signer).initiateSwap(rewards1.address, asset1.address, swap.data)
@@ -981,12 +980,7 @@ describe("Liquidator", async () => {
             it("settleSwap no reward", async () => {
                 const tx = liquidator
                     .connect(sa.keeper.signer)
-                    .settleSwap(
-                        rewards1.address,
-                        asset1.address,
-                        asset1Amount,
-                        encodeInitiateSwap("0x3132333431", ZERO, liquidator.address),
-                    )
+                    .settleSwap(rewards1.address, asset1.address, asset1Amount, encodeInitiateSwap("0x3132333431"))
                 await expect(tx).to.revertedWith(ERROR.NO_PENDING_REWARDS)
             })
             it("settleSwaps not keep or governor", async () => {
