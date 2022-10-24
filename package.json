@@ -23,7 +23,7 @@
         "lint:fix": "yarn pretty-quick --pattern '**/*.*(sol|json)' --staged --verbose && yarn pretty-quick --staged --write tasks/**/*.ts test/**/*.ts types/*.ts",
         "lint-ts": "yarn eslint tasks/ test/ types/ --ext .ts --fix",
         "lint-sol": "solhint 'contracts/**/*.sol'",
-        "clean": "yarn hardhat clean && rm -rf types/generated dist coverage abis artifacts",
+        "clean": "yarn hardhat clean && rm -rf types/generated dist dist-web coverage abis artifacts",
         "compile-abis": "yarn hardhat export-abi --no-compile && typechain --target=ethers-v5 --out-dir types/generated \"?(contracts|artifacts)/!(build-info)/**/+([a-zA-Z0-9]).json\"",
         "compile-ts": "npx tsc",
         "compile-sol": "yarn hardhat compile --no-typechain",
