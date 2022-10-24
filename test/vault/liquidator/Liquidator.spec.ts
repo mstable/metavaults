@@ -387,6 +387,12 @@ describe("Liquidator", async () => {
             expect(event.args.purchaseTokens[1][2], "purchase token vault2 rewards 3").to.eq(asset2.address)
             expect(event.args.purchaseTokens[2][0], "purchase token vault3 rewards 1").to.eq(asset1.address)
         })
+        describe("failed as", () => {
+            it("not keep or governor", async () => {
+                const tx = liquidator.connect(sa.default.signer).collectRewards([vault3.address])
+                await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
+            })
+        })
     })
     describe("sync swap rewards for assets", () => {
         it("before rewards are collected", async () => {
@@ -1407,6 +1413,52 @@ describe("Liquidator", async () => {
 
             await rewards4.transfer(vault1.address, simpleToExactAmount(100, 24))
             await liquidator.collectRewards([vault3.address])
+        })
+    })
+
+    describe("rescueToken", async () => {
+        async function verifyRescueToken(signer: Signer, asset: MockERC20, amount: BN) {
+            const to = await nexus.governor()
+            const toBalanceBefore = await asset.balanceOf(to)
+            const liquidatorBalanceBefore = await asset.balanceOf(liquidator.address)
+            const tx = await liquidator.connect(signer).rescueToken(asset.address, amount)
+            // Verify events, storage change, balance, etc.
+            await expect(tx).to.emit(asset, "Transfer").withArgs(liquidator.address, to, amount)
+            expect(await asset.balanceOf(liquidator.address), "dex assets balance decreased").to.equal(liquidatorBalanceBefore.sub(amount))
+            expect(await asset.balanceOf(to), "to assets balance increased").to.equal(toBalanceBefore.add(amount))
+        }
+        // await asset1.connect(sa.keeper.signer).transfer(relayer.address, asset1Total)
+        it("sends tokens to the liquidator", async () => {
+            asset1.transfer(liquidator.address, simpleToExactAmount(100))
+            asset2.transfer(liquidator.address, simpleToExactAmount(100))
+        })
+
+        it("rescue multiple tokens", async () => {
+            const dexAssetsBalBefore = []
+            dexAssetsBalBefore.push(await asset1.balanceOf(liquidator.address))
+            dexAssetsBalBefore.push(await asset2.balanceOf(liquidator.address))
+
+            await verifyRescueToken(sa.governor.signer, asset1, dexAssetsBalBefore[0])
+            await verifyRescueToken(sa.governor.signer, asset2, dexAssetsBalBefore[1])
+        })
+        describe("fails", async () => {
+            it("if caller is not governor", async () => {
+                await expect(liquidator.connect(sa.default.signer).rescueToken(asset1.address, BN.from(1)), "!caller").to.be.revertedWith(
+                    ERROR.ONLY_GOVERNOR,
+                )
+            })
+            it("if caller is keeper", async () => {
+                await expect(liquidator.connect(sa.keeper.signer).rescueToken(asset1.address, BN.from(1)), "!caller").to.be.revertedWith(
+                    ERROR.ONLY_GOVERNOR,
+                )
+            })
+            it("if amount is gt balance", async () => {
+                const balance = await asset1.balanceOf(liquidator.address)
+                await expect(
+                    liquidator.connect(sa.governor.signer).rescueToken(asset1.address, balance.add(1)),
+                    "!caller",
+                ).to.be.revertedWith("ERC20: transfer amount exceeds balance")
+            })
         })
     })
 })

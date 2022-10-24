@@ -11,7 +11,7 @@ import { ICowSettlement } from "../../peripheral/Cowswap/ICowSettlement.sol";
 import { DexSwapData, IDexAsyncSwap } from "../../interfaces/IDexSwap.sol";
 
 /**
- * @title   CowSwapDex allows to swap tokens between via CowSwap.
+ * @title   CowSwapDex allows to swap tokens via CowSwap.
  * @author  mStable
  * @notice
  * @dev     VERSION: 1.0

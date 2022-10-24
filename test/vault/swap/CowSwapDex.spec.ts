@@ -139,6 +139,22 @@ describe("CowSwapDex", () => {
             expect(await cowSwapDex.SETTLEMENT()).to.equal(settlement.address)
         })
     })
+    describe("token approvals", async () => {
+        it("approves token for RELAYER", async () => {
+            await cowSwapDex.connect(sa.governor.signer).approveToken(rewards1.address)
+            expect(await rewards1.allowance(cowSwapDex.address, relayer.address)).to.be.eq(ethers.constants.MaxUint256)
+        })
+        it("revokes approval for RELAYER", async () => {
+            await cowSwapDex.connect(sa.governor.signer).revokeToken(rewards1.address)
+            expect(await rewards1.allowance(cowSwapDex.address, relayer.address)).to.be.eq(0)
+        })
+        it("approves token fails if caller is not governor", async () => {
+            await expect(cowSwapDex.connect(sa.alice.signer).approveToken(rewards1.address)).to.be.revertedWith("Only governor can execute")
+        })
+        it("revokes token fails if caller is not governor", async () => {
+            await expect(cowSwapDex.connect(sa.alice.signer).revokeToken(rewards1.address)).to.be.revertedWith("Only governor can execute")
+        })
+    })
 
     // Off-chain creates orders => Liquidator / Keeper perform on-chain swaps
     describe("swap single order", async () => {
@@ -152,7 +168,7 @@ describe("CowSwapDex", () => {
                 data: encodeInitiateSwap(orderUid1),
             }
         })
-        it("reward to asset", async () => {
+        it("reward to asset - transfer tokens", async () => {
             // Given
             const keeperRewards1BalBefore = await rewards1.balanceOf(sa.keeper.address)
             const dexRewards1BalBefore = await rewards1.balanceOf(cowSwapDex.address)
@@ -171,6 +187,30 @@ describe("CowSwapDex", () => {
             expect(await rewards1.balanceOf(cowSwapDex.address), "dex asset balance increase").to.equal(
                 dexRewards1BalBefore.add(swapData.fromAssetAmount),
             )
+            expect(await asset1.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets1BalBefore)
+        })
+        it("reward to asset - does not transfer tokens", async () => {
+            // Given
+            const keeperRewards1BalBefore = await rewards1.balanceOf(sa.keeper.address)
+            const dexRewards1BalBefore = await rewards1.balanceOf(cowSwapDex.address)
+            const keeperAssets1BalBefore = await asset1.balanceOf(sa.keeper.address)
+            swapData = {
+                fromAsset: rewards1.address,
+                fromAssetAmount: reward1Total.div(10),
+                toAsset: asset1.address,
+                minToAssetAmount: asset1Total.div(10),
+                data: encodeInitiateSwap(orderUid1, false),
+            }
+
+            // Test
+            const tx = await cowSwapDex.connect(sa.keeper.signer).initiateSwap(swapData)
+
+            // Verify events, storage change, balance, etc.
+            await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid1, true)
+
+            // As the swap is async only "fromAsset" is updated
+            expect(await rewards1.balanceOf(sa.keeper.address), "msg.sender does not send rewards to dex").to.equal(keeperRewards1BalBefore)
+            expect(await rewards1.balanceOf(cowSwapDex.address), "dex asset balance does not increase").to.equal(dexRewards1BalBefore)
             expect(await asset1.balanceOf(sa.keeper.address), "keeper assets does not change").to.equal(keeperAssets1BalBefore)
         })
         describe("fails", async () => {
