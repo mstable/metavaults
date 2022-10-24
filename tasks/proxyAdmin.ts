@@ -115,8 +115,8 @@ task("proxy-upgrades", "Lists all proxy implementation changes")
 
         console.log(`${assetToken.symbol} proxy ${assetToken.address}`)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        logs.forEach((log: any) => {
-            console.log(`Upgraded at block ${log.blockNumber} to ${log.args.implementation} in tx in ${log.blockHash}`)
+        logs.forEach((eventLog: any) => {
+            console.log(`Upgraded at block ${eventLog.blockNumber} to ${eventLog.args.implementation} in tx in ${eventLog.blockHash}`)
         })
     })
 
