@@ -13,12 +13,6 @@ const DEX_SWAP_DATA = "(address,uint256,address,uint256,bytes)"
 
 const SETTLE_SWAP_SINGLE = `settleSwap(${DEX_SWAP_DATA})`
 
-const CANCEL_SINGLE_ORDER = "cancelSwap(bytes)"
-const CANCEL_BATCH_ORDER = "cancelSwap(bytes[])"
-
-const INITIATE_SWAP_SINGLE = `initiateSwap(${DEX_SWAP_DATA})`
-const INITIATE_SWAP_BATCH = `initiateSwap(${DEX_SWAP_DATA}[])`
-
 describe("CowSwapDex", () => {
     /* -- Declare shared variables -- */
     let sa: StandardAccounts
@@ -165,7 +159,7 @@ describe("CowSwapDex", () => {
             const keeperAssets1BalBefore = await asset1.balanceOf(sa.keeper.address)
 
             // Test
-            const tx = await cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](swapData)
+            const tx = await cowSwapDex.connect(sa.keeper.signer).initiateSwap(swapData)
 
             // Verify events, storage change, balance, etc.
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid1, true)
@@ -181,7 +175,7 @@ describe("CowSwapDex", () => {
         })
         describe("fails", async () => {
             it("if caller is not keeper or liquidator", async () => {
-                await expect(cowSwapDex.connect(sa.default.signer)[INITIATE_SWAP_SINGLE](swapData), "!auth").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.default.signer).initiateSwap(swapData), "!auth").to.be.revertedWith(
                     "Only keeper or liquidator",
                 )
             })
@@ -192,7 +186,7 @@ describe("CowSwapDex", () => {
                     fromAssetAmount: fromAssetAmount.add(1),
                     data: encodeInitiateSwap(orderUid1),
                 }
-                await expect(cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_SINGLE](wrongSwapData), "!balance").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.keeper.signer).initiateSwap(wrongSwapData), "!balance").to.be.revertedWith(
                     "not enough from assets",
                 )
             })
@@ -232,7 +226,7 @@ describe("CowSwapDex", () => {
             const keeperAssets3BalBefore = await asset3.balanceOf(sa.keeper.address)
 
             // Test
-            const tx = await cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_BATCH](swapsData)
+            const tx = await cowSwapDex.connect(sa.keeper.signer).initiateSwaps(swapsData)
 
             // Verify events, storage change, balance, etc.
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid2, true)
@@ -257,14 +251,14 @@ describe("CowSwapDex", () => {
         })
         describe("fails", async () => {
             it("if caller is not keeper or liquidator", async () => {
-                await expect(cowSwapDex.connect(sa.default.signer)[INITIATE_SWAP_BATCH]([]), "!auth").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.default.signer).initiateSwaps([]), "!auth").to.be.revertedWith(
                     "Only keeper or liquidator",
                 )
             })
             it("if balance is not enough", async () => {
                 const wrongSwapData = { ...swapsData[0], fromAssetAmount: await (await rewards2.balanceOf(sa.keeper.address)).add(1) }
                 const wrongSwapsData = [wrongSwapData]
-                await expect(cowSwapDex.connect(sa.keeper.signer)[INITIATE_SWAP_BATCH](wrongSwapsData), "!balance").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.keeper.signer).initiateSwaps(wrongSwapsData), "!balance").to.be.revertedWith(
                     "not enough from assets",
                 )
             })
@@ -305,14 +299,13 @@ describe("CowSwapDex", () => {
         const orderUid = "0x12345678"
 
         it("should cancel swap order", async () => {
-            const tx = await cowSwapDex.connect(sa.keeper.signer)[CANCEL_SINGLE_ORDER](orderUid)
+            const tx = await cowSwapDex.connect(sa.keeper.signer).cancelSwap(orderUid)
             // Verify events, storage change, balance, etc.
-            await expect(tx).to.emit(cowSwapDex, "SwapCancelled").withArgs(orderUid)
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid, false)
         })
         describe("fails", async () => {
             it("if caller is not keeper or liquidator", async () => {
-                await expect(cowSwapDex.connect(sa.default.signer)[CANCEL_SINGLE_ORDER](orderUid), "!auth").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.default.signer).cancelSwap(orderUid), "!auth").to.be.revertedWith(
                     "Only keeper or liquidator",
                 )
             })
@@ -324,14 +317,13 @@ describe("CowSwapDex", () => {
         const orderUids = [orderUid]
 
         it("cancelSwap should ...", async () => {
-            const tx = await cowSwapDex.connect(sa.keeper.signer)[CANCEL_BATCH_ORDER](orderUids)
+            const tx = await cowSwapDex.connect(sa.keeper.signer).cancelSwaps(orderUids)
             // Verify events, storage change, balance, etc.
-            await expect(tx).to.emit(cowSwapDex, "SwapCancelled").withArgs(orderUid)
             await expect(tx).to.emit(settlement, "PreSignature").withArgs(cowSwapDex.address, orderUid, false)
         })
         describe("fails", async () => {
             it("if caller is not keeper or liquidator", async () => {
-                await expect(cowSwapDex.connect(sa.default.signer)[CANCEL_BATCH_ORDER](orderUids), "!auth").to.be.revertedWith(
+                await expect(cowSwapDex.connect(sa.default.signer).cancelSwaps(orderUids), "!auth").to.be.revertedWith(
                     "Only keeper or liquidator",
                 )
             })

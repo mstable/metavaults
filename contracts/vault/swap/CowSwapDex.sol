@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 // Libs
 import { ImmutableModule } from "../../shared/ImmutableModule.sol";
-import { CowSwapSeller } from "../../peripheral/Cowswap/CowSwapSeller.sol";
+import { ICowSettlement } from "../../peripheral/Cowswap/ICowSettlement.sol";
 import { DexSwapData, IDexAsyncSwap } from "../../interfaces/IDexSwap.sol";
 
 /**
@@ -17,8 +17,17 @@ import { DexSwapData, IDexAsyncSwap } from "../../interfaces/IDexSwap.sol";
  * @dev     VERSION: 1.0
  *          DATE:    2022-06-17
  */
-contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
+contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
     using SafeERC20 for IERC20;
+
+    /// @notice Contract GPv2VaultRelayer to give allowance to perform swaps
+    address public immutable RELAYER;
+
+    /// @notice GPv2Settlement contract
+    ICowSettlement public immutable SETTLEMENT;
+
+    /// @notice Event emitted when a order is cancelled.
+    event SwapCancelled(bytes indexed orderUid);
 
     /**
      * @param _nexus  Address of the Nexus contract that resolves protocol modules and roles.
@@ -29,7 +38,9 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
         address _nexus,
         address _relayer,
         address _settlement
-    ) CowSwapSeller(_relayer, _settlement) ImmutableModule(_nexus) {
+    ) ImmutableModule(_nexus) {
+        RELAYER = _relayer;
+        SETTLEMENT = ICowSettlement(_settlement);
     }
 
     /**
@@ -58,8 +69,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      */
     function _initiateSwap(DexSwapData memory swapData) internal {
         // unpack the CowSwap specific params from the generic swap.data field
-        (bytes memory orderUid, bool transfer) = abi
-            .decode(swapData.data, (bytes, bool));
+        (bytes memory orderUid, bool transfer) = abi.decode(swapData.data, (bytes, bool));
 
         if (transfer) {
             // transfer in the fromAsset
@@ -75,7 +85,8 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
             );
         }
 
-        _initiateCowswapOrder(orderUid, swapData.fromAsset, swapData.fromAssetAmount, transfer);
+        // sign the order on-chain so the order will happen
+        SETTLEMENT.setPreSignature(orderUid, true);
     }
 
     /**
@@ -93,7 +104,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      * @dev Orders must be created off-chain.
      * @param swapsData Array of swap data {fromAsset, toAsset, fromAssetAmount, fromAssetFeeAmount, data}.
      */
-    function initiateSwap(DexSwapData[] calldata swapsData) external onlyKeeperOrLiquidator {
+    function initiateSwaps(DexSwapData[] calldata swapsData) external onlyKeeperOrLiquidator {
         uint256 len = swapsData.length;
         for (uint256 i = 0; i < len; ) {
             _initiateSwap(swapsData[i]);
@@ -119,7 +130,7 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      * @param orderUid The order uid of the swap.
      */
     function cancelSwap(bytes calldata orderUid) external override onlyKeeperOrLiquidator {
-        _cancelCowSwapOrder(orderUid);
+        SETTLEMENT.setPreSignature(orderUid, false);
     }
 
     /**
@@ -128,8 +139,33 @@ contract CowSwapDex is CowSwapSeller, ImmutableModule, IDexAsyncSwap {
      * For each order uid it emits the `SwapCancelled` event with the `orderUid`.
      * @param orderUids Array of swaps order uids
      */
-    function cancelSwap(bytes[] calldata orderUids) external onlyKeeperOrLiquidator {
-        _cancelCowSwapOrder(orderUids);
+    function cancelSwaps(bytes[] calldata orderUids) external onlyKeeperOrLiquidator {
+        uint256 len = orderUids.length;
+        for (uint256 i = 0; i < len; ) {
+            SETTLEMENT.setPreSignature(orderUids[i], false);
+            // Increment index with low gas consumption, no need to check for overflow.
+            unchecked {
+                i += 1;
+            }
+        }
+    }
+
+    /**
+     * @notice Approves a token to be sold using cow swap.
+     * @dev this approves the cow swap router to transfer the specified token from this contract.
+     * @param token Address of the token that is to be sold.
+     */
+    function approveToken(address token) external onlyGovernor {
+        IERC20(token).safeApprove(RELAYER, type(uint256).max);
+    }
+
+    /**
+     * @notice Revokes cow swap from selling a token.
+     * @dev this removes the allowance for the cow swap router to transfer the specified token from this contract.
+     * @param token Address of the token that is to no longer be sold.
+     */
+    function revokeToken(address token) external onlyGovernor {
+        IERC20(token).safeApprove(RELAYER, 0);
     }
 
     /**

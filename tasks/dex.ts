@@ -179,10 +179,10 @@ task("dex-init-swap", "Initiates a CoW Swap swap")
             fromAssetAmount: sellAmount,
             toAsset: buyToken.address,
             minToAssetAmount: toAssetAmountAfterFee,
-            data: data,
+            data,
         }
 
-        const tx = await cowSwapDex.connect(signer)["initiateSwap((address,uint256,address,uint256,bytes))"](swapData)
+        const tx = await cowSwapDex.initiateSwap(swapData)
         await logTxDetails(tx, `cowSwapDex.initiateSwap`)
     })
 

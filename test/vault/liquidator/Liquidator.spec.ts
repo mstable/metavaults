@@ -110,6 +110,9 @@ describe("Liquidator", async () => {
             gpv2Mocks.gpv2VaultRelayer.address,
             gpv2Mocks.gpv2Settlement.address,
         )
+        await asyncSwapper.connect(sa.governor.signer).approveToken(rewards1.address)
+        await asyncSwapper.connect(sa.governor.signer).approveToken(rewards2.address)
+        await asyncSwapper.connect(sa.governor.signer).approveToken(rewards3.address)
         await relayer.initialize(exchanges)
     }
     const setup = async () => {
