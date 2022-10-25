@@ -6,7 +6,7 @@ import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, IERC20Metadata__factory, OneInchDexSwap__factory } from "types/generated"
 
-import { getFeeAndQuote, getQuote, postSellOrder } from "./peripheral/cowswapApi"
+import { getFeeAndQuote, getOrder, getQuote, postSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
@@ -57,27 +57,29 @@ export async function deployOneInchDex(hre: HardhatRuntimeEnvironment, signer: S
 task("cowswap-fee-quote", "@deprecated Calls CowSwap api to get the fee and quote of an order ")
     .addParam("from", "Token symbol or address of the asset to sell", undefined, types.string)
     .addParam("to", "Token symbol or address of the asset to buy", undefined, types.string)
-    .addParam("fromAmount", "Amount of the asset to sell", undefined, types.float)
+    .addParam("amount", "Amount of the asset to sell", undefined, types.float)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { from, fromAmount, to } = taskArgs
+        const { from, amount, to } = taskArgs
         const chain = getChain(hre)
+        const signer = await getSigner(hre)
 
-        const sellTokenAddress = resolveAddress(from, chain)
-        const buyTokenAddress = resolveAddress(to, chain)
-        const sellAmount = simpleToExactAmount(fromAmount)
+        const sellToken = await resolveAssetToken(signer, chain, from)
+        const buyToken = await resolveAssetToken(signer, chain, to)
+        const sellAmount = simpleToExactAmount(amount)
 
-        const feeQuote = await getFeeAndQuote(chain, sellTokenAddress, buyTokenAddress, sellAmount)
+        const response = await getFeeAndQuote(chain, sellToken.address, buyToken.address, sellAmount)
 
-        log(`cowswap-fee-quote
-                    fromAsset:${sellTokenAddress}     toAsset:${buyTokenAddress}
-                    fromAssetAmount:${fromAmount}    buyAmountAfterFee:${feeQuote.buyAmountAfterFee}
-                    feeAmount:${feeQuote.fee.amount}   feeExpirationDate:${feeQuote.fee.expirationDate}`)
+        log(`CoW Swap fee quote`)
+        log(`from amount: ${formatUnits(sellAmount, sellToken.decimals)} ${sellToken.symbol}`)
+        log(`fee        : ${formatUnits(response.fee.amount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`buy amount : ${formatUnits(response.buyAmountAfterFee, buyToken.decimals)} ${buyToken.symbol}`)
+        log(`rate       : ${formatUnits(response.buyAmountAfterFee.mul(10000).div(sellAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
     })
 
 // Example  sell WETH => USDC
 // yarn task cowswap-quote --from  WETH --to USDC --from--amount 1000
-task("cowswap-quote", "Calls CowSwap api to get the fee and quote of an order")
+task("cowswap-quote", "Get CoW Swap quote and fee for a swap")
     .addParam("from", "Token symbol or address of the asset to sell", undefined, types.string)
     .addParam("to", "Token symbol or address of the asset to buy", undefined, types.string)
     .addParam("amount", "Amount of from tokens to sell", undefined, types.float)
@@ -88,19 +90,55 @@ task("cowswap-quote", "Calls CowSwap api to get the fee and quote of an order")
 
         const sellToken = await resolveAssetToken(signer, chain, from)
         const buyToken = await resolveAssetToken(signer, chain, to)
-        const sellAmount = simpleToExactAmount(amount)
+        const fromAmount = simpleToExactAmount(amount)
 
-        const response = await getQuote(chain, sellToken.address, buyToken.address, sellAmount)
+        const response = await getQuote(chain, sellToken.address, buyToken.address, fromAmount)
 
         log(`CoW Swap quote`)
-        log(`from amount: ${formatUnits(sellAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`from amount: ${formatUnits(fromAmount, sellToken.decimals)} ${sellToken.symbol}`)
         log(`sell amount: ${formatUnits(response.quote.sellAmount, sellToken.decimals)} ${sellToken.symbol}`)
         log(`fee        : ${formatUnits(response.quote.feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
         log(`buy amount : ${formatUnits(response.quote.buyAmount, buyToken.decimals)} ${buyToken.symbol}`)
-        log(`rate       : ${formatUnits(response.quote.buyAmount.mul(10000).div(sellAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
+        log(`rate       : ${formatUnits(response.quote.buyAmount.mul(10000).div(fromAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
     })
 
-task("dex-init-swap", "Initiates a CoW Swap swap")
+task("cowswap-status", "Get CoW Swap order status")
+    .addParam("uid", "CoW Swap unique order identifier", undefined, types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const signer = await getSigner(hre)
+
+        const response = await getOrder(chain, taskArgs.uid)
+
+        const sellToken = await resolveAssetToken(signer, chain, response.sellToken)
+        const buyToken = await resolveAssetToken(signer, chain, response.buyToken)
+        const fromAmount = response.sellAmount.add(response.feeAmount)
+
+        log(`CoW Swap order`)
+        log(`status     : ${response.status}`)
+        log(`from amount: ${formatUnits(fromAmount, sellToken.decimals)} ${sellToken.symbol}`)
+        log(`sell amount: ${formatUnits(response.sellAmount, sellToken.decimals)} ${sellToken.symbol}`)
+        log(`fee        : ${formatUnits(response.feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+        log(`buy amount : ${formatUnits(response.buyAmount, buyToken.decimals)} ${buyToken.symbol}`)
+        log(`rate       : ${formatUnits(response.buyAmount.mul(10000).div(fromAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
+    })
+
+task("cowswap-cancel", "Get CoW Swap order status")
+    .addParam("uid", "CoW Swap unique order identifier", undefined, types.string)
+    .addOptionalParam("dex", "Contract name or address CoW Swap will get the sell tokens from.", "CowSwapDex", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { uid, dex, speed } = taskArgs
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const cowSwapDexAddress = resolveAddress(dex, chain)
+        const cowSwapDex = CowSwapDex__factory.connect(cowSwapDexAddress, signer)
+
+        const tx = await cowSwapDex.cancelSwap(uid)
+        await logTxDetails(tx, `cancel swap`)
+    })
+
+subtask("cowswap-init-swap", "Initiates a CoW Swap swap")
     .addParam("from", "Token symbol or address of the assets to sell.", undefined, types.string)
     .addParam("to", "Token symbol or address of the assets to buy.", undefined, types.string)
     .addParam("amount", "Amount of from tokens to sell.", undefined, types.float)
@@ -185,8 +223,11 @@ task("dex-init-swap", "Initiates a CoW Swap swap")
         const tx = await cowSwapDex.initiateSwap(swapData)
         await logTxDetails(tx, `cowSwapDex.initiateSwap`)
     })
+task("cowswap-init-swap").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
 
-task("dex-rescue-token", "Rescues tokens from the CowSwapDex and sends it to governor")
+task("cowswap-rescue-token", "Rescues tokens from the CowSwapDex and sends it to governor")
     .addParam("asset", "Token symbol or address of the asset to retrieve", undefined, types.string)
     .addOptionalParam("amount", "Amount of tokens to rescue. Defaults to all assets.", undefined, types.float)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
@@ -208,7 +249,7 @@ task("dex-rescue-token", "Rescues tokens from the CowSwapDex and sends it to gov
         await cowSwapDex.rescueToken(token.address, rescueAmount)
     })
 
-subtask("cow-swap-dex-deploy", "Deploys a new CowSwapDex contract")
+subtask("cowswap-deploy", "Deploys a new CowSwapDex contract")
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
     .setAction(async (taskArgs, hre) => {
@@ -220,12 +261,12 @@ subtask("cow-swap-dex-deploy", "Deploys a new CowSwapDex contract")
 
         return deployCowSwapDex(hre, signer, nexusAddress)
     })
-task("cow-swap-dex-deploy").setAction(async (_, __, runSuper) => {
+task("cowswap-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
 
 // One Inch Dex
-subtask("one-inch-dex-deploy", "Deploys a new CowSwapDex contract")
+subtask("oneinch-dex-deploy", "Deploys a new CowSwapDex contract")
     .addOptionalParam("router", "OneInch Router address override", "OneInchAggregationRouterV4", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "average", types.string)
     .setAction(async (taskArgs, hre) => {
@@ -234,11 +275,11 @@ subtask("one-inch-dex-deploy", "Deploys a new CowSwapDex contract")
 
         return deployOneInchDex(hre, signer, router)
     })
-task("one-inch-dex-deploy").setAction(async (_, __, runSuper) => {
+task("oneinch-dex-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
 
-task("one-inch-quote", "Calls OneInch api to get the fee and quote of an order")
+task("oneinch-quote", "Calls OneInch api to get the fee and quote of an order")
     .addParam("from", "Token symbol or address of the assets to sell", undefined, types.string)
     .addParam("to", "Token symbol or address of the assets to buy", undefined, types.string)
     .addParam("fromAmount", "Amount of the asset to sell", undefined, types.float)
@@ -261,5 +302,5 @@ task("one-inch-quote", "Calls OneInch api to get the fee and quote of an order")
             toTokenAddress: buyTokenAddress,
             amount: sellAmount.toString(),
         })
-        log(`one-inch-fee-quote fromAsset: ${sellTokenAddress}     toAsset: ${buyTokenAddress}  toAssetAmount: ${toAssetAmount} `)
+        log(`oneinch-fee-quote fromAsset: ${sellTokenAddress}     toAsset: ${buyTokenAddress}  toAssetAmount: ${toAssetAmount} `)
     })

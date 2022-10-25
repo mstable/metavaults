@@ -525,14 +525,14 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     }
 
     /**
-     * @notice Swap the collected rewards to desired asset.
-     * initiateSwap must be called first before settleSwap
+     * @notice settles the last batch swap of rewards for assets.
+     * `initiateSwap` must be called and the swap executed before `settleSwap`.
      *
      * @dev Emits the `SwapSettled` event with the `batch`, `rewards` and `assets` return parameters.
      *
      * @param rewardToken Address of the rewards being sold.
      * @param assetToken Address of the assets being purchased.
-     * @param assets Amount of assets to swapped.
+     * @param assets Amount of purchaed assets received from the swap.
      */
     function settleSwap(
         address rewardToken,

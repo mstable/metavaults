@@ -57,6 +57,19 @@ export interface QuoteOrder {
     id: number
 }
 
+export interface Order {
+    sellToken: string
+    buyToken: string
+    receiver?: string
+    sellAmount: BN
+    buyAmount: BN
+    validTo: BN
+    feeAmount: BN
+    kind: string
+    partiallyFillable: boolean
+    status: string
+}
+
 export interface TradeMetaData {
     blockNumber: number
     logIndex: number
@@ -206,6 +219,22 @@ export const getFeeAndQuote = async (chainId: Chain, fromAsset: string, toAsset:
         throw Error(`Failed to get fee and quote from CoW Swap`, { cause: err })
     }
 }
+export const getOrder = async (chainId: Chain, uid: string): Promise<Order> => {
+    const url = getOrdersURL(chainId) + "/" + uid
+
+    try {
+        const response = await axios.get(url)
+        const order = { ...response.data }
+
+        order.sellAmount = BN.from(order.sellAmount)
+        order.buyAmount = BN.from(order.buyAmount)
+        order.feeAmount = BN.from(order.feeAmount)
+
+        return order
+    } catch (err) {
+        throw Error(`Failed to get order from CoW Swap`, { cause: err })
+    }
+}
 
 /**
  * Validates fee amount and to asset amount are gt than zero.
@@ -233,7 +262,7 @@ export const postSellOrder = async (context: CowSwapContext, params: PostOrderPa
     const orderPayload = {
         sellToken: fromAsset,
         buyToken: toAsset,
-        sellAmount: fromAssetAmount.toString(),
+        sellAmount: fromAssetAmount.sub(feeAmount).toString(),
         buyAmount: toAssetAmountAfterFee.toString(),
         validTo: deadline,
         appData: DEFAULT_APP_DATA_HASH,

@@ -96,7 +96,7 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
             case "VaultManager":
                 return "0x1116241647D2173342b108e6363fFe58762e3e97"
             case "CowSwapDex":
-                return "0x86f800375B525300AD609644068a0753Bf8De1e2"
+                return "0xB305372B12Fd5d736EcB6BF903eaA844f2a23112"
             case "LiquidatorV2":
                 return "0xD298291059aed77686037aEfFCf497A321A4569e"
             case "Curve3CrvMetapoolCalculatorLibrary":
@@ -240,16 +240,14 @@ export const resolveToken = (symbol: string, chain = Chain.mainnet): Token => {
  */
 export const resolveVaultToken = async (signer: Signer, chain: Chain, addressContractNameSymbol: string): Promise<Token> => {
     let token: Token
-    // resolve mStable contract name or address
-    const address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
 
     // If a contract address
-    if (isAddress(address)) {
-        const tkn = IERC20Metadata__factory.connect(address, signer)
-        const vault = IERC4626Vault__factory.connect(address, signer)
+    if (isAddress(addressContractNameSymbol)) {
+        const tkn = IERC20Metadata__factory.connect(addressContractNameSymbol, signer)
+        const vault = IERC4626Vault__factory.connect(addressContractNameSymbol, signer)
         token = {
             symbol: await tkn.symbol(),
-            address,
+            address: addressContractNameSymbol,
             chain,
             quantityFormatter: "USD",
             decimals: await tkn.decimals(),
@@ -272,15 +270,13 @@ export const resolveVaultToken = async (signer: Signer, chain: Chain, addressCon
  */
 export const resolveAssetToken = async (signer: Signer, chain: Chain, addressContractNameSymbol: string): Promise<Token> => {
     let token: Token
-    // resolve mStable contract name or address
-    const address = getChainAddress(addressContractNameSymbol as ContractNames, chain)
 
     // If a contract address
-    if (isAddress(address)) {
+    if (isAddress(addressContractNameSymbol)) {
         const tkn = IERC20Metadata__factory.connect(addressContractNameSymbol, signer)
         token = {
             symbol: await tkn.symbol(),
-            address,
+            address: addressContractNameSymbol,
             chain,
             quantityFormatter: "USD",
             decimals: await tkn.decimals(),
