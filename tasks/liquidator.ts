@@ -1,12 +1,12 @@
 import { deployContract, logTxDetails } from "@tasks/utils/deploy-utils"
-import { ONE_DAY, ZERO, ZERO_ADDRESS } from "@utils/constants"
-import { BN, simpleToExactAmount } from "@utils/math"
+import { ONE_DAY, ZERO_ADDRESS } from "@utils/constants"
+import { simpleToExactAmount } from "@utils/math"
 import { encodeInitiateSwap } from "@utils/peripheral/cowswap"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import { AssetProxy__factory, IERC20Metadata__factory, Liquidator__factory } from "types/generated"
 
-import { getOrderDetails, placeSellOrder } from "./peripheral/cowswapApi"
+import { getOrder, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { buildDonateTokensInput } from "./utils/liquidatorUtil"
@@ -173,25 +173,19 @@ subtask("liq-settle-swap", "Settle CoW Swap swap")
 
         const liquidatorAddress = resolveAddress(liquidator, chain)
         const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
-        const orderOwner = await liquidatorContract.asyncSwapper()
 
         // Get the order details from cowswap API
-        const context: CowSwapContext = {
-            chainId: chain,
-        }
-        const trades = await getOrderDetails(context, uid)
+        const order = await getOrder(chain, uid)
 
-        if (trades.length == 0) {
-            throw new Error("Order uid not available")
+        if (order.status !== "fulfilled") {
+            throw new Error("Order has not been filled")
         }
-        const fromAssetAddress = trades[0].sellToken
-        const toAssetAddress = trades[0].buyToken
-        const toAssetAmount = trades.reduce((prevBuyAmount, curr) => BN.from(prevBuyAmount).add(BN.from(curr.buyAmount)), ZERO)
+        const fromAssetAddress = order.sellToken
+        const toAssetAddress = order.buyToken
+        const toAssetAmount = order.sellAmount
+
         // Settle the order
-        const { encodeSettleSwap } = await import("@utils/peripheral/cowswap")
-
-        const data = encodeSettleSwap(uid, orderOwner, liquidatorAddress) // orderUid , owner , receiver
-        const tx = await liquidatorContract.settleSwap(fromAssetAddress, toAssetAddress, toAssetAmount, data)
+        const tx = await liquidatorContract.settleSwap(fromAssetAddress, toAssetAddress, toAssetAmount, [])
         await logTxDetails(tx, `liquidator.settleSwap(${fromAssetAddress}, ${toAssetAddress}, ${toAssetAmount})`)
     })
 task("liq-settle-swap").setAction(async (_, __, runSuper) => {
