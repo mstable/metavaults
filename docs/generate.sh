@@ -6,9 +6,6 @@ sol2uml ../contracts -hi -b Curve3CrvMetapoolCalculatorLibrary -i abis,artifacts
 sol2uml ../contracts -hi -b CurveFraxBpCalculatorLibrary -i abis,artifacts,types,_flat,build
 sol2uml ../contracts -hi -b CurveFraxBpMetapoolCalculatorLibrary -i abis,artifacts,types,_flat,build
 
-# contracts/peripheral/Cowswap
-sol2uml .. -b CowSwapSeller -i abis,artifacts,types,_flat,build
-
 # contracts/governance
 sol2uml ../contracts -b DelayedClaimableGovernor
 

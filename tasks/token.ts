@@ -7,7 +7,7 @@ import { ERC20__factory, MockERC20__factory } from "types/generated"
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress, resolveAssetToken, resolveToken } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 const log = logger("task:token")
@@ -111,10 +111,11 @@ subtask("token-allowance", "Logs the amount of tokens a spender can transfer fro
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const tokenConfig = resolveToken(token, chain)
+        const tokenConfig = await resolveAssetToken(signer, chain, token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
+        log(`Owner ${ownerAddress}`)
         const spenderAddress = resolveAddress(spender, chain)
 
         const amount = await tokenContract.allowance(ownerAddress, spenderAddress)
@@ -137,7 +138,7 @@ subtask("token-balance", "Logs the token balance of an owner")
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const tokenConfig = resolveToken(token, chain)
+        const tokenConfig = await resolveAssetToken(signer, chain, token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
@@ -156,7 +157,7 @@ subtask("token-snap", "Logs the token balance of an owner")
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const tokenConfig = resolveToken(taskArgs.token, chain)
+        const tokenConfig = await resolveAssetToken(signer, chain, taskArgs.token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         log(`Symbol      : ${tokenConfig.symbol}`)

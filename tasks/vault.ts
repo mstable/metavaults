@@ -15,7 +15,7 @@ import { getBlock } from "./utils/blocks"
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress, resolveAssetToken, resolveToken, resolveVaultToken } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken, resolveVaultToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { AssetProxy, BasicVault } from "types/generated"
@@ -222,7 +222,7 @@ subtask("vault-balance", "Logs the vault balance of an owner")
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const vaultToken = resolveToken(vault, chain)
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
         const vaultContract = ERC20__factory.connect(vaultToken.address, signer)
 
         const ownerAddress = resolveAddress(owner ?? (await signer.getAddress()), chain)
@@ -245,8 +245,8 @@ subtask("vault-snap", "Logs basic vault details")
 
         const blk = await getBlock(hre.ethers, block)
 
-        const vaultToken = resolveToken(vault, chain)
-        const assetToken = resolveToken(vaultToken.assetSymbol, chain)
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
         const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
         const vaultTokenContract = IERC20Metadata__factory.connect(vaultToken.address, signer)
         const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()

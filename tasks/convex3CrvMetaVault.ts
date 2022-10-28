@@ -8,7 +8,7 @@ import { usdFormatter } from "./utils"
 import { getBlock } from "./utils/blocks"
 import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
-import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { BN } from "@utils/math"
@@ -155,7 +155,7 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress("Nexus", chain)
-        const assetToken = resolveToken(asset, chain)
+        const assetToken = await resolveAssetToken(signer, chain, asset)
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
 
@@ -201,9 +201,9 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
 
         const blk = await getBlock(hre.ethers, block)
 
-        const vaultToken = resolveToken(vault, chain)
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
         const vaultContract = PeriodicAllocationPerfFeeMetaVault__factory.connect(vaultToken.address, signer)
-        const assetToken = resolveToken(vaultToken.assetSymbol, chain)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
         const assetContract = IERC20__factory.connect(assetToken.address, signer)
 
         await hre.run("vault-snap", {

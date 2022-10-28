@@ -1,16 +1,14 @@
-import { ethers } from "hardhat"
+import { defaultAbiCoder } from "ethers/lib/utils"
 
-import type { BigNumber as BN } from "ethers"
 /**
  * Encode the data for a Cowswap initiate swap call
  *
  * @param {string} orderUid  the order id of the swap
- * @param {BN} fromAssetFeeAmount  the fee amount of the from asset
- * @param {string} receiver  the address receiver of the swap
+ * @param {boolean} transfer  transfer sell tokens from the liquidator
  * @return {string}  The encoded data for the call
  */
-export const encodeInitiateSwap = (orderUid: string, fromAssetFeeAmount: BN, receiver: string): string =>
-    ethers.utils.defaultAbiCoder.encode(["bytes", "uint256", "address"], [orderUid, fromAssetFeeAmount, receiver])
+export const encodeInitiateSwap = (orderUid: string, transfer = true): string =>
+    defaultAbiCoder.encode(["bytes", "bool"], [orderUid, transfer])
 /**
  * Encode the data for a Cowswap initiate swap call
  *
@@ -20,4 +18,4 @@ export const encodeInitiateSwap = (orderUid: string, fromAssetFeeAmount: BN, rec
  * @return {string}  The encoded data for the call
  */
 export const encodeSettleSwap = (orderUid: string, owner: string, receiver: string): string =>
-    ethers.utils.defaultAbiCoder.encode(["bytes", "address", "address"], [orderUid, owner, receiver])
+    defaultAbiCoder.encode(["bytes", "address", "address"], [orderUid, owner, receiver])

@@ -2,8 +2,10 @@ import { subtask, task, types } from "hardhat/config"
 import { AssetProxy__factory, Curve3CrvBasicMetaVault__factory, Curve3PoolCalculatorLibrary__factory } from "types"
 
 import { config } from "./deployment/convex3CrvVaults-config"
-import { deployContract, getChain, getSigner, resolveAddress, resolveToken } from "./utils"
+import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
+import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
@@ -141,7 +143,7 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Pool Meta Vault")
         const chain = getChain(hre)
 
         const nexusAddress = resolveAddress("Nexus", chain)
-        const assetToken = resolveToken(asset, chain)
+        const assetToken = await resolveAssetToken(signer, chain, asset)
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const metaVaultAddress = resolveAddress(metaVault, chain)
