@@ -8,7 +8,8 @@ jobs:
           matrix:
             script:
               - coverage
-              - coverage:fork
+              # - coverage:fork
+              - coverage:fork:all
         steps:
           - uses: actions/checkout@v2
           - uses: actions/setup-node@v1
