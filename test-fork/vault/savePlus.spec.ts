@@ -540,8 +540,10 @@ describe("Save+ Basic and Meta Vaults", async () => {
         proxyAdmin = InstantProxyAdmin__factory.connect(proxyAdminAddress, governor.signer)
 
         // Deploy mocked contracts
-        // ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
-        swapper = CowSwapDex__factory.connect(resolveAddress("CowSwapDex"), deployer)
+        ;({ swapper } = await deployMockAsyncSwapper(deployer, nexus))
+        await swapper.connect(governor.signer).approveToken(CRV.address)
+        await swapper.connect(governor.signer).approveToken(CVX.address)
+        // swapper = CowSwapDex__factory.connect(resolveAddress("CowSwapDex"), deployer)
         const syncSwapper = await deployMockSyncSwapper(deployer, nexus)
 
         // Deploy common /  utilities  contracts

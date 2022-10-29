@@ -5,7 +5,7 @@ import { ICurve3Pool__factory, IERC20__factory } from "types/generated"
 
 import { logTxDetails } from "./utils/deploy-utils"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress, resolveToken } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 import { DAI, ThreeCRV, USDC, USDT } from "./utils/tokens"
 
@@ -68,9 +68,9 @@ subtask("curve-swap", "Swap tokens using Curve 3Pool")
         const poolAddress = resolveAddress(pool, chain)
         const poolContract = ICurve3Pool__factory.connect(poolAddress, signer)
 
-        const fromToken = resolveToken(from, chain)
+        const fromToken = await resolveAssetToken(signer, chain, from)
         const fromAmount = simpleToExactAmount(amount, fromToken.decimals)
-        const toToken = resolveToken(to, chain)
+        const toToken = await resolveAssetToken(signer, chain, to)
 
         const indexes = {
             [DAI.address]: 0,

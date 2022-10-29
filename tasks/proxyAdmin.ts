@@ -4,6 +4,7 @@ import { AssetProxy__factory, DelayedProxyAdmin__factory, InstantProxyAdmin__fac
 import { getBlockRange } from "./utils/blocks"
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
+import { logger } from "./utils/logger"
 import { getChain, resolveAddress } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 import { tokens } from "./utils/tokens"
@@ -11,6 +12,8 @@ import { tokens } from "./utils/tokens"
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { DelayedProxyAdmin, InstantProxyAdmin } from "types/generated"
+
+const log = logger("task:proxy")
 
 export async function deployProxyAdminDelayed(
     hre: HardhatRuntimeEnvironment,
@@ -94,25 +97,26 @@ task("proxy-upgrades", "Lists all proxy implementation changes")
     .addOptionalParam("from", "Block to query transaction events from. (default: deployment block)", 10148031, types.int)
     .addOptionalParam("to", "Block to query transaction events to. (default: current block)", 0, types.int)
     .setAction(async (taskArgs, hre) => {
-        const signer = await getSigner(hre, taskArgs.speed)
+        const { asset, from, to } = taskArgs
+        const signer = await getSigner(hre)
 
-        const asset = tokens.find((t) => t.symbol === taskArgs.asset)
-        if (!asset) {
-            console.error(`Failed to find main or feeder pool asset with token symbol ${taskArgs.asset}`)
+        const assetToken = tokens.find((t) => t.symbol === asset)
+        if (!assetToken) {
+            console.error(`Failed to find main or feeder pool asset with token symbol ${asset}`)
             process.exit(1)
         }
 
-        const { fromBlock, toBlock } = await getBlockRange(hre.ethers, taskArgs.from, taskArgs.to)
+        const { fromBlock, toBlock } = await getBlockRange(hre.ethers, from, to)
 
-        const proxy = AssetProxy__factory.connect(asset.address, signer)
+        const proxyContract = AssetProxy__factory.connect(assetToken.address, signer)
 
-        const filter = await proxy.filters.Upgraded()
-        const logs = await proxy.queryFilter(filter, fromBlock.blockNumber, toBlock.blockNumber)
+        const filter = await proxyContract.filters.Upgraded()
+        const logs = await proxyContract.queryFilter(filter, fromBlock.blockNumber, toBlock.blockNumber)
 
-        console.log(`${asset.symbol} proxy ${asset.address}`)
+        console.log(`${assetToken.symbol} proxy ${assetToken.address}`)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        logs.forEach((log: any) => {
-            console.log(`Upgraded at block ${log.blockNumber} to ${log.args.implementation} in tx in ${log.blockHash}`)
+        logs.forEach((eventLog: any) => {
+            console.log(`Upgraded at block ${eventLog.blockNumber} to ${eventLog.args.implementation} in tx in ${eventLog.blockHash}`)
         })
     })
 
@@ -125,7 +129,7 @@ task("proxy-admin", "Get the admin address of a proxy contract")
         false,
     )
     .setAction(async (taskArgs, hre) => {
-        const signer = await getSigner(hre, taskArgs.speed)
+        const signer = await getSigner(hre)
         const chain = getChain(hre)
 
         const proxyAddress = resolveAddress(taskArgs.proxy, chain)
@@ -145,17 +149,24 @@ task("proxy-admin-change", "Change the admin of a proxy contract")
         false,
     )
     .addOptionalParam("type", "'address' or 'feederPool'", "address", types.string)
-    .addOptionalParam("admin", "Contract name or address of the new admin. eg DelayedProxyAdmin", "DelayedProxyAdmin", types.string)
+    .addOptionalParam(
+        "admin",
+        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
+        "DelayedProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const signer = await getSigner(hre, taskArgs.speed)
+        const { admin, proxy, speed } = taskArgs
+        const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
-        const proxyAddress = resolveAddress(taskArgs.proxy, chain)
-        const proxy = AssetProxy__factory.connect(proxyAddress, signer)
+        const proxyAddress = resolveAddress(proxy, chain)
+        const proxyContract = AssetProxy__factory.connect(proxyAddress, signer)
 
-        const newAdminAddress = resolveAddress(taskArgs.admin, chain)
+        const newAdminAddress = resolveAddress(admin, chain)
 
-        const tx = await proxy.changeAdmin(newAdminAddress)
+        const tx = await proxyContract.changeAdmin(newAdminAddress)
         await logTxDetails(tx, "change admin")
     })
 
@@ -168,18 +179,28 @@ task("proxy-propose", "Propose new proxy implementation")
         false,
     )
     .addParam("impl", "Token symbol, contract name or address of the new implementation contract.", undefined, types.string, false)
+    .addOptionalParam(
+        "admin",
+        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
+        "DelayedProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const signer = await getSigner(hre, taskArgs.speed)
+        const { admin, proxy, impl, speed } = taskArgs
+        const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
-        const proxyImplAddress = resolveAddress(taskArgs.impl, chain)
-        const proxyAdminAddress = resolveAddress("DelayedProxyAdmin", chain)
-        const proxyAddress = resolveAddress(taskArgs.proxy, chain)
+        const proxyImplAddress = resolveAddress(impl, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
+        const proxyAddress = resolveAddress(proxy, chain)
 
         const proxyAdmin = DelayedProxyAdmin__factory.connect(proxyAdminAddress, signer)
 
         // TODO need to handle optional contract initialisation
         const data = []
+        const encoded = proxyAdmin.interface.encodeFunctionData("proposeUpgrade", [proxyAddress, proxyImplAddress, data])
+        log(`Encoded propose upgrade data: ${encoded}`)
         const tx = await proxyAdmin.proposeUpgrade(proxyAddress, proxyImplAddress, data)
 
         await logTxDetails(tx, "propose proxy upgrade")
@@ -193,15 +214,52 @@ task("proxy-accept", "Accept new proxy implementation")
         types.string,
         false,
     )
+    .addOptionalParam(
+        "admin",
+        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
+        "DelayedProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const signer = await getSigner(hre, taskArgs.speed)
+        const { admin, proxy, speed } = taskArgs
+        const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
-        const proxyAdminAddress = resolveAddress("DelayedProxyAdmin", chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
         const proxyAdmin = DelayedProxyAdmin__factory.connect(proxyAdminAddress, signer)
-        const proxyAddress = resolveAddress(taskArgs.proxy, chain)
+        const proxyAddress = resolveAddress(proxy, chain)
 
         const tx = await proxyAdmin.acceptUpgradeRequest(proxyAddress)
 
         await logTxDetails(tx, "accept proxy upgrade")
+    })
+
+task("proxy-cancel", "Cancel a proposed proxy upgrade")
+    .addParam(
+        "proxy",
+        "Token symbol, contract name or address of the proxy contract. eg mUSD, EmissionsController",
+        undefined,
+        types.string,
+        false,
+    )
+    .addOptionalParam(
+        "admin",
+        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
+        "DelayedProxyAdmin",
+        types.string,
+    )
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { admin, proxy, speed } = taskArgs
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const proxyAdminAddress = resolveAddress(admin, chain)
+        const proxyAdmin = DelayedProxyAdmin__factory.connect(proxyAdminAddress, signer)
+        const proxyAddress = resolveAddress(proxy, chain)
+
+        const tx = await proxyAdmin.cancelUpgrade(proxyAddress)
+
+        await logTxDetails(tx, "cancel proxy upgrade")
     })

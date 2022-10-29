@@ -45,7 +45,10 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
         perfFeesAssetPerShare = PERF_ASSETS_PER_SHARE_SCALE;
     }
 
-    /// @notice Helper function to charge a performance fee since using currentAssetPerShare
+    /// @notice Helper function to charge a performance fee in the form of vault shares since the last time a performance fee was charged.
+    /// As an example, if the assets per share increased by 0.1% in the last week and the performance fee is 4%, the vault shares will be
+    /// increased by 0.1% * 4% = 0.004% as a fee. If there was 100,000 vault shares, 4 (100,000 * 0.004%) vault shares will be minted as a
+    /// performance fee. This dilutes the assets per shares of the existing vault shareholders by 0.004%.
     /// @dev Created for saving gas by not reading totalSupply() twice.
     /// @param currentAssetsPerShare Current assetsPerShare
     /// @param totalShares total shares in the vault.

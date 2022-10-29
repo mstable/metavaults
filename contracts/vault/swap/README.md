@@ -11,7 +11,6 @@ Vaults that can swap underlying assets as part of a rebalancing process. Vaults 
 
 -   [OneInchDexSwap](./OneInchDexSwap.sol) Implementation of IDexSwap that uses 1inch API Aggregation Protocol v4.
 -   [CowswapDexSwap](./CowSwapDex.sol) Implementation of IDexAsyncSwap that uses CowSwap.
--   [CowSwapSeller](../../peripheral/Cowswap/CowSwapSeller.sol) Sets ERC20 tokens allowances and pre-signs CowSwap orders.
 -   [BasicDexSwap](./BasicDexSwap.sol) Implementation of IDexSwap for testing purposes.
 
 # Diagrams
