@@ -1176,7 +1176,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 // transfer some assets to bVault1
                 await asset.transfer(bVault1.address, transferAmount)
 
-                // validate pre-rebalance assetPerShare
+                // validate pre-removal assetPerShare
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
 
                 // Remove underlying vault
