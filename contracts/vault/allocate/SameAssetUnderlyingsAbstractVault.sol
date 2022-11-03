@@ -281,6 +281,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         // Remove the underlying vault from the vault index map.
         vaultIndexMap = vaultIndexMapMem.removeValue(underlyingVaultIndex);
 
+        // Call _afterRemoveVault
+        _afterRemoveVault();
+
         emit RemovedVault(vaultIndex, underlyingVault);
     }
 
@@ -293,4 +296,10 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * For example, assetsPerShare update after rebalance by PeriodicAllocationAbstractVault
      */
     function _afterRebalance() internal virtual {}
+
+    /**
+     * @dev Optional hook to do something after an underlying vault is removed.
+     * For example, assetsPerShare update after removal by PeriodicAllocationAbstractVault
+     */
+    function _afterRemoveVault() internal virtual {}
 }
