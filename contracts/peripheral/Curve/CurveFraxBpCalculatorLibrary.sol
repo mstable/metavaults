@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.17;
+/* solhint-disable  func-name-mixedcase, var-name-mixedcase */
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -21,13 +22,18 @@ import { ICurveFraxBP } from "./ICurveFraxBP.sol";
  */
 library CurveFraxBpCalculatorLibrary {
     uint256 public constant N_COINS = 2;
-    uint256 public constant CURVE_FEE_SCALE = 1e10;
+
     uint256 public constant VIRTUAL_PRICE_SCALE = 1e18;
+    /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
+    uint256 public constant CURVE_FEE_SCALE = 1e10;
     uint256 public constant A_PRECISION = 100;
-    ICurveFraxBP public constant FRAXBP_POOL =
-        ICurveFraxBP(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
-    // LP token Curve.fi FRAX/USDC (crvFRAX)
-    IERC20 public constant LP_TOKEN = IERC20(0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC);
+    /// @notice Address of the Curve.fi fraxBP contract.
+    address public constant FRAXBP_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
+    /// @notice Address of the Curve.fi FRAX/USDC (crvFRAX) token
+    address public constant LP_TOKEN = 0x3175Df0976dFA876431C2E9eE6Bc45b65d3473CC;
+    /// @notice Scales up the mint tokens by 0.002 basis points.
+    uint256 public constant MINT_ADJUST = 10000002;
+    uint256 public constant MINT_ADJUST_SCALE = 10000000;
 
     /**
      * @notice Calculates the amount of liquidity provider tokens (crvFRAX) to mint for depositing a fixed amount of pool tokens.
@@ -46,20 +52,20 @@ library CurveFraxBpCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         // To save gas, only deal with deposits when there are already coins in the FraxBP.
         require(totalSupply_ > 0, "empty FraxBP");
 
         // Get balance of each stablecoin in the FraxBP
         uint256[N_COINS] memory oldBalances = [
-            FRAXBP_POOL.balances(0), // FRAX
-            FRAXBP_POOL.balances(1) // USDC
+            ICurveFraxBP(FRAXBP_POOL).balances(0), // FRAX
+            ICurveFraxBP(FRAXBP_POOL).balances(1) // USDC
         ];
         // Scale USDC from 6 decimals up to 18 decimals
         uint256[N_COINS] memory oldBalancesScaled = [oldBalances[0], oldBalances[1] * 1e12];
 
         // Get FraxBP amplitude coefficient (A)
-        uint256 Ann = FRAXBP_POOL.A() * A_PRECISION * N_COINS;
+        uint256 Ann = ICurveFraxBP(FRAXBP_POOL).A() * A_PRECISION * N_COINS;
 
         // USD value before deposit
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -78,7 +84,7 @@ library CurveFraxBpCalculatorLibrary {
         // We need to recalculate the invariant accounting for fees
         // to calculate fair user's share
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = FRAXBP_POOL.fee() / 2;
+        uint256 fee = ICurveFraxBP(FRAXBP_POOL).fee() / 2;
 
         // The following is not in a for loop to save gas
 
@@ -119,11 +125,14 @@ library CurveFraxBpCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         require(totalSupply_ > 0, "empty FraxBP");
 
         // Get balance of each stablecoin in the FraxBP
-        uint256[N_COINS] memory oldBalances = [FRAXBP_POOL.balances(0), FRAXBP_POOL.balances(1)];
+        uint256[N_COINS] memory oldBalances = [
+            ICurveFraxBP(FRAXBP_POOL).balances(0),
+            ICurveFraxBP(FRAXBP_POOL).balances(1)
+        ];
         // Scale USDC from 6 decimals up to 18 decimals
         uint256[N_COINS] memory oldBalancesScaled = [
             oldBalances[0], // FRAX
@@ -131,7 +140,7 @@ library CurveFraxBpCalculatorLibrary {
         ];
 
         // Get FraxBP amplitude coefficient (A)
-        uint256 Ann = FRAXBP_POOL.A() * A_PRECISION * N_COINS;
+        uint256 Ann = ICurveFraxBP(FRAXBP_POOL).A() * A_PRECISION * N_COINS;
 
         // USD value before withdraw
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -150,7 +159,7 @@ library CurveFraxBpCalculatorLibrary {
         // We need to recalculate the invariant accounting for fees
         // to calculate fair user's share
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = FRAXBP_POOL.fee() / 2;
+        uint256 fee = ICurveFraxBP(FRAXBP_POOL).fee() / 2;
 
         // The following is not in a for loop to save gas
 
@@ -193,17 +202,17 @@ library CurveFraxBpCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         // To save gas, only deal with mints when there are already coins in the FraxBP.
         require(totalSupply_ > 0, "empty FraxBP");
 
         // Get FraxBP balances and scale to 18 decimal
         uint256[N_COINS] memory oldBalancesScaled = [
-            FRAXBP_POOL.balances(0), // FRAX
-            FRAXBP_POOL.balances(1) * 1e12 // USDC
+            ICurveFraxBP(FRAXBP_POOL).balances(0), // FRAX
+            ICurveFraxBP(FRAXBP_POOL).balances(1) * 1e12 // USDC
         ];
 
-        uint256 Ann = FRAXBP_POOL.A() * A_PRECISION * N_COINS;
+        uint256 Ann = ICurveFraxBP(FRAXBP_POOL).A() * A_PRECISION * N_COINS;
 
         // Get invariant before mint
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -221,7 +230,7 @@ library CurveFraxBpCalculatorLibrary {
 
         // Adjust balances for fees
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = FRAXBP_POOL.fee() / 2;
+        uint256 fee = ICurveFraxBP(FRAXBP_POOL).fee() / 2;
         uint256[N_COINS] memory newBalancesScaled;
 
         // The following is not in a for loop to save gas
@@ -251,8 +260,8 @@ library CurveFraxBpCalculatorLibrary {
         // Deposit more to account for rounding errors
         tokenAmount_ = _coinIndex == 0 ? tokenAmount_ : tokenAmount_ / 1e12;
 
-        // Increase the amount by 0.002 basis points
-        tokenAmount_ = (tokenAmount_ * 10000002) / 10000000;
+        // Round up the amount
+        tokenAmount_ = (tokenAmount_ * MINT_ADJUST) / MINT_ADJUST_SCALE;
     }
 
     /**
@@ -272,15 +281,15 @@ library CurveFraxBpCalculatorLibrary {
             uint256 totalSupply_
         )
     {
-        totalSupply_ = LP_TOKEN.totalSupply();
+        totalSupply_ = IERC20(LP_TOKEN).totalSupply();
         require(totalSupply_ > 0, "empty FraxBP");
 
         uint256[N_COINS] memory oldBalancesScaled = [
-            FRAXBP_POOL.balances(0), // FRAX
-            FRAXBP_POOL.balances(1) * 1e12 // USDC
+            ICurveFraxBP(FRAXBP_POOL).balances(0), // FRAX
+            ICurveFraxBP(FRAXBP_POOL).balances(1) * 1e12 // USDC
         ];
 
-        uint256 Ann = FRAXBP_POOL.A() * A_PRECISION * N_COINS;
+        uint256 Ann = ICurveFraxBP(FRAXBP_POOL).A() * A_PRECISION * N_COINS;
 
         // Get invariant before redeem
         invariant_ = _getD(oldBalancesScaled, Ann);
@@ -298,7 +307,7 @@ library CurveFraxBpCalculatorLibrary {
 
         // Adjust balances for fees
         // _fee: uint256 = self.fee * N_COINS / (4 * (N_COINS - 1))
-        uint256 fee = FRAXBP_POOL.fee() / 2;
+        uint256 fee = ICurveFraxBP(FRAXBP_POOL).fee() / 2;
         uint256[N_COINS] memory newBalancesScaled;
 
         // The following is not in a for loop to save gas
@@ -332,12 +341,12 @@ library CurveFraxBpCalculatorLibrary {
     function getVirtualPrice() external view returns (uint256 virtualPrice_) {
         // Calculate the invariant
         uint256 invariant = _getD(
-            [FRAXBP_POOL.balances(0), FRAXBP_POOL.balances(1) * 1e12],
-            FRAXBP_POOL.A() * A_PRECISION * N_COINS
+            [ICurveFraxBP(FRAXBP_POOL).balances(0), ICurveFraxBP(FRAXBP_POOL).balances(1) * 1e12],
+            ICurveFraxBP(FRAXBP_POOL).A() * A_PRECISION * N_COINS
         );
 
         // This will fail if the pool is empty
-        virtualPrice_ = (invariant * VIRTUAL_PRICE_SCALE) / LP_TOKEN.totalSupply();
+        virtualPrice_ = (invariant * VIRTUAL_PRICE_SCALE) / IERC20(LP_TOKEN).totalSupply();
     }
 
     /**
