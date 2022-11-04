@@ -59,7 +59,7 @@ contract CurveFraxBpCalculator {
     }
 
     /**
-     * @notice Calculates the amount of pool coins to deposit for minting a fixed amount of liquidity provider tokens (crvFRAX).
+     * @notice Calculates the amount of pool coins to deposited for minting a fixed amount of liquidity provider tokens (crvFRAX).
      * @param _mintAmount The amount of liquidity provider tokens (crvFRAX) to mint.
      * @param _coinIndex The index of the coin in the pool to withdraw. 0 = FRAX, 1 = USDC.
      * @return tokenAmount_ The amount of coins, eg FRAX or USDC, to deposit.
@@ -79,7 +79,7 @@ contract CurveFraxBpCalculator {
     }
 
     /**
-     * @notice Calculates the amount of pool coins to receive for redeeming a fixed amount of liquidity provider tokens (crvFRAX).
+     * @notice Calculates the amount of pool coins to received for redeeming a fixed amount of liquidity provider tokens (crvFRAX).
      * @param _burnAmount The amount of liquidity provider tokens (crvFRAX) to burn.
      * @param _coinIndex The index of the coin in the pool to withdraw. 0 = FRAX, 1 = USDC.
      * @return tokenAmount_ The amount of coins, eg FRAX or USDC, to receive from the redeem.
