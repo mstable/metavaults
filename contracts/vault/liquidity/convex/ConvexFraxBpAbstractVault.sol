@@ -63,7 +63,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     /// @notice Scale of the metapool liquidity provider token. eg 1e18 if 18 decimal places.
     uint256 public immutable metapoolTokenScale;
     /// @notice Curve's FRAX+USDC (crvFRAX) used as a base pool by the Curve metapools.
-    ICurveFraxBP public immutable basePool;
+    address public immutable basePool;
 
     /// @notice Convex's Booster contract that contains the Curve.fi LP pools.
     IConvexBooster public immutable booster;
@@ -401,6 +401,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         if (_shares > 0) {
             uint256 allowed = allowance(_owner, msg.sender);
             if (msg.sender != _owner && allowed != type(uint256).max) {
+                require(_shares <= allowed, "Amount exceeds allowance");
                 _approve(_owner, msg.sender, allowed - _shares);
             }
 
@@ -535,7 +536,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         returns (uint256 expectedAssets)
     {
         // crvFRAX virtual price in USD. Non-manipulable
-        uint256 threePoolVirtualPrice = basePool.get_virtual_price();
+        uint256 threePoolVirtualPrice = ICurveFraxBP(basePool).get_virtual_price();
         // Metapool virtual price in USD. eg BUSDFRAXBP3CRV-f/USD
         uint256 metapoolVirtualPrice = ICurveMetapool(metapool).get_virtual_price();
 
@@ -555,7 +556,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         returns (uint256 expectedMetapoolTokens)
     {
         // crvFRAX virtual price in USD. Non-manipulable
-        uint256 threePoolVirtualPrice = basePool.get_virtual_price();
+        uint256 threePoolVirtualPrice = ICurveFraxBP(basePool).get_virtual_price();
         // Metapool virtual price in USD
         uint256 metapoolVirtualPrice = ICurveMetapool(metapool).get_virtual_price();
 
@@ -620,8 +621,10 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
 
     function _resetAllowances() internal {
         // Approve the Curve.fi metapool, eg BUSDFRAXBP3CRV-f, to transfer the asset crvFRAX.
+        _asset.safeApprove(address(metapool), 0);
         _asset.safeApprove(address(metapool), type(uint256).max);
         // Approve the Convex booster contract to transfer the Curve.fi metapool LP token. eg BUSDFRAXBP3CRV-f
+        IERC20(metapoolToken).safeApprove(address(booster), 0);
         IERC20(metapoolToken).safeApprove(address(booster), type(uint256).max);
     }
 }
