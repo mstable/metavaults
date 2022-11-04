@@ -294,6 +294,7 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
 
         const vaultToken = await resolveAssetToken(signer, chain, vault)
         const vaultContract = Convex3CrvLiquidatorVault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
 
         await hre.run("vault-snap", {
             vault,
@@ -328,6 +329,23 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
         }
         const donateToken = await resolveAssetToken(signer, chain, rewards.donateTokens[0])
         console.log(`  Rewards are swapped for : ${donateToken.symbol}`)
+
+        const fee = await vaultContract.donationFee({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`\nLiquidation fee : ${fee / 10000}%`)
+        const feeReceiver = await vaultContract.feeReceiver({
+            blockTag: blk.blockNumber,
+        })
+        const feeShares = await vaultContract.balanceOf(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        const feeAssets = await vaultContract.maxWithdraw(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Collected fees  : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${assetToken.symbol}`,
+        )
     })
 
 task("convex-3crv-snap").setAction(async (_, __, runSuper) => {

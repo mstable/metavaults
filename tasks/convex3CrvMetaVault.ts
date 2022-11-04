@@ -276,12 +276,6 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
         const fee = await vaultContract.performanceFee({
             blockTag: blk.blockNumber,
         })
-        console.log(`Performance fee         : ${fee.toNumber() / 10000}%`)
-        console.log(
-            `Fee receiver            : ${await vaultContract.feeReceiver({
-                blockTag: blk.blockNumber,
-            })}`,
-        )
         console.log(
             `Active underlying vaults: ${await vaultContract.activeUnderlyingVaults({
                 blockTag: blk.blockNumber,
@@ -303,6 +297,23 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
             `Paused                  : ${await vaultContract.paused({
                 blockTag: blk.blockNumber,
             })}`,
+        )
+
+        console.log(`\nPerformance fee         : ${fee.toNumber() / 10000}%`)
+        const feeReceiver = await vaultContract.feeReceiver({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Fee receiver            : ${feeReceiver}`)
+        const feeShares = await vaultContract.balanceOf(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        const feeAssets = await vaultContract.maxWithdraw(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Collected fees          : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${
+                assetToken.symbol
+            }`,
         )
     })
 task("convex-3crv-mv-snap").setAction(async (_, __, runSuper) => {
