@@ -46,6 +46,8 @@ contract ConvexFraxBpLiquidatorVault is
     /// @notice Token that the liquidator sells CRV and CVX rewards for. This must be a FRAX or USDC.
     address internal donateToken_;
 
+    event DonateTokenUpdated(address token);
+
     /**
      * @param _nexus               Address of the Nexus contract that resolves protocol modules and roles..
      * @param _asset               Address of the vault's asset which is Curve's FRAX/USDC LP token (crvFRAX).
@@ -96,8 +98,8 @@ contract ConvexFraxBpLiquidatorVault is
         uint8 decimals_ = InitializableToken(address(metapoolToken)).decimals();
         InitializableToken._initialize(_name, _symbol, decimals_);
 
-        require(__donateToken == FRAX || __donateToken == USDC, "donate token not FRAX or USDC");
-        donateToken_ = __donateToken;
+        _setDonateToken(__donateToken);
+
         // Approve the Curve.fi FRAX/USDC base pool to transfer the FRAX and USDC tokens.
         IERC20(FRAX).safeApprove(address(basePool), type(uint256).max);
         IERC20(USDC).safeApprove(address(basePool), type(uint256).max);
@@ -131,8 +133,11 @@ contract ConvexFraxBpLiquidatorVault is
     }
 
     /**
-     * @dev The base implementation assumes the donated token is the vault's asset token.
-     * This can be overridden in implementing contracts.
+     * @dev Converts donated tokens (FRAX, USDC) to vault assets (crvFRAX) and shares.
+     * Transfers token from donor to vault.
+     * Adds the token to the frazBP to receive the vault asset (crvFRAX) in exchange.
+     * The resulting asset (crvFRAX) is added to the Curve frax Metapool.
+     * The Curve Metapool LP token, eg BUSDFRAXBP3CRV-f, is added to the Convex pool and staked.
      */
     function _convertTokens(address token, uint256 amount)
         internal
@@ -173,10 +178,7 @@ contract ConvexFraxBpLiquidatorVault is
 
         assets_ = _asset.balanceOf(address(this));
         // Add asset (crvFRAX) to metapool with slippage protection.
-        ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
-
-        // TODO do we deposit the balance? Or use what's returned from add_liquidity?
-        uint256 metapoolTokens = IERC20(metapoolToken).balanceOf(address(this));
+        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
 
         // Calculate share value of the new assets before depositing the metapool tokens to the Convex pool.
         shares_ = _getSharesFromMetapoolTokens(
@@ -345,5 +347,28 @@ contract ConvexFraxBpLiquidatorVault is
         returns (uint256 shares)
     {
         shares = ConvexFraxBpAbstractVault._convertToShares(assets);
+    }
+
+     /***************************************
+                    Vault Admin
+    ****************************************/
+
+    /// @dev Sets the token the rewards are swapped for and donated back to the vault.
+    function _setDonateToken(address __donateToken) internal {
+        require(
+            __donateToken == FRAX || __donateToken == USDC,
+            "donate token not in FraxBP"
+        );
+        donateToken_ = __donateToken;
+
+        emit DonateTokenUpdated(__donateToken);
+    }
+
+    /**
+     * @notice  Vault manager or governor sets the token the rewards are swapped for and donated back to the vault.
+     * @param __donateToken a token in the FraxBP (FRAX, USDC).
+     */
+    function setDonateToken(address __donateToken) external onlyKeeperOrGovernor {
+        _setDonateToken(__donateToken);
     }
 }
