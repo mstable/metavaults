@@ -25,13 +25,14 @@ import { ICurveMetapool } from "./ICurveMetapool.sol";
  */
 library CurveFraxBpMetapoolCalculatorLibrary {
     /// @notice Curve's FRAX/USDC pool used as a base pool by the Curve metapools.
-    ICurveFraxBP public constant BASE_POOL =
-        ICurveFraxBP(0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2);
+    address public constant BASE_POOL = 0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2;
 
+    /// @notice Number of coins in the pool.
     uint256 public constant N_COINS = 2;
     uint256 public constant VIRTUAL_PRICE_SCALE = 1e18;
     /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
     uint256 public constant CURVE_FEE_SCALE = 1e10;
+    /// @notice Scales up the mint tokens by 0.002 basis points.
     uint256 public constant MINT_ADJUST = 10000001;
     uint256 public constant MINT_ADJUST_SCALE = 10000000;
 
@@ -66,7 +67,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         // To save gas, only deal with a non empty pool.
         require(totalSupply_ > 0, "empty pool");
 
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
         // Using separate vairables rather than an array to save gas
         uint256 oldBalancesScaled0 = ICurveMetapool(_metapool).balances(0);
@@ -154,7 +155,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         // To save gas, only deal with a non empty pool.
         require(totalSupply_ > 0, "empty pool");
 
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
         // Using separate vairables rather than an array to save gas
         uint256 oldBalancesScaled0 = ICurveMetapool(_metapool).balances(0);
@@ -242,7 +243,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         // To save gas, only deal with a non empty pool.
         require(totalSupply_ > 0, "empty pool");
 
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
         // Using separate vairables rather than an array to save gas
         uint256 oldBalancesScaled0 = ICurveMetapool(_metapool).balances(0);
@@ -301,6 +302,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
             ? requiredBalanceScaled - newBalancesScaled0
             : ((requiredBalanceScaled - newBalancesScaled1) * VIRTUAL_PRICE_SCALE) /
                 baseVirtualPrice_;
+
         tokenAmount_ = (tokenAmount_ * MINT_ADJUST) / MINT_ADJUST_SCALE;
     }
 
@@ -333,7 +335,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         // To save gas, only deal with a non empty pool.
         require(totalSupply_ > 0, "empty pool");
 
-        uint256 baseVirtualPrice = BASE_POOL.get_virtual_price();
+        uint256 baseVirtualPrice = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
         // Using separate vairables rather than an array to save gas
         uint256 oldBalancesScaled0 = ICurveMetapool(_metapool).balances(0);
@@ -400,7 +402,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
      * The base pool's virtual price is used to price FraxBP's crvFRAX back to USD.
      */
     function getBaseVirtualPrice() external view returns (uint256 baseVirtualPrice_) {
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurveFraxBP(BASE_POOL).get_virtual_price();
     }
 
     /**
@@ -417,7 +419,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         view
         returns (uint256 metaVirtualPrice_, uint256 baseVirtualPrice_)
     {
-        baseVirtualPrice_ = BASE_POOL.get_virtual_price();
+        baseVirtualPrice_ = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
         // Calculate invariant before deposit
         uint256 invariant = _getD(
@@ -440,7 +442,8 @@ library CurveFraxBpMetapoolCalculatorLibrary {
      */
     function convertUsdToBaseLp(uint256 usdAmount) external view returns (uint256 baseLp_) {
         if (usdAmount > 0) {
-            baseLp_ = (usdAmount * VIRTUAL_PRICE_SCALE) / BASE_POOL.get_virtual_price();
+            baseLp_ = (usdAmount * VIRTUAL_PRICE_SCALE) /
+            ICurveFraxBP(BASE_POOL).get_virtual_price();
         }
     }
 
@@ -479,7 +482,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
     ) external view returns (uint256 baseLp_) {
         if (metaLp > 0) {
             // Get value of one base pool lp token in USD scaled to VIRTUAL_PRICE_SCALE. eg crvFRAX/USD.
-            uint256 baseVirtualPrice = BASE_POOL.get_virtual_price();
+            uint256 baseVirtualPrice = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
             // Calculate metapool invariant which is value of the metapool in USD
             uint256 invariant = _getD(
@@ -513,7 +516,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
         uint256 baseLp
     ) external view returns (uint256 metaLp_) {
         if (baseLp > 0) {
-            uint256 baseVirtualPrice = BASE_POOL.get_virtual_price();
+            uint256 baseVirtualPrice = ICurveFraxBP(BASE_POOL).get_virtual_price();
 
             // Calculate invariant which is value of metapool in USD
             uint256 invariant = _getD(
