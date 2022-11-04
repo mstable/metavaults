@@ -80,6 +80,12 @@ sol2uml ../contracts -d 1 -hi -ha -hs -b Convex3CrvLiquidatorVault
 sol2uml storage .. -c Convex3CrvLiquidatorVault -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle -o Convex3CrvLiquidatorVaultStorage.svg
 sol2uml ../contracts -d 1 -hi -hs -b Convex3CrvAbstractVault
 
+## FRAX
+sol2uml .. -hv -hf -he -hs -hi -b ConvexFraxBpLiquidatorVault -o ConvexFraxBpLiquidatorVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
+sol2uml ../contracts -d 1 -hi -ha -hs -b ConvexFraxBpLiquidatorVault
+sol2uml storage .. -c ConvexFraxBpLiquidatorVault -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle -o ConvexFraxBpLiquidatorVaultStorage.svg
+sol2uml ../contracts -d 1 -hi -hs -b ConvexFraxBpAbstractVault
+
 # contracts/vault/liquidity/curve
 sol2uml .. -hv -hf -he -hs -b Curve3CrvBasicMetaVault -o Curve3CrvBasicMetaVaultHierarchy.svg -i abis,artifacts,types,_flat,solparse,@solidity-parser,ethlint,build,truffle
 sol2uml ../contracts -d 1 -hi -hs -b Curve3CrvAbstractMetaVault
