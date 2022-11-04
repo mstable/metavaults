@@ -1,7 +1,7 @@
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, IERC20__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
+import { AssetProxy__factory, IERC20__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
 
 import { config } from "./deployment/convex3CrvVaults-config"
 import { usdFormatter } from "./utils"
@@ -203,6 +203,9 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
 
         const vaultToken = await resolveAssetToken(signer, chain, vault)
         const vaultContract = PeriodicAllocationPerfFeeMetaVault__factory.connect(vaultToken.address, signer)
+        const fraxVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-FRAX"), signer)
+        const musdVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-mUSD"), signer)
+        const busdVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-BUSD"), signer)
         const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
         const assetContract = IERC20__factory.connect(assetToken.address, signer)
 
@@ -228,6 +231,33 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
         console.log(
             `Assets in underlyings   : ${usdFormatter(assetsInUnderlyings, assetToken.decimals)} ${formatUnits(
                 assetsInUnderlyings.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const fraxAssets = await fraxVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in FRAX vault    : ${usdFormatter(fraxAssets, assetToken.decimals)} ${formatUnits(
+                fraxAssets.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const busdAssets = await busdVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in BUSD vault    : ${usdFormatter(busdAssets, assetToken.decimals)} ${formatUnits(
+                busdAssets.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const musdAssets = await musdVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in mUSD vault    : ${usdFormatter(musdAssets, assetToken.decimals)} ${formatUnits(
+                musdAssets.mul(10000).div(totalAssets),
                 2,
             )}%`,
         )

@@ -272,7 +272,7 @@ subtask("vault-snap", "Logs basic vault details")
             blockTag: blk.blockNumber,
         })
         console.log(`Total Assets  : ${usdFormatter(totalAssets, assetToken.decimals)}`)
-        console.log(`Owner acct    : ${owner} ${owner !== ownerAddress ? ownerAddress : ""}`)
+        console.log(`Owner acct    : ${owner || ownerAddress}`)
         const shareBal = await vaultContract.balanceOf(ownerAddress, {
             blockTag: blk.blockNumber,
         })
