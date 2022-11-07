@@ -12,11 +12,8 @@ Curve Documentation
 -   [Curve3PoolCalculatorLibrary](./Curve3PoolCalculatorLibrary.sol) Library that calculates Curve token amounts including fees for the Curve.fi 3Pool.
 -   [Curve3CrvMetapoolCalculatorLibrary](./Curve3CrvMetapoolCalculatorLibrary.sol) Library that calculates Curve liquidity provider token amounts including fees for 3Crv-based Curve.fi Metapools.
 -   [Curve3CrvFactoryMetapoolCalculatorLibrary](./Curve3CrvFactoryMetapoolCalculatorLibrary.sol) Calculates Curve liquidity provider token amounts including fees for 3Crv-based Curve.fi factory Metapools.
-
--   [CurveFraxBpCalculatorLibrary](./CurveFraxBpCalculatorLibrary.sol) Calculates Curve token amounts including fees for FraxBP-based Curve.fi metapools.
--   [CurveFraxBpCalculator](./CurveFraxBpCalculator.sol) wraps `CurveFraxBpCalculatorLibrary` for testing purposes.
--   [CurveFraxBpMetapoolCalculatorLibrary](./CurveFraxBpMetapoolCalculatorLibrary.sol) Calculates Curve liquidity provider token amounts including fees for FraxBp-based Curve.fi metapools.
--   [CurveFraxBpMetapoolCalculator](./CurveFraxBpMetapoolCalculator.sol) wraps `CurveFraxBpetapoolCalculatorLibrary` for testing purposes.
+-   [CurveFraxBpCalculatorLibrary](./CurveFraxBpCalculatorLibrary.sol) Library that calculates Curve token amounts including fees for FraxBP-based Curve.fi metapools.
+-   [CurveFraxBpMetapoolCalculatorLibrary](./CurveFraxBpMetapoolCalculatorLibrary.sol) Library that calculates Curve liquidity provider token amounts including fees for FraxBp-based Curve.fi metapools.
 
 # Diagrams
 
@@ -43,6 +40,7 @@ Fork tests of the calculation libraries
 ```
 yarn test:file:fork ./test-fork/peripheral/Curve/Curve3PoolCalculations.spec.ts
 yarn test:file:fork ./test-fork/peripheral/Curve/Curve3CrvMetapoolCalculations.spec.ts
+yarn test:file:fork ./test-fork/peripheral/Curve/CurveFraxCalculations.spec.ts
 ```
 
 Fork tests of the Curve 3Pool and metapools
