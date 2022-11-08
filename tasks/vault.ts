@@ -48,16 +48,19 @@ subtask("vault-deposit", "Deposit assets into a vault from the signer's account"
         const assets = simpleToExactAmount(amount, assetToken.decimals)
 
         if (approve) {
-            const asset = IERC20__factory.connect(assetToken.address, signer)
-            const approveTx = await asset.approve(vaultToken.address, assets)
-            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
+            const assetContract = IERC20__factory.connect(assetToken.address, signer)
+            const approveTx = await assetContract.approve(vaultToken.address, assets)
+            await logTxDetails(
+                approveTx,
+                `approve ${vaultToken.symbol} vault to transfer ${formatUnits(assets, assetToken.decimals)} ${assetToken.symbol} assets`,
+            )
         }
 
         const tx = await vaultContract.deposit(assets, receiverAddress)
 
         await logTxDetails(
             tx,
-            `${signerAddress} deposited ${formatUnits(assets, assetToken.decimals)} ${assetToken.assetSymbol} into ${
+            `${signerAddress} deposited ${formatUnits(assets, assetToken.decimals)} ${assetToken.symbol} into ${
                 vaultToken.symbol
             } vault minting to ${receiverAddress}`,
         )
@@ -96,9 +99,12 @@ subtask("vault-mint", "Mint vault shares by depositing assets from the signer's 
 
         if (approve) {
             const assets = await vaultContract.previewMint(shares)
-            const asset = IERC20__factory.connect(assetToken.address, signer)
-            const approveTx = await asset.approve(vaultToken.address, assets)
-            await logTxDetails(approveTx, `approve ${vaultToken.symbol} vault to transfer ${vaultToken.assetSymbol} assets`)
+            const assetContract = IERC20__factory.connect(assetToken.address, signer)
+            const approveTx = await assetContract.approve(vaultToken.address, assets)
+            await logTxDetails(
+                approveTx,
+                `approve ${vaultToken.symbol} vault to transfer ${formatUnits(assets, assetToken.decimals)} ${assetToken.symbol} assets`,
+            )
         }
 
         const tx = await vaultContract.mint(shares, receiverAddress)
@@ -266,7 +272,7 @@ subtask("vault-snap", "Logs basic vault details")
             blockTag: blk.blockNumber,
         })
         console.log(`Total Assets  : ${usdFormatter(totalAssets, assetToken.decimals)}`)
-        console.log(`Owner acct    : ${owner} ${owner !== ownerAddress ? ownerAddress : ""}`)
+        console.log(`Owner acct    : ${owner || ownerAddress}`)
         const shareBal = await vaultContract.balanceOf(ownerAddress, {
             blockTag: blk.blockNumber,
         })

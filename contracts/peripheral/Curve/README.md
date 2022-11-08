@@ -26,14 +26,6 @@ Curve Documentation
 
 ![Curve Metapool Calculator Library](../../../docs/Curve3CrvMetapoolCalculatorLibrary.svg)
 
-`CurveFraxBpCalculatorLibrary` contract
-
-![Curve Frax Calculator Library](../../../docs/CurveFraxBpCalculatorLibrary.svg)
-
-`CurveFraxBpMetapoolCalculatorLibrary` contract
-
-![Curve Frax Metapool Calculator Library](../../../docs/CurveFraxBpMetapoolCalculatorLibrary.svg)
-
 # Tests
 
 Fork tests of the calculation libraries

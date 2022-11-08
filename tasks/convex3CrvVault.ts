@@ -1,4 +1,6 @@
 import { ONE_DAY } from "@utils/constants"
+import { BN } from "@utils/math"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import {
     AssetProxy__factory,
@@ -10,9 +12,10 @@ import {
 
 import { config } from "./deployment/convex3CrvVaults-config"
 import { CRV, CVX } from "./utils"
+import { getBlock } from "./utils/blocks"
 import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
@@ -274,5 +277,77 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         return { proxy, impl }
     })
 task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
+subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
+    .addParam("vault", "Vault symbol or address", undefined, types.string)
+    .addOptionalParam("owner", "Address, contract name or token symbol to get balances for. Defaults to signer", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
+    .setAction(async (taskArgs, hre) => {
+        const { vault, owner, block, speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const blk = await getBlock(hre.ethers, block)
+
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
+        const vaultContract = Convex3CrvLiquidatorVault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
+
+        await hre.run("vault-snap", {
+            vault,
+            owner,
+        })
+
+        console.log(`\nConvex3CrvLiquidatorVault`)
+        const stream = await vaultContract.shareStream({
+            blockTag: blk.blockNumber,
+        })
+        const streamDuration = await vaultContract.STREAM_DURATION()
+        const streamScale = await vaultContract.STREAM_PER_SECOND_SCALE()
+        const streamTotal = stream.sharesPerSecond.mul(streamDuration).div(streamScale)
+        const sharesStillStreaming = await vaultContract.streamedShares({
+            blockTag: blk.blockNumber,
+        })
+        const streamRemainingPercentage = streamTotal.gt(0) ? sharesStillStreaming.mul(1000).div(streamTotal) : BN.from(0)
+        console.log(`Stream total     : ${formatUnits(streamTotal)} shares`)
+        console.log(`Stream remaining : ${formatUnits(sharesStillStreaming)} shares ${formatUnits(streamRemainingPercentage, 2)}%`)
+        console.log(`Stream last      : ${new Date(stream.last * 1000)}`)
+        console.log(`Stream end       : ${new Date(stream.end * 1000)}`)
+
+        console.log("\nRewards accrued:")
+        const rewards = await vaultContract.callStatic.collectRewards({
+            blockTag: blk.blockNumber,
+        })
+        let i = 0
+        for (const reward of rewards.rewardTokens_) {
+            const rewardToken = await resolveAssetToken(signer, chain, reward)
+            console.log(`  ${formatUnits(rewards.rewards[i], rewardToken.decimals)} ${rewardToken.symbol}`)
+            i++
+        }
+        const donateToken = await resolveAssetToken(signer, chain, rewards.donateTokens[0])
+        console.log(`  Rewards are swapped for : ${donateToken.symbol}`)
+
+        const fee = await vaultContract.donationFee({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`\nLiquidation fee : ${fee / 10000}%`)
+        const feeReceiver = await vaultContract.feeReceiver({
+            blockTag: blk.blockNumber,
+        })
+        const feeShares = await vaultContract.balanceOf(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        const feeAssets = await vaultContract.maxWithdraw(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Collected fees  : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${assetToken.symbol}`,
+        )
+    })
+
+task("convex-3crv-snap").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
