@@ -34,7 +34,9 @@ export const contractNames = [
     "CurveMUSDPool",
     "CurveThreePool",
     "FraxBP",
+    "CurveBUSDFraxPool",
     "CRVRewardsPool",
+    "ConvexBUSDFraxBpRewardsPool",
     "ConvexBooster",
     "OneInchAggregationRouterV4",
     "OneInchAggregationExecutor",
@@ -85,8 +87,12 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2"
             case "CurveMUSDPool": // Curve.fi: MUSD Pool
                 return "0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6"
+            case "CurveBUSDFraxPool":
+                return "0x8fdb0bb9365a46b145db80d0b1c5c5e979c84190"
             case "CRVRewardsPool":
                 return "0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52"
+            case "ConvexBUSDFraxBpRewardsPool":
+                return "0x9e6Daf019767D5cEAdE416ce77E8d187b5B254F3"
             case "ConvexBooster": // Convex Finance: Booster
                 return "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
             case "OneInchAggregationRouterV4":
