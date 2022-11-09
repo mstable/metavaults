@@ -74,7 +74,7 @@ Key folders:
 
 ## Testing
 
-Tests are written with [Hardhat](https://hardhat.org/), [Ethers.js](https://docs.ethers.io), [Waffle](https://ethereum-waffle.readthedocs.io/) & [Typescript](https://www.typescriptlang.org/), using [Typechain](https://github.com/dethcrypto/TypeChain) to generate typings for all contracts. Tests are executed using `hardhat` in hardhats evm.
+Tests are written with [Hardhat](https://hardhat.org/), [Ethers.js](https://docs.ethers.io), [Mocha](https://mochajs.org/) & [Typescript](https://www.typescriptlang.org/), using [Typechain](https://github.com/dethcrypto/TypeChain) to generate typings for all contracts. Tests are executed using `hardhat` in hardhats evm.
 
 ```
 $ yarn test
@@ -84,7 +84,7 @@ $ yarn test
 
 [Solidity-coverage](https://github.com/sc-forks/solidity-coverage) is used to run coverage analysis on test suite.
 
-This produces reports that are visible in the `/coverage` folder, and navigatable/uploadable. Ultimately they are used as a reference that there is some sort of adequate cover, although they will not be a source of truth for a robust test framework. Reports publically available on [coveralls](https://coveralls.io/github/mstable/metavaults).
+This produces reports that are visible in the `/coverage` folder, and navigatable/uploadable. Ultimately they are used as a reference that there is some sort of adequate cover, although they will not be a source of truth for a robust test framework. Reports are publicly available on [coveralls](https://coveralls.io/github/mstable/metavaults).
 
 _NB: solidity-coverage runs with solc `optimizer=false` (see [discussion](https://github.com/sc-forks/solidity-coverage/issues/417))_
 
