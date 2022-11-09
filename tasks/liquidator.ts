@@ -95,10 +95,18 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
 
         const receipt = await tx.wait()
         const events = receipt.events?.find((e) => e.event === "CollectedRewards")
-        events?.args?.rewards.forEach((rewards, i) => {
-            // TODO include reward symbol, formatted amounts and vault symbol
-            log(`Collected ${rewards} rewards from vault ${i}`)
-        })
+
+        let i = 0
+        for (const rewards of events?.args?.rewards) {
+            let j = 0
+            for (const reward of rewards) {
+                const vaultToken = await resolveAssetToken(signer, chain, vaultsAddress[i])
+                const rewardToken = await resolveAssetToken(signer, chain, events?.args?.rewardTokens[i][j])
+                log(`Collected ${formatUnits(reward, rewardToken.decimals)} ${rewardToken.symbol} rewards from vault ${vaultToken.symbol}`)
+                j++
+            }
+            i++
+        }
     })
 task("liq-collect-rewards").setAction(async (_, __, runSuper) => {
     await runSuper()
@@ -116,9 +124,11 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
     .addOptionalParam("transfer", "Transfer sell tokens from liquidator?.", true, types.boolean)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("swapper", "Name or address to override the CowSwapDex contract", "CowSwapDex", types.string)
+    .addOptionalParam("readonly", "Quote swap but not initiate.", false, types.boolean)
+    .addOptionalParam("maxFee", "Max fee in from tokens", 0, types.int)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { from, to, liquidator, receiver, transfer, swapper, speed } = taskArgs
+        const { from, to, liquidator, maxFee, readonly, receiver, transfer, swapper, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const liquidatorAddress = resolveAddress(liquidator, chain)
@@ -149,14 +159,22 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
         log(`Sell ${formatUnits(rewards, sellToken.decimals)} ${sellToken.symbol} rewards`)
         const sellOrder = await placeSellOrder(context, sellOrderParams)
         log(`uid ${sellOrder.orderUid}`)
-        log(`fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)}`)
+        const feePercentage = sellOrder.fromAssetFeeAmount.mul(10000).div(rewards)
+        log(`fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} ${formatUnits(feePercentage, 2)}%`)
         log(`buy ${formatUnits(sellOrder.toAssetAmountAfterFee, buyToken.decimals)} ${buyToken.symbol}`)
 
-        // Initiate the order and sign
-        const data = encodeInitiateSwap(sellOrder.orderUid, transfer)
-        const tx = await liquidatorContract.initiateSwap(sellToken.address, buyToken.address, data)
+        const maxFeeScaled = simpleToExactAmount(maxFee, sellToken.decimals)
+        if (maxFeeScaled.gt(0) && sellOrder.fromAssetFeeAmount.gt(maxFee)) {
+            throw Error(`Fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} is greater than maxFee ${maxFee}`)
+        }
 
-        await logTxDetails(tx, `liquidator initiateSwap of ${sellToken.symbol} to ${buyToken.symbol}`)
+        if (!readonly) {
+            // Initiate the order and sign
+            const data = encodeInitiateSwap(sellOrder.orderUid, transfer)
+            const tx = await liquidatorContract.initiateSwap(sellToken.address, buyToken.address, data)
+
+            await logTxDetails(tx, `liquidator initiateSwap of ${sellToken.symbol} to ${buyToken.symbol}`)
+        }
     })
 task("liq-init-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
