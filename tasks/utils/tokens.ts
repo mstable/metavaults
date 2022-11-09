@@ -189,7 +189,7 @@ export const TRIBE: Token = {
 // USD Feeder Pool Assets on Mainnet
 export const FRAX: Token = {
     symbol: "FRAX",
-    address: "0x853d955acef822db058eb8505911ed77f175b99e",
+    address: "0x853d955aCEf822Db058eb8505911ED77F175b99e",
     chain: Chain.mainnet,
     decimals: 18,
     quantityFormatter: "USD",
