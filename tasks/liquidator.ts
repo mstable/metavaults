@@ -163,6 +163,9 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
         log(`fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} ${formatUnits(feePercentage, 2)}%`)
         log(`buy ${formatUnits(sellOrder.toAssetAmountAfterFee, buyToken.decimals)} ${buyToken.symbol}`)
 
+        const gasPrice = await hre.ethers.provider.getGasPrice()
+        log(`gas price ${formatUnits(gasPrice, "gwei")}`)
+
         const maxFeeScaled = simpleToExactAmount(maxFee, sellToken.decimals)
         if (maxFeeScaled.gt(0) && sellOrder.fromAssetFeeAmount.gt(maxFee)) {
             throw Error(`Fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} is greater than maxFee ${maxFee}`)
