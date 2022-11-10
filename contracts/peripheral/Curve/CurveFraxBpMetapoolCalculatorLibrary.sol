@@ -33,7 +33,7 @@ library CurveFraxBpMetapoolCalculatorLibrary {
     /// @notice Scale of the Curve.fi metapool fee. 100% = 1e10, 0.04% = 4e6.
     uint256 public constant CURVE_FEE_SCALE = 1e10;
     /// @notice Scales up the mint tokens by 0.002 basis points.
-    uint256 public constant MINT_ADJUST = 10000001;
+    uint256 public constant MINT_ADJUST = 10000002;
     uint256 public constant MINT_ADJUST_SCALE = 10000000;
 
     /**
