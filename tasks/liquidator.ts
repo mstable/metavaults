@@ -167,7 +167,7 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
         log(`gas price ${formatUnits(gasPrice, "gwei")}`)
 
         const maxFeeScaled = simpleToExactAmount(maxFee, sellToken.decimals)
-        if (maxFeeScaled.gt(0) && sellOrder.fromAssetFeeAmount.gt(maxFee)) {
+        if (maxFeeScaled.gt(0) && sellOrder.fromAssetFeeAmount.gt(maxFeeScaled)) {
             throw Error(`Fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} is greater than maxFee ${maxFee}`)
         }
 
@@ -253,21 +253,36 @@ task("liq-sync-swap").setAction(async (_, __, runSuper) => {
 
 subtask("liq-donate-tokens", "Donate purchased tokens to vaults")
     .addParam("vaults", "Comma separated vault symbols or addresses", undefined, types.string)
+    .addParam("rewards", "Comma separated symbols or addresses of the reward tokens", undefined, types.string)
+    .addOptionalParam("purchase", "Symbol or address of the purchased token", "DAI", types.string)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { liquidator, speed, vaults } = taskArgs
+        const { liquidator, speed, rewards, purchase, vaults } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
 
         const liquidatorAddress = resolveAddress(liquidator, chain)
         const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
-        const vaultsAddress = await resolveMultipleAddress(chain, vaults)
-        // TODO need option to restrict the reward and purchase tokens
-        const { rewardTokens, purchaseTokens, vaults: vaultAddresses } = await buildDonateTokensInput(signer, vaultsAddress)
-        log(`rewardTokens: ${rewardTokens}`)
-        log(`purchaseTokens: ${purchaseTokens}`)
-        log(`purchaseVaultAddresses: ${vaultAddresses}`)
+        const rewardAddresses = await resolveMultipleAddress(chain, rewards)
+        const vaultAddresses = await resolveMultipleAddress(chain, vaults)
+        const purchaseToken = await resolveAddress(purchase, chain)
+
+        const rewardTokens = []
+        const vaultTokens = []
+        const purchaseTokens = []
+        // For each vault
+        vaultAddresses.forEach((vaultAddress) => {
+            // For each reward token
+            rewardAddresses.forEach((rewardAddress) => {
+                rewardTokens.push(rewardAddress)
+                vaultTokens.push(vaultAddress)
+                purchaseTokens.push(purchaseToken)
+            })
+        })
+        log(`reward tokens ${rewardTokens}`)
+        log(`vaults ${vaultTokens}`)
+        log(`purchase tokens ${purchaseTokens}`)
 
         const tx = await liquidatorContract.donateTokens(rewardTokens, purchaseTokens, vaultAddresses)
         await logTxDetails(tx, `liquidator.donateTokens(${rewardTokens}, ${purchaseTokens}, ${vaultAddresses})`)
