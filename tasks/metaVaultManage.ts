@@ -60,8 +60,8 @@ subtask("mv-charge-perf-fee", "Vault Manager charges a performance fee since the
         const receipt = await tx.wait()
         const prefFeeEvent = receipt.events?.find((e) => e.event === "PerformanceFee")
         if (prefFeeEvent) {
-            log(`${prefFeeEvent.args.feeReceiver} received ${prefFeeEvent.args.feeShares} shares as a fee`)
-            log(`Fee assets/share updated to ${formatUnits(prefFeeEvent.args.assetsPerShare)}`)
+            log(`${prefFeeEvent.args.feeReceiver} received ${formatUnits(prefFeeEvent.args.feeShares)} shares as a fee`)
+            log(`Fee assets/share updated to ${formatUnits(prefFeeEvent.args.assetsPerShare, 26)}`)
         } else {
             log("No performance fee was charged")
         }
