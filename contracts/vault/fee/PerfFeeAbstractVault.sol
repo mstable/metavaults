@@ -45,16 +45,17 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
         perfFeesAssetPerShare = PERF_ASSETS_PER_SHARE_SCALE;
     }
 
-    /// @notice Helper function to charge a performance fee in the form of vault shares since the last time a performance fee was charged.
-    /// As an example, if the assets per share increased by 0.1% in the last week and the performance fee is 4%, the vault shares will be
-    /// increased by 0.1% * 4% = 0.004% as a fee. If there was 100,000 vault shares, 4 (100,000 * 0.004%) vault shares will be minted as a
-    /// performance fee. This dilutes the assets per shares of the existing vault shareholders by 0.004%.
-    /// @dev Created for saving gas by not reading totalSupply() twice.
-    /// @param currentAssetsPerShare Current assetsPerShare
-    /// @param totalShares total shares in the vault.
-    function _chargePerformanceFeeHelper(uint256 currentAssetsPerShare, uint256 totalShares)
-        internal
-    {
+    /**
+     * @dev charges a performance fee since the last time a fee was charged.
+     */
+    function _chargePerformanceFee() internal {
+        //Calculate current assets per share.
+        uint256 totalShares = totalSupply();
+        uint256 totalAssets = totalAssets();
+        uint256 currentAssetsPerShare = totalShares > 0
+            ? (totalAssets * PERF_ASSETS_PER_SHARE_SCALE) / totalShares
+            : perfFeesAssetPerShare;
+
         // Only charge a performance fee if assets per share has increased.
         if (currentAssetsPerShare > perfFeesAssetPerShare) {
             // Calculate the amount of shares to mint as a fee.
@@ -71,11 +72,15 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
             if (feeShares > 0) {
                 _mint(feeReceiver, feeShares);
 
+                // Calculate the new assets per share after fee shares have been minted.
+                // The assets per share has reduced as there are now more shares.
+                currentAssetsPerShare =  (totalAssets * PERF_ASSETS_PER_SHARE_SCALE) / (totalShares + feeShares);
+
                 emit PerformanceFee(feeReceiver, feeShares, currentAssetsPerShare);
             }
         }
 
-        // Store current assets per share.
+        // Store current assets per share which could be less than the old assets per share.
         perfFeesAssetPerShare = currentAssetsPerShare;
 
         // Hook for implementing contracts to do something after performance fees have been collected.
@@ -86,20 +91,13 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
     }
 
     /**
-     * @notice Charges a performance fee since the last time a fee was charged.
-     * @dev May need to be called from a trusted account depending on the invest and divest processes.
+     * @notice Vault Manager charges a performance fee since the last time a fee was charged.
+     * As an example, if the assets per share increased by 0.1% in the last week and the performance fee is 4%, the vault shares will be
+     * increased by 0.1% * 4% = 0.004% as a fee. If there was 100,000 vault shares, 4 (100,000 * 0.004%) vault shares will be minted as a
+     * performance fee. This dilutes the assets per shares of the existing vault shareholders by 0.004%.
+     * No performance fee is charged if the assets per share drops.
+     * @dev Called from a trusted account so gains and loses can not be gamed.
      */
-    function _chargePerformanceFee() internal {
-        //Calculate current assets per share.
-        uint256 totalShares = totalSupply();
-        uint256 currentAssetsPerShare = totalShares > 0
-            ? (totalAssets() * PERF_ASSETS_PER_SHARE_SCALE) / totalShares
-            : perfFeesAssetPerShare;
-
-        //Charge performance fee.
-        _chargePerformanceFeeHelper(currentAssetsPerShare, totalShares);
-    }
-
     function chargePerformanceFee() external virtual onlyVaultManager {
         _chargePerformanceFee();
     }
