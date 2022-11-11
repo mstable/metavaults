@@ -9,8 +9,9 @@ import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
 /**
  * @notice   Abstract ERC-4626 vault that calculates a performance fee since the last time the performance fee was charged.
  * @author  mStable
- * @dev     VERSION: 1.0
- *          DATE:    2022-05-27
+ * @dev     VERSION: 1.1
+ *          Created: 2022-05-27
+ *          Updated: 2022-11-11
  *
  * The following functions have to be implemented
  * - chargePerformanceFee()
