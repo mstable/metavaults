@@ -378,6 +378,14 @@ export const musd3CRV: Token = {
     quantityFormatter: "USD",
 }
 
+export const alUsdFraxBp: Token = {
+    symbol: "alUSDFRAXB3CRV-f",
+    address: "0xB30dA2376F63De30b42dC055C93fa474F31330A5",
+    chain: Chain.mainnet,
+    decimals: 18,
+    quantityFormatter: "USD",
+}
+
 export const cyMUSD: Token = {
     symbol: "cyMUSD",
     address: "0xbe86e8918dfc7d3cb10d295fc220f941a1470c5c",
@@ -527,6 +535,7 @@ export const tokens = [
     BAL,
     PBAL,
     musd3CRV,
+    alUsdFraxBp,
     vcx3CRVmUSD,
     vcx3CRVFRAX,
     vcx3CRVBUSD,
