@@ -1,6 +1,7 @@
 export interface BlockInfo {
     blockNumber: number
     blockTime: Date
+    blockTimestamp: number
 }
 
 export interface BlockRange {
@@ -11,12 +12,13 @@ export interface BlockRange {
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const getBlock = async (ethers, _blockNumber?: number | string): Promise<BlockInfo> => {
     const blockNumber = _blockNumber || (await ethers.provider.getBlockNumber())
-    const toBlock = await ethers.provider.getBlock(blockNumber)
-    const blockTime = new Date(toBlock.timestamp * 1000)
+    const block = await ethers.provider.getBlock(blockNumber)
+    const blockTime = new Date(block.timestamp * 1000)
 
     return {
         blockNumber,
         blockTime,
+        blockTimestamp: block.timestamp,
     }
 }
 

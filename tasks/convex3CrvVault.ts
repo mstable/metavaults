@@ -1,5 +1,5 @@
 import { ONE_DAY } from "@utils/constants"
-import { BN } from "@utils/math"
+import { BN, simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import {
@@ -280,6 +280,15 @@ task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
 
+const secondsToBurn = (blocktime: number, stream: { last: number; end: number; sharesPerSecond: BN }) => {
+    if (blocktime < stream.end) {
+        return blocktime - stream.last
+    } else if (stream.last < stream.end) {
+        return stream.end - stream.last
+    }
+    return 0
+}
+
 subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
     .addParam("vault", "Vault symbol or address", undefined, types.string)
     .addOptionalParam("owner", "Address, contract name or token symbol to get balances for. Defaults to signer", undefined, types.string)
@@ -302,6 +311,17 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
         })
 
         console.log(`\nConvex3CrvLiquidatorVault`)
+        // Assets per share
+        const totalShares = await vaultContract.totalSupply({
+            blockTag: blk.blockNumber,
+        })
+        const totalAssets = await vaultContract.totalAssets({
+            blockTag: blk.blockNumber,
+        })
+        const assetsPerShare = totalAssets.mul(simpleToExactAmount(1)).div(totalShares)
+        console.log(`Assets per share : ${formatUnits(assetsPerShare).padStart(21)}`)
+
+        // Stream data
         const stream = await vaultContract.shareStream({
             blockTag: blk.blockNumber,
         })
@@ -311,12 +331,19 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
         const sharesStillStreaming = await vaultContract.streamedShares({
             blockTag: blk.blockNumber,
         })
-        const streamRemainingPercentage = streamTotal.gt(0) ? sharesStillStreaming.mul(1000).div(streamTotal) : BN.from(0)
-        console.log(`Stream total     : ${formatUnits(streamTotal)} shares`)
-        console.log(`Stream remaining : ${formatUnits(sharesStillStreaming)} shares ${formatUnits(streamRemainingPercentage, 2)}%`)
+        const streamRemainingPercentage = streamTotal.gt(0) ? sharesStillStreaming.mul(10000).div(streamTotal) : BN.from(0)
+        const streamBurnable = stream.sharesPerSecond.mul(secondsToBurn(blk.blockTimestamp, stream)).div(streamScale)
+        const streamBurnablePercentage = streamTotal.gt(0) ? streamBurnable.mul(10000).div(streamTotal) : BN.from(0)
+
+        console.log(`Stream total     : ${formatUnits(streamTotal).padStart(21)} shares`)
+        console.log(`Stream burnable  : ${formatUnits(streamBurnable).padStart(21)} shares ${formatUnits(streamBurnablePercentage, 2)}%`)
+        console.log(
+            `Stream remaining : ${formatUnits(sharesStillStreaming).padStart(21)} shares ${formatUnits(streamRemainingPercentage, 2)}%`,
+        )
         console.log(`Stream last      : ${new Date(stream.last * 1000)}`)
         console.log(`Stream end       : ${new Date(stream.end * 1000)}`)
 
+        // Rewards
         console.log("\nRewards accrued:")
         const rewards = await vaultContract.callStatic.collectRewards({
             blockTag: blk.blockNumber,
@@ -330,6 +357,7 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
         const donateToken = await resolveAssetToken(signer, chain, rewards.donateTokens[0])
         console.log(`  Rewards are swapped for : ${donateToken.symbol}`)
 
+        // Fees
         const fee = await vaultContract.donationFee({
             blockTag: blk.blockNumber,
         })
