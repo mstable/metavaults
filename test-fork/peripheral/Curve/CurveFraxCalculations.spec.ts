@@ -7,32 +7,27 @@ import { expect } from "chai"
 import { BigNumber, ethers } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
-import {
-    CurveFraxBpCalculator__factory,
-    CurveFraxBpCalculatorLibrary__factory,
-    ICurveFraxBP__factory,
-    IERC20__factory,
-} from "types/generated"
+import { CurveFraxBpCalculatorLibrary__factory, ICurveFraxBP__factory, IERC20__factory } from "types/generated"
 
 import type { BlockTag } from "@nomicfoundation/hardhat-network-helpers/dist/src/types"
 import type { Account } from "types/common"
-import type { CurveFraxBpCalculator, ICurveFraxBP, IERC20 } from "types/generated"
+import type { CurveFraxBpCalculatorLibrary, ICurveFraxBP, IERC20 } from "types/generated"
 
-const log = logger("test:CurveFraxBPCalcs")
+const log = logger("test:FraxBPCalcs")
 
 const fraxWhaleAddress = "0xd632f22692fac7611d2aa1c0d552930d43caed3b" // Frax Finance: FRAX3CRV-f Token
 const usdcWhaleAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
-const crvFraxWhaleAddress = "0xCFc25170633581Bf896CB6CDeE170e3E3Aa59503" // Curve crvFRAX Gauge
+const fraxBpWhaleAddress = "0xCFc25170633581Bf896CB6CDeE170e3E3Aa59503" // Curve crvFRAX Gauge
 
 describe("Curve FRAX calculations", async () => {
     let fraxWhale: Account
     let usdcWhale: Account
-    let crvFraxWhale: Account
-    let crvFraxToken: IERC20
+    let fraxBpWhale: Account
+    let fraxBpToken: IERC20
     let fraxBP: ICurveFraxBP
     let fraxToken: IERC20
     let usdcToken: IERC20
-    let poolCalculator: CurveFraxBpCalculator
+    let calculatorLibrary: CurveFraxBpCalculatorLibrary
     const { network } = hre
 
     const reset = async (blockNumber: number) => {
@@ -51,17 +46,13 @@ describe("Curve FRAX calculations", async () => {
         }
         fraxWhale = await impersonateAccount(fraxWhaleAddress)
         usdcWhale = await impersonateAccount(usdcWhaleAddress)
-        crvFraxWhale = await impersonateAccount(crvFraxWhaleAddress)
+        fraxBpWhale = await impersonateAccount(fraxBpWhaleAddress)
 
-        const library = await new CurveFraxBpCalculatorLibrary__factory(fraxWhale.signer).deploy()
-        const libraryAddresses = {
-            "contracts/peripheral/Curve/CurveFraxBpCalculatorLibrary.sol:CurveFraxBpCalculatorLibrary": library.address,
-        }
-        poolCalculator = await new CurveFraxBpCalculator__factory(libraryAddresses, fraxWhale.signer).deploy()
+        calculatorLibrary = await new CurveFraxBpCalculatorLibrary__factory(fraxWhale.signer).deploy()
     }
 
     const initialise = (owner: Account) => {
-        crvFraxToken = IERC20__factory.connect(crvFRAX.address, owner.signer)
+        fraxBpToken = IERC20__factory.connect(crvFRAX.address, owner.signer)
         fraxBP = ICurveFraxBP__factory.connect(resolveAddress("FraxBP"), owner.signer)
         fraxToken = IERC20__factory.connect(FRAX.address, owner.signer)
         usdcToken = IERC20__factory.connect(USDC.address, owner.signer)
@@ -82,20 +73,20 @@ describe("Curve FRAX calculations", async () => {
         const usdcScaled = BigNumber.isBigNumber(usdcAmount) ? usdcAmount : simpleToExactAmount(usdcAmount, USDC.decimals)
 
         const usdcBefore = await usdcToken.balanceOf(owner.address)
-        const lpBefore = await crvFraxToken.balanceOf(owner.address)
+        const lpBefore = await fraxBpToken.balanceOf(owner.address)
 
         const lpEstimated = await fraxBP.calc_token_amount([0, usdcScaled], true)
         await owner.signer.sendTransaction(await fraxBP.connect(owner.signer).populateTransaction.calc_token_amount([0, usdcScaled], true))
 
-        const [lpCalculated] = await poolCalculator.calcDeposit(usdcScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcDeposit(usdcScaled, 1))
+        const [lpCalculated] = await calculatorLibrary.calcDeposit(usdcScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcDeposit(usdcScaled, 1))
 
         expect(usdcBefore, "enough USDC tokens to deposit").to.gte(usdcScaled)
 
         await fraxBP.connect(owner.signer).add_liquidity([0, usdcScaled], 0)
 
         const usdcAfter = await usdcToken.balanceOf(owner.address)
-        const lpAfter = await crvFraxToken.balanceOf(owner.address)
+        const lpAfter = await fraxBpToken.balanceOf(owner.address)
 
         const usdcActual = usdcBefore.sub(usdcAfter)
         const lpActual = lpAfter.sub(lpBefore)
@@ -119,21 +110,21 @@ describe("Curve FRAX calculations", async () => {
         const usdcScaled = BigNumber.isBigNumber(usdcAmount) ? usdcAmount : simpleToExactAmount(usdcAmount, USDC.decimals)
 
         const usdcBefore = await usdcToken.balanceOf(owner.address)
-        const lpBefore = await crvFraxToken.balanceOf(owner.address)
+        const lpBefore = await fraxBpToken.balanceOf(owner.address)
 
         // estimate LP tokens from USDC
         const lpEstimated = await fraxBP.calc_token_amount([0, usdcScaled], false)
         await owner.signer.sendTransaction(await fraxBP.connect(owner.signer).populateTransaction.calc_token_amount([0, usdcScaled], false))
 
-        const [lpCalculated] = await poolCalculator.calcWithdraw(usdcScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcWithdraw(usdcScaled, 1))
+        const [lpCalculated] = await calculatorLibrary.calcWithdraw(usdcScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcWithdraw(usdcScaled, 1))
 
         expect(lpBefore, "enough LP tokens (crvFRAX) to withdraw").to.gte(lpCalculated)
 
         await fraxBP.connect(owner.signer).remove_liquidity_imbalance([0, usdcScaled], ethers.constants.MaxUint256)
 
         const usdcAfter = await usdcToken.balanceOf(owner.address)
-        const lpAfter = await crvFraxToken.balanceOf(owner.address)
+        const lpAfter = await fraxBpToken.balanceOf(owner.address)
 
         const usdcActual = usdcAfter.sub(usdcBefore)
         const lpActual = lpBefore.sub(lpAfter)
@@ -157,12 +148,12 @@ describe("Curve FRAX calculations", async () => {
         const lpAmountScaled = BigNumber.isBigNumber(lpAmount) ? lpAmount : simpleToExactAmount(lpAmount)
 
         const usdcBefore = await usdcToken.balanceOf(owner.address)
-        const lpBefore = await crvFraxToken.balanceOf(owner.address)
+        const lpBefore = await fraxBpToken.balanceOf(owner.address)
 
         // Calculate USDC assets for required LP tokens
-        const [usdcCalculated] = await poolCalculator.calcMint(lpAmountScaled, 1)
+        const [usdcCalculated] = await calculatorLibrary.calcMint(lpAmountScaled, 1)
 
-        const unsignedTx = await poolCalculator.connect(owner.signer).populateTransaction.calcMint(lpAmountScaled, 1)
+        const unsignedTx = await calculatorLibrary.connect(owner.signer).populateTransaction.calcMint(lpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         expect(usdcBefore, "enough USDC tokens to deposit").to.gte(usdcCalculated)
@@ -170,7 +161,7 @@ describe("Curve FRAX calculations", async () => {
         await fraxBP.connect(owner.signer).add_liquidity([0, usdcCalculated], 0)
 
         const usdcAfter = await usdcToken.balanceOf(owner.address)
-        const lpAfter = await crvFraxToken.balanceOf(owner.address)
+        const lpAfter = await fraxBpToken.balanceOf(owner.address)
 
         const lpActual = lpAfter.sub(lpBefore)
         const usdcActual = usdcBefore.sub(usdcAfter)
@@ -191,16 +182,16 @@ describe("Curve FRAX calculations", async () => {
         const lpAmountScaled = BigNumber.isBigNumber(lpAmount) ? lpAmount : simpleToExactAmount(lpAmount)
 
         const usdcBefore = await usdcToken.balanceOf(owner.address)
-        const lpBefore = await crvFraxToken.balanceOf(owner.address)
+        const lpBefore = await fraxBpToken.balanceOf(owner.address)
 
         // Estimate USDC assets received from pool for burning LP tokens
         const usdcEstimated = await fraxBP.connect(owner.signer).calc_withdraw_one_coin(lpAmountScaled, 1)
         let unsignedTx = await fraxBP.connect(owner.signer).populateTransaction.calc_withdraw_one_coin(lpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
-        const [usdcCalculated] = await poolCalculator.calcRedeem(lpAmountScaled, 1)
+        const [usdcCalculated] = await calculatorLibrary.calcRedeem(lpAmountScaled, 1)
 
-        unsignedTx = await poolCalculator.connect(owner.signer).populateTransaction.calcRedeem(lpAmountScaled, 1)
+        unsignedTx = await calculatorLibrary.connect(owner.signer).populateTransaction.calcRedeem(lpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         expect(lpBefore, "enough LP tokens (crvFRAX) to withdraw").to.gte(lpAmountScaled)
@@ -208,7 +199,7 @@ describe("Curve FRAX calculations", async () => {
         await fraxBP.connect(owner.signer).remove_liquidity_one_coin(lpAmountScaled, 1, 0)
 
         const usdcAfter = await usdcToken.balanceOf(owner.address)
-        const lpAfter = await crvFraxToken.balanceOf(owner.address)
+        const lpAfter = await fraxBpToken.balanceOf(owner.address)
 
         const lpActual = lpBefore.sub(lpAfter)
         const usdcActual = usdcAfter.sub(usdcBefore)
@@ -254,7 +245,7 @@ describe("Curve FRAX calculations", async () => {
                 await mintFraxBP(usdcWhale, amount)
             })
             it(`Remove ${amount.toLocaleString("en-US")} LP tokens from`, async () => {
-                await redeemFraxBP(crvFraxWhale, amount)
+                await redeemFraxBP(fraxBpWhale, amount)
             })
         })
         const usdcAmounts = [BN.from(1), BN.from(10), simpleToExactAmount(1, 6), 10000000, 40000000]
@@ -263,13 +254,13 @@ describe("Curve FRAX calculations", async () => {
                 await depositFraxBP(usdcWhale, amount)
             })
             it(`Withdraw ${amount.toLocaleString("en-US")} USDC tokens from`, async () => {
-                await withdrawFraxBP(crvFraxWhale, amount)
+                await withdrawFraxBP(fraxBpWhale, amount)
             })
         })
     }
     const usdcOverweightFraxBP = async () => {
         // Remove 350m FRAX from FraxBP
-        await fraxBP.connect(crvFraxWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(350000000), 0, 0)
+        await fraxBP.connect(fraxBpWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(350000000), 0, 0)
         // Add 1,000m USDC
         await usdcToken.connect(usdcWhale.signer).approve(fraxBP.address, ethers.constants.MaxUint256)
         await fraxBP.connect(usdcWhale.signer).add_liquidity([0, simpleToExactAmount(1000000000, USDC.decimals)], 0)
@@ -279,11 +270,11 @@ describe("Curve FRAX calculations", async () => {
         await fraxToken.connect(fraxWhale.signer).approve(fraxBP.address, ethers.constants.MaxUint256)
         await fraxBP.connect(fraxWhale.signer).add_liquidity([simpleToExactAmount(500000000, FRAX.decimals), 0], 0)
         // Remove 245m USDC from FraxBP
-        await fraxBP.connect(crvFraxWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(245000000), 1, 0)
+        await fraxBP.connect(fraxBpWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(245000000), 1, 0)
     }
     const balancedFraxBP = async () => {
         // Remove 106,812,567 FRAX from FraxBP
-        await fraxBP.connect(crvFraxWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(106812567), 0, 0)
+        await fraxBP.connect(fraxBpWhale.signer).remove_liquidity_one_coin(simpleToExactAmount(106812567), 0, 0)
     }
     context("Underweight USDC in FraxBP", () => {
         testCalculations(15380000, usdcUnderweightFraxBP)
@@ -305,24 +296,24 @@ describe("Curve FRAX calculations", async () => {
         })
         it("Get virtual price", async () => {
             const actualVirtualPrice = await fraxBP.get_virtual_price()
-            expect(await poolCalculator.getVirtualPrice(), "virtual price").to.eq(actualVirtualPrice)
+            expect(await calculatorLibrary.getVirtualPrice(), "virtual price").to.eq(actualVirtualPrice)
         })
         it("Deposit 59,526.32 FRAX 0x74ba222efd158df223d89b87759817422e5ed5ac2361b58580933f83d1950c30", async () => {
-            const crvFraxBefore = await crvFraxToken.balanceOf(account.address)
+            const crvFraxBefore = await fraxBpToken.balanceOf(account.address)
 
             const fraxAmount = simpleToExactAmount(5952632, 16)
             const expectedCrvFrax = BN.from("59473237525155014681708")
 
-            const [calculatedCrvFrax] = await poolCalculator.calcDeposit(fraxAmount, 0)
+            const [calculatedCrvFrax] = await calculatorLibrary.calcDeposit(fraxAmount, 0)
             await account.signer.sendTransaction(
-                await poolCalculator.connect(account.signer).populateTransaction.calcDeposit(fraxAmount, 0),
+                await calculatorLibrary.connect(account.signer).populateTransaction.calcDeposit(fraxAmount, 0),
             )
 
             expect(await fraxToken.balanceOf(account.address), "enough FRAX to deposit").to.gte(fraxAmount)
 
             await fraxBP.add_liquidity([fraxAmount, 0], 0)
 
-            const crvFraxAfter = await crvFraxToken.balanceOf(account.address)
+            const crvFraxAfter = await fraxBpToken.balanceOf(account.address)
             const crvFraxActual = crvFraxAfter.sub(crvFraxBefore)
 
             expect(crvFraxActual, "actual == expected crvFrax").to.eq(expectedCrvFrax)
