@@ -8,6 +8,7 @@ import "hardhat-abi-exporter"
 import "@nomiclabs/hardhat-etherscan"
 import "ts-node/register"
 import "tsconfig-paths/register"
+import "solidity-docgen"
 
 import { config as dotenvConfig } from "dotenv"
 import { resolve } from "path"
@@ -80,6 +81,10 @@ export const hardhatConfig = {
     },
     etherscan: {
         apiKey: process.env.ETHERSCAN_KEY,
+    },
+    docgen: {
+        outputDir: "./docs/natspec",
+        templates: "./docs/templates",
     },
 }
 
