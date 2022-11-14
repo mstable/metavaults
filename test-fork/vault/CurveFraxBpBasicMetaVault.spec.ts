@@ -124,7 +124,7 @@ describe("Curve FraxBp Basic Vault", async () => {
         }
     }
     const ctx = <CurveFraxBpContext>{}
-    xdescribe("FRAX FraxBP Vault", () => {
+    describe("FRAX FraxBP Vault", () => {
         before(() => {
             // Anonymous functions cannot be used as fixtures so can't use arrow function
             ctx.fixture = async function fixture() {
