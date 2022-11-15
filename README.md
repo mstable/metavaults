@@ -177,6 +177,18 @@ export NODE_URL=https://mainnet.infura.io/v3/yourApiKey
 yarn task token-transfer --network mainnet --asset MTA --recipient mStableDAO -- amount 1000
 ```
 
+## Document generation from Natspec
+
+The contract Natspec can be generated into a markdown file in the `docs/natspec` folder using the following command.
+
+```
+yarn docgen
+```
+
+The markdown for the relevant contracts can then be copied into GitBook.
+
+Unfortunately the generated markdown will not include inherited classes. These need to be manually include for now. 
+
 ## Other mStable Meta Vault repositories
 
 -   https://github.com/mstable/mStable-defender

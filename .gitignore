@@ -39,6 +39,8 @@ artifacts
 # Typechain
 /types/generated
 
+docs/natspec
+
 # VS Code Solidity Extension
 bin/contracts
 

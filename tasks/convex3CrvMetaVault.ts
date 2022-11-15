@@ -215,6 +215,7 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
         })
 
         console.log(`\nPeriodicAllocationPerfFeeMetaVault`)
+        // Assets
         const assetsInVault = await assetContract.balanceOf(vaultToken.address, {
             blockTag: blk.blockNumber,
         })
@@ -261,6 +262,8 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
                 2,
             )}%`,
         )
+
+        // Assets per share
         console.log(
             `stored assets/share     : ${formatUnits(
                 await vaultContract.assetsPerShare({
@@ -273,6 +276,12 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
             blockTag: blk.blockNumber,
         })
         console.log(`current assets/share    : ${formatUnits(current.assetsPerShare_, 26)}`)
+        const perfAssetsPerShare = await vaultContract.perfFeesAssetPerShare({
+            blockTag: blk.blockNumber,
+        })
+        const perfPercentage = current.assetsPerShare_.sub(perfAssetsPerShare).mul(1000000).div(perfAssetsPerShare)
+        console.log(`performance assets/share: ${formatUnits(perfAssetsPerShare, 26)} ${formatUnits(perfPercentage, 4)}%`)
+
         const fee = await vaultContract.performanceFee({
             blockTag: blk.blockNumber,
         })
