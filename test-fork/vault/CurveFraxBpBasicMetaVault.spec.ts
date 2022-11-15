@@ -33,8 +33,8 @@ const normalBlock = 15966213
 const slippageData = {
     redeem: 101,
     deposit: 99,
-    withdraw: 11,
-    mint: 10,
+    withdraw: 110,
+    mint: 100,
 }
 
 describe("Curve FraxBp Basic Vault", async () => {
