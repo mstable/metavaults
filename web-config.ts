@@ -137,11 +137,12 @@ const bundle = () => {
             keywords,
             main: names.main,
             types: names.types,
-            publishConfig: {
-                registry: "https://npm.pkg.github.com/",
-                email: "info@mstable.com",
-                scope: "@mstable",
-            },
+            // Enable if it is desired to publish to git hub packages
+            // publishConfig: {
+            //     registry: "https://npm.pkg.github.com/",
+            //     email: "info@mstable.com",
+            //     scope: "@mstable",
+            // },
         })
     } catch (e) {
         console.error("Error writing package.json ", e)
@@ -174,10 +175,10 @@ const publish = () => {
     }
 }
 
-;(async () => {
-    clean()
-    compile()
-    bundle()
-    //publish()
-    //clean()
-})()
+    ; (async () => {
+        clean()
+        compile()
+        bundle()
+        //publish()
+        //clean()
+    })()
