@@ -12,6 +12,10 @@ import {
     LiquidatorBasicVault__factory,
     MockERC20__factory,
     MockNexus__factory,
+    MockLiquidatorMaliciousVault__factory,
+    MockLiquidatorMaliciousVault,
+    MockMaliciousDexSwap__factory,
+    MockMaliciousDexSwap,
 } from "types/generated"
 
 import { buildDonateTokensInput } from "../../../tasks/utils/liquidatorUtil"
@@ -41,6 +45,7 @@ const ERROR = {
     ALREADY_DONATED: "already donated",
     WRONG_INPUT: "Wrong input",
     DONATE_WRONG_TOKEN: "Donated token not asset",
+    REENTRY_GARD: "ReentrancyGuard: reentrant call",
 }
 
 describe("Liquidator", async () => {
@@ -59,6 +64,9 @@ describe("Liquidator", async () => {
     // async conf
     let asyncSwapper: CowSwapDex
     let relayer: MockGPv2VaultRelayer
+    // malicious contracts
+    let vaultMalicious: MockLiquidatorMaliciousVault
+    let syncSwapperMalicious: MockMaliciousDexSwap
 
     let vault1Account: Signer
     let vault2Account: Signer
@@ -114,6 +122,11 @@ describe("Liquidator", async () => {
         await asyncSwapper.connect(sa.governor.signer).approveToken(rewards2.address)
         await asyncSwapper.connect(sa.governor.signer).approveToken(rewards3.address)
         await relayer.initialize(exchanges)
+
+        // deploy malicious
+
+        syncSwapperMalicious = await new MockMaliciousDexSwap__factory(sa.default.signer).deploy(nexus.address)
+        await syncSwapperMalicious.initialize(exchanges)
     }
     const setup = async () => {
         nexus = await new MockNexus__factory(sa.default.signer).deploy(sa.governor.address)
@@ -138,6 +151,9 @@ describe("Liquidator", async () => {
         // Vault 3 has reward 1 and asset 1
         vault3 = await new LiquidatorBasicVault__factory(sa.default.signer).deploy(nexus.address, asset1.address)
         await vault3.initialize("Vault 3", "V3", sa.default.address, [rewards1.address])
+
+        vaultMalicious = await new MockLiquidatorMaliciousVault__factory(sa.default.signer).deploy(nexus.address, asset1.address)
+        await vaultMalicious.initialize("Vault R", "VR", sa.default.address, [rewards1.address])
 
         // to simulate calls from the vault
         vault1Account = await impersonate(vault1.address)
@@ -388,9 +404,13 @@ describe("Liquidator", async () => {
             expect(event.args.purchaseTokens[2][0], "purchase token vault3 rewards 1").to.eq(asset1.address)
         })
         describe("failed as", () => {
-            it("not keep or governor", async () => {
+            it("not keeper or governor", async () => {
                 const tx = liquidator.connect(sa.default.signer).collectRewards([vault3.address])
                 await expect(tx).to.revertedWith(ERROR.ONLY_KEEPER_GOVERNOR)
+            })
+            it("reentrant call", async () => {
+                const tx = liquidator.collectRewards([vaultMalicious.address])
+                await expect(tx).to.revertedWith(ERROR.REENTRY_GARD)
             })
         })
     })
@@ -652,6 +672,12 @@ describe("Liquidator", async () => {
             it("invalid reward", async () => {
                 const tx = liquidator.connect(sa.keeper.signer).swap(asset1.address, asset2.address, asset1Amount, "0x")
                 await expect(tx).to.revertedWith(ERROR.INVALID_SWAP)
+            })
+            it("reentrant call", async () => {
+                await liquidator.connect(sa.governor.signer).setSyncSwapper(syncSwapperMalicious.address)
+                const tx = liquidator.connect(sa.keeper.signer).swap(rewards1.address, asset1.address, 0, "0x")
+                await expect(tx).to.revertedWith(ERROR.REENTRY_GARD)
+                await liquidator.connect(sa.governor.signer).setSyncSwapper(syncSwapper.address)
             })
             it("no reward", async () => {
                 // successfully swap so a new liquidation is created with no rewards

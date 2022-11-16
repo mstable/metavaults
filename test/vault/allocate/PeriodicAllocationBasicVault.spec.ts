@@ -166,6 +166,11 @@ describe("PeriodicAllocationBasicVault", async () => {
                 new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS),
             ).to.be.revertedWith("Asset is zero")
         })
+        it("should fail if nexus has zero address", async () => {
+            await expect(
+                new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS),
+            ).to.be.revertedWith("Nexus address is zero")
+        })
     })
     describe("initialize", async () => {
         it("should properly store valid arguments", async () => {
@@ -1143,7 +1148,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
 
                 // validate post-rebalance properties and event
-                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
+                await expect(tx)
+                    .to.emit(pabVault, "AssetsPerShareUpdated")
+                    .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
             })
             it("after removal of underlying vault", async () => {
@@ -1160,7 +1167,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                 updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
 
                 // validate post-removal properties and event
-                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
+                await expect(tx)
+                    .to.emit(pabVault, "AssetsPerShareUpdated")
+                    .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
             })
         })

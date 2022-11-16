@@ -247,6 +247,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
                 new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS, ONE_DAY),
             ).to.be.revertedWith("Asset is zero")
         })
+        it("should fail if nexus has zero address", async () => {
+            await expect(
+                new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS, ONE_DAY),
+            ).to.be.revertedWith("Nexus address is zero")
+        })
     })
     describe("calling initialize", async () => {
         before(async () => {
