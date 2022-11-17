@@ -204,6 +204,11 @@ describe("Streamed Liquidator Vault", async () => {
                 new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS, ONE_DAY),
             ).to.be.revertedWith("Asset is zero")
         })
+        it("should fail if nexus has zero address", async () => {
+            await expect(
+                new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS, ONE_DAY),
+            ).to.be.revertedWith("Nexus address is zero")
+        })
     })
     describe("behaviors", async () => {
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: vault as VaultManagerRole, sa }))

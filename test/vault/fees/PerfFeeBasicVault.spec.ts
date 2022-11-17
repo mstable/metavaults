@@ -149,6 +149,11 @@ describe("Performance Fees", async () => {
                 "Asset is zero",
             )
         })
+        it("should fail if nexus has zero address", async () => {
+            await expect(new PerfFeeBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith(
+                "Nexus address is zero",
+            )
+        })
     })
     describe("behaviors", async () => {
         describe("should behave like AbstractVaultBehaviourContext", async () => {
