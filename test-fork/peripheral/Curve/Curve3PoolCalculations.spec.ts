@@ -6,11 +6,11 @@ import { expect } from "chai"
 import { BigNumber, ethers } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
-import { Curve3PoolCalculator__factory, Curve3PoolCalculatorLibrary__factory, ICurve3Pool__factory, IERC20__factory } from "types/generated"
+import { Curve3PoolCalculatorLibrary__factory, ICurve3Pool__factory, IERC20__factory } from "types/generated"
 
 import type { BlockTag } from "@nomicfoundation/hardhat-network-helpers/dist/src/types"
 import type { Account } from "types/common"
-import type { Curve3PoolCalculator, ICurve3Pool, IERC20 } from "types/generated"
+import type { Curve3PoolCalculatorLibrary, ICurve3Pool, IERC20 } from "types/generated"
 
 const log = logger("test:Curve3PoolCalcs")
 
@@ -33,7 +33,7 @@ describe("Curve 3Pool calculations", async () => {
     let threeCrvWhale2: Account
     let threeCrvToken: IERC20
     let threePool: ICurve3Pool
-    let poolCalculator: Curve3PoolCalculator
+    let calculatorLibrary: Curve3PoolCalculatorLibrary
     let usdcToken: IERC20
     let daiToken: IERC20
     let usdtToken: IERC20
@@ -57,11 +57,7 @@ describe("Curve 3Pool calculations", async () => {
         threeCrvWhale1 = await impersonateAccount(threeCrvWhaleAddress1)
         threeCrvWhale2 = await impersonateAccount(threeCrvWhaleAddress2)
 
-        const threePoolCalculatorLibrary = await new Curve3PoolCalculatorLibrary__factory(staker1.signer).deploy()
-        const curve3PoolCalculatorLibraryAddresses = {
-            "contracts/peripheral/Curve/Curve3PoolCalculatorLibrary.sol:Curve3PoolCalculatorLibrary": threePoolCalculatorLibrary.address,
-        }
-        poolCalculator = await new Curve3PoolCalculator__factory(curve3PoolCalculatorLibraryAddresses, staker1.signer).deploy()
+        calculatorLibrary = await new Curve3PoolCalculatorLibrary__factory(staker1.signer).deploy()
     }
 
     const initialise = (owner: Account) => {
@@ -96,8 +92,8 @@ describe("Curve 3Pool calculations", async () => {
             await threePool.connect(owner.signer).populateTransaction.calc_token_amount([0, usdcScaled, 0], true),
         )
 
-        const [lpCalculated] = await poolCalculator.calcDeposit(usdcScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcDeposit(usdcScaled, 1))
+        const [lpCalculated] = await calculatorLibrary.calcDeposit(usdcScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcDeposit(usdcScaled, 1))
 
         expect(usdcBefore, "enough USDC tokens to deposit").to.gte(usdcScaled)
 
@@ -136,8 +132,8 @@ describe("Curve 3Pool calculations", async () => {
             await threePool.connect(owner.signer).populateTransaction.calc_token_amount([0, usdcScaled, 0], false),
         )
 
-        const [lpCalculated] = await poolCalculator.calcWithdraw(usdcScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcWithdraw(usdcScaled, 1))
+        const [lpCalculated] = await calculatorLibrary.calcWithdraw(usdcScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcWithdraw(usdcScaled, 1))
 
         expect(lpBefore, "enough LP tokens (3Crv) to withdraw").to.gte(lpCalculated)
 
@@ -171,8 +167,8 @@ describe("Curve 3Pool calculations", async () => {
         const lpBefore = await threeCrvToken.balanceOf(owner.address)
 
         // Calculate USDC assets for required LP tokens
-        const [usdcCalculated] = await poolCalculator.calcMint(lpAmountScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcMint(lpAmountScaled, 1))
+        const [usdcCalculated] = await calculatorLibrary.calcMint(lpAmountScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcMint(lpAmountScaled, 1))
 
         expect(usdcBefore, "enough USDC tokens to deposit").to.gte(usdcCalculated)
 
@@ -208,8 +204,8 @@ describe("Curve 3Pool calculations", async () => {
             await threePool.connect(owner.signer).populateTransaction.calc_withdraw_one_coin(lpAmountScaled, 1),
         )
 
-        const [usdcCalculated] = await poolCalculator.calcRedeem(lpAmountScaled, 1)
-        await owner.signer.sendTransaction(await poolCalculator.connect(owner.signer).populateTransaction.calcRedeem(lpAmountScaled, 1))
+        const [usdcCalculated] = await calculatorLibrary.calcRedeem(lpAmountScaled, 1)
+        await owner.signer.sendTransaction(await calculatorLibrary.connect(owner.signer).populateTransaction.calcRedeem(lpAmountScaled, 1))
 
         expect(lpBefore, "enough LP tokens (3Crv) to withdraw").to.gte(lpAmountScaled)
 
@@ -275,11 +271,11 @@ describe("Curve 3Pool calculations", async () => {
         })
         it("3Pool virtual prices", async () => {
             const expectedVirtualPrice = await threePool.get_virtual_price()
-            expect(await poolCalculator.getVirtualPrice(), "virtual price").to.eq(expectedVirtualPrice)
+            expect(await calculatorLibrary.getVirtualPrice(), "virtual price").to.eq(expectedVirtualPrice)
 
             // Get the gas costs
             await staker1.signer.sendTransaction(await threePool.connect(staker1.signer).populateTransaction.get_virtual_price())
-            await staker1.signer.sendTransaction(await poolCalculator.connect(staker1.signer).populateTransaction.getVirtualPrice())
+            await staker1.signer.sendTransaction(await calculatorLibrary.connect(staker1.signer).populateTransaction.getVirtualPrice())
         })
     }
     const usdcOverweight3Pool = async () => {
@@ -323,8 +319,8 @@ describe("Curve 3Pool calculations", async () => {
             const daiBefore = await daiToken.balanceOf(staker1.address)
             const lpBefore = await threeCrvToken.balanceOf(staker1.address)
 
-            const [calculatedLp] = await poolCalculator.calcDeposit(daiTokens, 0)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcDeposit(daiTokens, 0))
+            const [calculatedLp] = await calculatorLibrary.calcDeposit(daiTokens, 0)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcDeposit(daiTokens, 0))
 
             await daiToken.connect(staker1.signer).approve(threePool.address, daiTokens)
             await threePool.connect(staker1.signer).add_liquidity([daiTokens, 0, 0], 0)
@@ -341,8 +337,8 @@ describe("Curve 3Pool calculations", async () => {
             const daiBefore = await daiToken.balanceOf(staker1.address)
             const lpBefore = await threeCrvToken.balanceOf(staker1.address)
 
-            const [daiCalculated] = await poolCalculator.calcMint(requiredLpTokens, 0)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcMint(requiredLpTokens, 0))
+            const [daiCalculated] = await calculatorLibrary.calcMint(requiredLpTokens, 0)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcMint(requiredLpTokens, 0))
             log(`Calculated ${daiCalculated} DAI required to mint 100,000 3Crv lp tokens`)
 
             expect(await daiToken.balanceOf(staker1.address), "DAI bal >= deposit").to.gte(daiCalculated)
@@ -365,8 +361,8 @@ describe("Curve 3Pool calculations", async () => {
             const usdcBefore = await usdcToken.balanceOf(staker1.address)
             const lpBefore = await threeCrvToken.balanceOf(staker1.address)
 
-            const [usdcCalculated] = await poolCalculator.calcMint(requiredLpTokens, 1)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcMint(requiredLpTokens, 1))
+            const [usdcCalculated] = await calculatorLibrary.calcMint(requiredLpTokens, 1)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcMint(requiredLpTokens, 1))
             log(`Calculated ${usdcCalculated} USDC required to mint 100,000 3Crv lp tokens`)
 
             await usdcToken.connect(staker1.signer).approve(threePool.address, usdcCalculated)
@@ -388,8 +384,8 @@ describe("Curve 3Pool calculations", async () => {
             const daiBefore = await daiToken.balanceOf(threeCrvWhale1.address)
             const lpBefore = await threeCrvToken.balanceOf(threeCrvWhale1.address)
 
-            const [daiCalculated] = await poolCalculator.calcRedeem(lpTokens, 0)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcRedeem(lpTokens, 0))
+            const [daiCalculated] = await calculatorLibrary.calcRedeem(lpTokens, 0)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcRedeem(lpTokens, 0))
 
             await threePool.connect(threeCrvWhale1.signer).remove_liquidity_one_coin(lpTokens, 0, 0)
 
@@ -405,8 +401,8 @@ describe("Curve 3Pool calculations", async () => {
             const usdcBefore = await usdcToken.balanceOf(threeCrvWhale1.address)
             const lpBefore = await threeCrvToken.balanceOf(threeCrvWhale1.address)
 
-            const [usdcCalculated] = await poolCalculator.calcRedeem(lpTokens, 1)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcRedeem(lpTokens, 1))
+            const [usdcCalculated] = await calculatorLibrary.calcRedeem(lpTokens, 1)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcRedeem(lpTokens, 1))
 
             await threePool.connect(threeCrvWhale1.signer).remove_liquidity_one_coin(lpTokens, 1, 0)
 
@@ -422,8 +418,8 @@ describe("Curve 3Pool calculations", async () => {
             const daiBefore = await daiToken.balanceOf(threeCrvWhale1.address)
             const lpBefore = await threeCrvToken.balanceOf(threeCrvWhale1.address)
 
-            const [lpCalculated] = await poolCalculator.calcWithdraw(daiTokens, 0)
-            await staker1.signer.sendTransaction(await poolCalculator.populateTransaction.calcWithdraw(daiTokens, 0))
+            const [lpCalculated] = await calculatorLibrary.calcWithdraw(daiTokens, 0)
+            await staker1.signer.sendTransaction(await calculatorLibrary.populateTransaction.calcWithdraw(daiTokens, 0))
 
             await threePool.connect(threeCrvWhale1.signer).remove_liquidity_imbalance([daiTokens, 0, 0], ethers.constants.MaxUint256)
 
@@ -446,9 +442,9 @@ describe("Curve 3Pool calculations", async () => {
             const usdtAmount = simpleToExactAmount(308, USDT.decimals)
             const expectedThreeCrvTokens = BN.from("301500744564571495002")
 
-            const [calculated3Crv] = await poolCalculator.calcDeposit(usdtAmount, 2)
+            const [calculated3Crv] = await calculatorLibrary.calcDeposit(usdtAmount, 2)
             await account.signer.sendTransaction(
-                await poolCalculator.connect(account.signer).populateTransaction.calcDeposit(usdtAmount, 2),
+                await calculatorLibrary.connect(account.signer).populateTransaction.calcDeposit(usdtAmount, 2),
             )
 
             expect(await usdtToken.balanceOf(account.address), "enough USDT to deposit").to.gte(usdtAmount)

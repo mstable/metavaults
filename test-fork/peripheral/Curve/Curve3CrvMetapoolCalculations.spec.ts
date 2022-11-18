@@ -1,4 +1,3 @@
-import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { DAI, mUSD, musd3CRV, resolveAddress, ThreeCRV, USDC, usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
@@ -8,7 +7,6 @@ import { ethers } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
-    Curve3CrvMetapoolCalculator__factory,
     Curve3CrvMetapoolCalculatorLibrary__factory,
     ICurve3Pool__factory,
     ICurveMetapool__factory,
@@ -16,7 +14,7 @@ import {
 } from "types/generated"
 
 import type { Account } from "types/common"
-import type { Curve3CrvMetapoolCalculator, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
+import type { Curve3CrvMetapoolCalculatorLibrary, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
 
 const log = logger("test:Curve3CrvMetaCalcs")
 
@@ -47,7 +45,7 @@ describe("Curve 3Crv metapool calculations", async () => {
     let musd3CrvWhale: Account
     let threeCrvToken: IERC20
     let threePool: ICurve3Pool
-    let metapoolCalculator: Curve3CrvMetapoolCalculator
+    let calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary
     let musdMetapool: ICurveMetapool
     let musd3CrvToken: IERC20
     let musdToken: IERC20
@@ -75,15 +73,7 @@ describe("Curve 3Crv metapool calculations", async () => {
         musdWhale = await impersonateAccount(musdWhaleAddress)
         musd3CrvWhale = await impersonateAccount(musd3CrvWhaleAddress)
 
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(staker1.signer).deploy()
-        const libraryAddresses = {
-            "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
-                calculatorLibrary.address,
-        }
-        metapoolCalculator = await new Curve3CrvMetapoolCalculator__factory(libraryAddresses, staker1.signer).deploy(
-            config.convex3CrvPools.musd.curveMetapool,
-            config.convex3CrvPools.musd.curveMetapoolToken,
-        )
+        calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(staker1.signer).deploy()
     }
 
     const initialise = (owner: Account) => {
@@ -113,8 +103,10 @@ describe("Curve 3Crv metapool calculations", async () => {
         const threeCrvBefore = await threeCrvToken.balanceOf(owner.address)
         const metapoolLpBefore = await metapoolToken.balanceOf(owner.address)
 
-        const [metapoolLpCalculated] = await metapoolCalculator.calcDeposit(threeCrvScaled, 1)
-        const unsignedTx = await metapoolCalculator.connect(owner.signer).populateTransaction.calcDeposit(threeCrvScaled, 1)
+        const [metapoolLpCalculated] = await calculatorLibrary.calcDeposit(musdMetapool.address, musd3CRV.address, threeCrvScaled, 1)
+        const unsignedTx = await calculatorLibrary
+            .connect(owner.signer)
+            .populateTransaction.calcDeposit(musdMetapool.address, musd3CRV.address, threeCrvScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         expect(threeCrvBefore, "enough base pool LP tokens (3Crv) to deposit").to.gte(threeCrvScaled)
@@ -149,8 +141,10 @@ describe("Curve 3Crv metapool calculations", async () => {
         const threeCrvBefore = await threeCrvToken.balanceOf(owner.address)
         const metapoolLpBefore = await metapoolToken.balanceOf(owner.address)
 
-        const [metapoolLpCalculated] = await metapoolCalculator.calcWithdraw(threeCrvScaled, 1)
-        const unsignedTx = await metapoolCalculator.connect(owner.signer).populateTransaction.calcWithdraw(threeCrvScaled, 1)
+        const [metapoolLpCalculated] = await calculatorLibrary.calcWithdraw(musdMetapool.address, musd3CRV.address, threeCrvScaled, 1)
+        const unsignedTx = await calculatorLibrary
+            .connect(owner.signer)
+            .populateTransaction.calcWithdraw(musdMetapool.address, musd3CRV.address, threeCrvScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         log(`Metapool LP (musd3Crv) balance ${usdFormatter(await metapoolToken.balanceOf(owner.address))}`)
@@ -185,9 +179,11 @@ describe("Curve 3Crv metapool calculations", async () => {
         const metapoolLpBefore = await metapoolToken.balanceOf(owner.address)
 
         // Calculate 3Crv to deposit for the required metapool LP tokens
-        const [threeCrvCalculated] = await metapoolCalculator.calcMint(lpAmountScaled, 1)
+        const [threeCrvCalculated] = await calculatorLibrary.calcMint(musdMetapool.address, musd3CRV.address, lpAmountScaled, 1)
 
-        const unsignedTx = await metapoolCalculator.connect(owner.signer).populateTransaction.calcMint(lpAmountScaled, 1)
+        const unsignedTx = await calculatorLibrary
+            .connect(owner.signer)
+            .populateTransaction.calcMint(musdMetapool.address, musd3CRV.address, lpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         expect(threeCrvBefore, "enough 3Crv tokens to deposit").to.gte(threeCrvCalculated)
@@ -224,9 +220,11 @@ describe("Curve 3Crv metapool calculations", async () => {
         let unsignedTx = await musdMetapool.connect(owner.signer).populateTransaction.calc_withdraw_one_coin(metapoolLpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
-        const [threeCrvCalculated] = await metapoolCalculator.calcRedeem(metapoolLpAmountScaled, 1)
+        const [threeCrvCalculated] = await calculatorLibrary.calcRedeem(musdMetapool.address, musd3CRV.address, metapoolLpAmountScaled, 1)
 
-        unsignedTx = await metapoolCalculator.connect(owner.signer).populateTransaction.calcRedeem(metapoolLpAmountScaled, 1)
+        unsignedTx = await calculatorLibrary
+            .connect(owner.signer)
+            .populateTransaction.calcRedeem(musdMetapool.address, musd3CRV.address, metapoolLpAmountScaled, 1)
         await owner.signer.sendTransaction(unsignedTx)
 
         expect(metapoolLpBefore, "enough metapool LP tokens (musd3Crv) to withdraw").to.gte(metapoolLpAmountScaled)
@@ -310,34 +308,64 @@ describe("Curve 3Crv metapool calculations", async () => {
         })
         it("Convert 100 meta pool lp tokens musd3Crv to base pool lp tokens (3Crv)", async () => {
             const musd3CrvTokens = simpleToExactAmount(100)
-            const threeCrvTokens = await metapoolCalculator.convertToBaseLp(musd3CrvTokens, true)
+            const threeCrvTokens = await calculatorLibrary["convertToBaseLp(address,address,uint256,bool)"](
+                musdMetapool.address,
+                musd3CRV.address,
+                musd3CrvTokens,
+                true,
+            )
             log(`${usdFormatter(musd3CrvTokens)} musd3Crv = ${usdFormatter(threeCrvTokens)} threeCrv`)
             expect(threeCrvTokens, "3Crv < musd3Crv").lt(musd3CrvTokens)
 
             await staker1.signer.sendTransaction(
-                await metapoolCalculator.connect(staker1.signer).populateTransaction.convertToBaseLp(musd3CrvTokens, true),
+                await calculatorLibrary
+                    .connect(staker1.signer)
+                    .populateTransaction["convertToBaseLp(address,address,uint256,bool)"](
+                        musdMetapool.address,
+                        musd3CRV.address,
+                        musd3CrvTokens,
+                        true,
+                    ),
             )
         })
         it("Convert 100 base pool lp tokens 3Crv to metapool lp tokens (musd3Crv)", async () => {
             const threeCrvTokens = simpleToExactAmount(100)
-            const musd3CrvTokens = await metapoolCalculator.convertToMetaLp(threeCrvTokens, true)
+            const musd3CrvTokens = await calculatorLibrary["convertToMetaLp(address,address,uint256,bool)"](
+                musdMetapool.address,
+                musd3CRV.address,
+                threeCrvTokens,
+                true,
+            )
             log(`${usdFormatter(threeCrvTokens)} 3Crv = ${usdFormatter(musd3CrvTokens)} musd3Crv`)
             expect(threeCrvTokens, "3Crv < musd3Crv").lt(musd3CrvTokens)
 
             await staker1.signer.sendTransaction(
-                await metapoolCalculator.connect(staker1.signer).populateTransaction.convertToMetaLp(threeCrvTokens, true),
+                await calculatorLibrary
+                    .connect(staker1.signer)
+                    .populateTransaction["convertToMetaLp(address,address,uint256,bool)"](
+                        musdMetapool.address,
+                        musd3CRV.address,
+                        threeCrvTokens,
+                        true,
+                    ),
             )
         })
         it("Metapool virtual prices", async () => {
             const expectedMetapoolVP = await musdMetapool.get_virtual_price()
             const expected3PoolVP = await threePool.get_virtual_price()
-            const [actualMetapoolVP, actual3PoolVP] = await metapoolCalculator.getVirtualPrices(false)
+            const [actualMetapoolVP, actual3PoolVP] = await calculatorLibrary.getVirtualPrices(
+                musdMetapool.address,
+                musd3CRV.address,
+                false,
+            )
             expect(actualMetapoolVP, "Metapool virtual price").to.eq(expectedMetapoolVP)
             expect(actual3PoolVP, "3Pool virtual price").to.eq(expected3PoolVP)
 
             await staker1.signer.sendTransaction(await musdMetapool.connect(staker1.signer).populateTransaction.get_virtual_price())
             await staker1.signer.sendTransaction(
-                await metapoolCalculator.connect(staker1.signer).populateTransaction.getVirtualPrices(false),
+                await calculatorLibrary
+                    .connect(staker1.signer)
+                    .populateTransaction.getVirtualPrices(musdMetapool.address, musd3CRV.address, false),
             )
         })
     }
@@ -412,7 +440,7 @@ describe("Curve 3Crv metapool calculations", async () => {
             const threeCrvTokens = simpleToExactAmount(1408215, 16)
             const expectedLlpTokens = BN.from("14133074249861806636919")
 
-            const [calculatedLp] = await metapoolCalculator.calcDeposit(threeCrvTokens, 1)
+            const [calculatedLp] = await calculatorLibrary.calcDeposit(musdMetapool.address, musd3CRV.address, threeCrvTokens, 1)
 
             expect(threeCrvBefore, "enough LP tokens (3Crv) to deposit").to.gte(threeCrvTokens)
 
