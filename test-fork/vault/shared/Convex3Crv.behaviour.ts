@@ -14,6 +14,7 @@ import type { Account } from "types/common"
 import type {
     Convex3CrvBasicVault,
     Convex3CrvLiquidatorVault,
+    Curve3CrvFactoryMetapoolCalculatorLibrary,
     DataEmitter,
     IConvexRewardsPool,
     ICurve3Pool,
@@ -117,6 +118,7 @@ export interface Convex3CrvContext {
     metapool: ICurveMetapool
     baseRewardsPool: IConvexRewardsPool
     dataEmitter: DataEmitter
+    factoryMetapoolCalculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary
     amounts: {
         initialDeposit: BigNumber
         deposit: BigNumber
@@ -323,6 +325,7 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
         })
     })
     describe("EIP-4626 operations", () => {
+        let baseVirtualPriceBefore = BN.from(0)
         before(async () => {
             // Stop automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [false])
@@ -331,6 +334,14 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             // Restore automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [true])
         })
+        beforeEach(async () => {
+            baseVirtualPriceBefore = await ctx().factoryMetapoolCalculatorLibrary.getBaseVirtualPrice()
+        })
+        afterEach(async () => {
+            const baseVirtualPriceAfter = await ctx().factoryMetapoolCalculatorLibrary.getBaseVirtualPrice()
+            expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
+        })
+
         it("user deposits 3Crv assets to vault", async () => {
             const { amounts, threeCrvToken, owner, vault } = ctx()
 

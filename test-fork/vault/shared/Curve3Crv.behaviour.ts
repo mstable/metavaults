@@ -119,6 +119,30 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
                 const expectedAssets = await vault.callStatic["redeem(uint256,address,address)"](ownerShares, owner.address, owner.address)
                 expect(await vault.maxWithdraw(owner.address), "maxWithdraw").eq(expectedAssets)
             })
+            it("user mints shares from vault", async () => {
+                const { amounts, metaVault, vault, owner } = ctx()
+                const receiver = owner.address
+
+                const totalSharesBefore = await vault.totalSupply()
+                expect(totalSharesBefore, "total shares").to.be.eq(ZERO)
+
+                const receiverSharesBefore = await vault.balanceOf(receiver)
+
+                const tx = await vault.connect(owner.signer).mint(amounts.mint, receiver)
+                await logTxDetails(tx, "mint")
+
+                const receivedShares = (await vault.balanceOf(receiver)).sub(receiverSharesBefore)
+
+                expect(receivedShares, "Receiver received shares").eq(amounts.mint)
+
+                expect(await vault.totalSupply(), "totalSupply").eq(totalSharesBefore.add(amounts.mint))
+
+                expect(await vault.totalAssets(), "totalAssets").eq(
+                    await getAssetsFrom3CrvTokens(
+                        await metaVault.convertToAssets(await getMetaVaultSharesFromShares(totalSharesBefore.add(amounts.mint))),
+                    ),
+                )
+            })
         })
         describe("view functions", () => {
             before(async () => {

@@ -2,12 +2,12 @@ import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { musd3CRV, ThreeCRV } from "@tasks/utils/tokens"
 import shouldBehaveLikeBaseVault, { testAmounts } from "@test/shared/BaseVault.behaviour"
-import { SAFE_INFINITY } from "@utils/constants"
+import { ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonate, impersonateAccount } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
-import { Wallet } from "ethers"
+import { ethers, Wallet } from "ethers"
 import * as hre from "hardhat"
 import {
     Convex3CrvBasicVault__factory,
@@ -18,6 +18,8 @@ import {
     ICurve3Pool__factory,
     ICurveMetapool__factory,
     IERC20Metadata__factory,
+    MockERC20,
+    MockERC20__factory,
 } from "types/generated"
 
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
@@ -126,7 +128,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
             baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
 
             const sa = new StandardAccounts()
             sa.default = owner
@@ -227,7 +229,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
                 baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-                await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
                 await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
 
                 ctx = {
@@ -238,6 +240,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                     metapool,
                     baseRewardsPool,
                     dataEmitter,
+                    factoryMetapoolCalculatorLibrary,
                     amounts: {
                         initialDeposit,
                         deposit: initialDeposit.div(4),
@@ -282,7 +285,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
             baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
             await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
             ctx = {
                 vault: vault.connect(owner.signer),
@@ -292,6 +295,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
+                factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -320,7 +324,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
             baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
             await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
             ctx = {
                 vault: vault.connect(owner.signer),
@@ -330,6 +334,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
+                factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -358,7 +363,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
             baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
             await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
             ctx = {
                 vault: vault.connect(owner.signer),
@@ -368,6 +373,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
+                factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -396,7 +402,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
             baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, SAFE_INFINITY)
+            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
             await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
             ctx = {
                 vault: vault.connect(owner.signer),
@@ -406,6 +412,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
+                factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -416,5 +423,39 @@ describe("Convex 3Crv Basic Vault", async () => {
             }
         })
         behaveLikeConvex3CrvVault(() => ctx)
+    })
+    describe("Curve3CrvFactoryMetapoolCalculatorLibrary", () => {
+        let emptyPool: MockERC20
+        before("before", async () => {
+            await setup(normalBlock)
+
+            emptyPool = await new MockERC20__factory(deployer).deploy("ERC20 Mock", "ERC20", 18, deployerAddress, 0)
+        })
+        it("fails to calculate deposit in an empty pool", async () => {
+            await expect(factoryMetapoolCalculatorLibrary.calcDeposit(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith(
+                "empty pool",
+            )
+        })
+        it("fails to calculate mint in an empty pool", async () => {
+            await expect(factoryMetapoolCalculatorLibrary.calcMint(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith(
+                "empty pool",
+            )
+        })
+        it("fails to calculate withdraw in an empty pool", async () => {
+            await expect(factoryMetapoolCalculatorLibrary.calcWithdraw(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith(
+                "empty pool",
+            )
+        })
+        it("fails to calculate redeem in an empty pool", async () => {
+            await expect(factoryMetapoolCalculatorLibrary.calcRedeem(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith(
+                "empty pool",
+            )
+        })
+        it("converts with ZERO amounts", async () => {
+            expect(await factoryMetapoolCalculatorLibrary.convertUsdToBaseLp(ZERO)).to.be.eq(ZERO)
+            expect(await factoryMetapoolCalculatorLibrary.convertUsdToMetaLp(ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(await factoryMetapoolCalculatorLibrary.convertToBaseLp(ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(await factoryMetapoolCalculatorLibrary.convertToMetaLp(ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+        })
     })
 })

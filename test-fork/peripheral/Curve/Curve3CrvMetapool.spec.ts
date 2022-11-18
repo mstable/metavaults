@@ -1,9 +1,9 @@
 import { mUSD, musd3CRV, resolveAddress, ThreeCRV } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
-import { impersonateAccount } from "@utils/fork"
+import { impersonate, impersonateAccount } from "@utils/fork"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
-import { ethers } from "ethers"
+import { ethers, Signer } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
@@ -13,11 +13,13 @@ import {
     ICurveMetapool__factory,
     IERC20__factory,
     IERC20Metadata__factory,
+    MockERC20,
+    MockERC20__factory,
 } from "types/generated"
 
 import type { Account } from "types/common"
 import type { Curve3CrvMetapoolCalculatorLibrary, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
-import { BinaryExpression } from "typescript"
+import { ZERO_ADDRESS, ZERO } from "@utils/constants"
 
 const log = logger("test:CurveMetapoolCalcs")
 
@@ -28,6 +30,7 @@ const mpTokenWhaleAddress = "0xe6e6e25efda5f69687aa9914f8d750c523a1d261"
 
 const defaultWithdrawSlippage = 100
 const defaultDepositSlippage = 100
+const deployerAddress = resolveAddress("OperationsSigner")
 
 describe("Curve musd3Crv Metapool", async () => {
     let threeCrvWhale: Account
@@ -37,6 +40,8 @@ describe("Curve musd3Crv Metapool", async () => {
     let threePool: ICurve3Pool
     let musdMetapool: ICurveMetapool
     let musd3CrvToken: IERC20
+    let deployer: Signer
+
     const { network } = hre
 
     const reset = async (blockNumber?: number) => {
@@ -55,6 +60,7 @@ describe("Curve musd3Crv Metapool", async () => {
         }
         threeCrvWhale = await impersonateAccount(threeCrvWhaleAddress)
         mpTokenWhale = await impersonateAccount(mpTokenWhaleAddress)
+        deployer = await impersonate(deployerAddress)
     }
 
     const initialise = (owner: Account) => {
@@ -564,6 +570,43 @@ describe("Curve musd3Crv Metapool", async () => {
             const otherLpValueAfter = virtualPrice.mul(otherLpTokens)
             log(`other lp tokens ${formatUnits(otherLpTokens, 18)} worth ${formatUnits(otherLpValueAfter, 36)} USD`)
             await logPool()
+        })
+    })
+    describe("Curve3CrvMetapoolCalculatorLibrary", () => {
+        let metapoolLibrary: Curve3CrvMetapoolCalculatorLibrary
+
+        let emptyPool: MockERC20
+        before(async () => {
+            await reset(15860000)
+            const metapoolLibAddress = resolveAddress("Curve3CrvMetapoolCalculatorLibrary")
+            metapoolLibrary = Curve3CrvMetapoolCalculatorLibrary__factory.connect(metapoolLibAddress, mpTokenWhale.signer)
+            initialise(threeCrvWhale)
+
+            emptyPool = await new MockERC20__factory(deployer).deploy("ERC20 Mock", "ERC20", 18, deployerAddress, 0)
+        })
+        it("fails to calculate deposit in an empty pool", async () => {
+            await expect(metapoolLibrary.calcDeposit(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate mint in an empty pool", async () => {
+            await expect(metapoolLibrary.calcMint(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate withdraw in an empty pool", async () => {
+            await expect(metapoolLibrary.calcWithdraw(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate redeem in an empty pool", async () => {
+            await expect(metapoolLibrary.calcRedeem(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("converts with ZERO amounts", async () => {
+            expect(await metapoolLibrary.convertUsdToBaseLp(ZERO)).to.be.eq(ZERO)
+            expect(await metapoolLibrary.convertUsdToMetaLp(ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(
+                await metapoolLibrary["convertToBaseLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, false),
+            ).to.be.eq(ZERO)
+            expect(await metapoolLibrary["convertToBaseLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(
+                await metapoolLibrary["convertToMetaLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, false),
+            ).to.be.eq(ZERO)
+            expect(await metapoolLibrary["convertToMetaLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
         })
     })
 })

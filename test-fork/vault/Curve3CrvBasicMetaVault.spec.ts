@@ -78,31 +78,6 @@ describe("Curve 3Crv Basic Vault", async () => {
         }
     }
 
-    it("initialize Curve 3Crv Meta Vault", async () => {
-        await commonSetup(normalBlock)
-        const vault = await deployContract<Curve3CrvBasicMetaVault>(
-            new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer),
-            "Curve3CrvBasicMetaVault",
-            [nexusAddress, DAI.address, metaVault.address],
-        )
-        await vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData)
-
-        // Vault token data
-        expect(await vault.name(), "name").eq("3Pooler Meta Vault (DAI)")
-        expect(await vault.symbol(), "symbol").eq("3pDAI")
-        expect(await vault.decimals(), "decimals").eq(18)
-
-        //Vault Slippages
-        expect(await vault.depositSlippage(), "depositSlippage").eq(slippageData.deposit)
-        expect(await vault.redeemSlippage(), "redeemSlippage").eq(slippageData.redeem)
-        expect(await vault.withdrawSlippage(), "withdrawSlippage").eq(slippageData.withdraw)
-        expect(await vault.mintSlippage(), "mintSlippage").eq(slippageData.mint)
-
-        // Vault balances
-        expect(await vault.balanceOf(deployer.getAddress()), "balanceOf").eq(0)
-        expect(await vault.totalAssets(), "totalAssets").eq(0)
-        expect(await vault.totalSupply(), "totalSupply").eq(0)
-    })
     const deployVault = async (asset: IERC20, owner: Account): Promise<Curve3CrvBasicMetaVault> => {
         const vault = await new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer).deploy(
             nexusAddress,
@@ -128,6 +103,84 @@ describe("Curve 3Crv Basic Vault", async () => {
         }
     }
     const ctx = <Curve3CrvContext>{}
+    describe("initialize", () => {
+        before("before", async () => {
+            await commonSetup(normalBlock)
+        })
+        it("curve 3Crv Meta Vault", async () => {
+            const vault = await deployContract<Curve3CrvBasicMetaVault>(
+                new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer),
+                "Curve3CrvBasicMetaVault",
+                [nexusAddress, DAI.address, metaVault.address],
+            )
+            await vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData)
+
+            // Vault token data
+            expect(await vault.name(), "name").eq("3Pooler Meta Vault (DAI)")
+            expect(await vault.symbol(), "symbol").eq("3pDAI")
+            expect(await vault.decimals(), "decimals").eq(18)
+
+            //Vault Slippages
+            expect(await vault.depositSlippage(), "depositSlippage").eq(slippageData.deposit)
+            expect(await vault.redeemSlippage(), "redeemSlippage").eq(slippageData.redeem)
+            expect(await vault.withdrawSlippage(), "withdrawSlippage").eq(slippageData.withdraw)
+            expect(await vault.mintSlippage(), "mintSlippage").eq(slippageData.mint)
+
+            // Vault balances
+            expect(await vault.balanceOf(deployer.getAddress()), "balanceOf").eq(0)
+            expect(await vault.totalAssets(), "totalAssets").eq(0)
+            expect(await vault.totalSupply(), "totalSupply").eq(0)
+        })
+        it("only initialize once", async () => {
+            const vault = await deployContract<Curve3CrvBasicMetaVault>(
+                new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer),
+                "Curve3CrvBasicMetaVault",
+                [nexusAddress, DAI.address, metaVault.address],
+            )
+            await vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData)
+
+            await expect(
+                vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData),
+                "initialize twice",
+            ).to.be.revertedWith("Initializable: contract is already initialized")
+        })
+        it("fails with wrong slippage data", async () => {
+            const vault = await deployContract<Curve3CrvBasicMetaVault>(
+                new Curve3CrvBasicMetaVault__factory(curve3PoolCalculatorLibraryAddresses, deployer),
+                "Curve3CrvBasicMetaVault",
+                [nexusAddress, DAI.address, metaVault.address],
+            )
+            const basisScale = await vault.BASIS_SCALE()
+            const wrongAmount = basisScale.add(1).toNumber()
+            const correctSlippageData = {
+                redeem: 101,
+                deposit: 99,
+                withdraw: 11,
+                mint: 10,
+            }
+            let slippageData = { ...correctSlippageData, deposit: wrongAmount }
+            await expect(
+                vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData),
+                "initialize twice",
+            ).to.be.revertedWith("Invalid deposit slippage")
+            slippageData = { ...correctSlippageData, mint: wrongAmount }
+            await expect(
+                vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData),
+                "initialize twice",
+            ).to.be.revertedWith("Invalid mint slippage")
+            slippageData = { ...correctSlippageData, withdraw: wrongAmount }
+            await expect(
+                vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData),
+                "initialize twice",
+            ).to.be.revertedWith("Invalid withdraw slippage")
+            slippageData = { ...correctSlippageData, redeem: wrongAmount }
+            await expect(
+                vault.initialize("3Pooler Meta Vault (DAI)", "3pDAI", vaultManagerAddress, slippageData),
+                "initialize twice",
+            ).to.be.revertedWith("Invalid redeem slippage")
+        })
+    })
+
     describe("DAI 3Pooler Vault", () => {
         before(() => {
             // Anonymous functions cannot be used as fixtures so can't use arrow function
