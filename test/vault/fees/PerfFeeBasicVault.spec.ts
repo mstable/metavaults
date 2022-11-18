@@ -344,11 +344,12 @@ describe("Performance Fees", async () => {
 
                 const newPerfFee = 100
 
-                expect(await vault.performanceFee(), "PerformaceFees").to.not.eq(newPerfFee)
+                expect(await vault.performanceFee(), "PerformanceFees").to.not.eq(newPerfFee)
                 const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
                 await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, assetsPerShareAfter)
                 expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
-                expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
+                expect(tx).to.emit(vault, "AssetsPerShareUpdated")
+                expect(await vault.performanceFee(), "PerformanceFees").to.eq(newPerfFee)
             })
         })
         describe("set fee receiver", async () => {
