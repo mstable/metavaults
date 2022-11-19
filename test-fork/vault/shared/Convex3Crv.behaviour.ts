@@ -15,6 +15,7 @@ import type {
     Convex3CrvBasicVault,
     Convex3CrvLiquidatorVault,
     Curve3CrvFactoryMetapoolCalculatorLibrary,
+    Curve3CrvMetapoolCalculatorLibrary,
     DataEmitter,
     IConvexRewardsPool,
     ICurve3Pool,
@@ -25,6 +26,7 @@ import type {
 const log = logger("test:Convex3CrvVault")
 
 export type Convex3CrvVault = Convex3CrvBasicVault | Convex3CrvLiquidatorVault
+export type Convex3CrvCalculatorLibrary = Curve3CrvMetapoolCalculatorLibrary | Curve3CrvFactoryMetapoolCalculatorLibrary
 
 export interface VaultData {
     address: string
@@ -118,7 +120,7 @@ export interface Convex3CrvContext {
     metapool: ICurveMetapool
     baseRewardsPool: IConvexRewardsPool
     dataEmitter: DataEmitter
-    factoryMetapoolCalculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary
+    convex3CrvCalculatorLibrary: Convex3CrvCalculatorLibrary
     amounts: {
         initialDeposit: BigNumber
         deposit: BigNumber
@@ -335,10 +337,10 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             await ethers.provider.send("evm_setAutomine", [true])
         })
         beforeEach(async () => {
-            baseVirtualPriceBefore = await ctx().factoryMetapoolCalculatorLibrary.getBaseVirtualPrice()
+            baseVirtualPriceBefore = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
         })
         afterEach(async () => {
-            const baseVirtualPriceAfter = await ctx().factoryMetapoolCalculatorLibrary.getBaseVirtualPrice()
+            const baseVirtualPriceAfter = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
             expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
         })
 

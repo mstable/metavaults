@@ -1,7 +1,7 @@
 import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
-import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
+import { ONE_DAY, ONE_WEEK, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
@@ -10,12 +10,15 @@ import { getAddress, keccak256, toUtf8Bytes } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
     Convex3CrvLiquidatorVault__factory,
+    Curve3CrvMetapoolCalculatorLibrary,
     Curve3CrvMetapoolCalculatorLibrary__factory,
     DataEmitter__factory,
     IConvexRewardsPool__factory,
     ICurve3Pool__factory,
     ICurveMetapool__factory,
     IERC20__factory,
+    MockERC20,
+    MockERC20__factory,
     Nexus__factory,
 } from "types/generated"
 
@@ -26,8 +29,8 @@ import type { Convex3CrvLiquidatorVault, DataEmitter, IConvexRewardsPool, ICurve
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
-const keeperAddress = resolveAddress("OperationsSigner")
 const governorAddress = resolveAddress("Governor")
+const keeperAddress = resolveAddress("OperationsSigner")
 const nexusAddress = resolveAddress("Nexus")
 const feeReceiver = resolveAddress("mStableDAO")
 const baseRewardPoolAddress = resolveAddress("CRVRewardsPool")
@@ -53,6 +56,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     let usdcToken: IERC20
     let usdtToken: IERC20
     let musdConvexVault: Convex3CrvLiquidatorVault
+    let calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary
     let threePool: ICurve3Pool
     let metaPool: ICurveMetapool
     let baseRewardsPool: IConvexRewardsPool
@@ -110,7 +114,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     }
 
     const deployVault = async () => {
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+        calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
@@ -221,6 +225,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
                 metapool: metaPool,
                 baseRewardsPool,
                 dataEmitter,
+                convex3CrvCalculatorLibrary: calculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -376,6 +381,50 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             await expect(tx).to.emit(musdConvexVault, "DonateTokenUpdated").withArgs(USDT.address)
 
             expect(await musdConvexVault.donateToken(USDT.address), "donate token after").to.eq(USDT.address)
+        })
+    })
+    describe("Curve3CrvMetapoolCalculatorLibrary", () => {
+        let emptyPool: MockERC20
+        before("before", async () => {
+            await setup(normalBlock)
+            calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+            emptyPool = await new MockERC20__factory(keeper.signer).deploy("ERC20 Mock", "ERC20", 18, keeperAddress, 0)
+        })
+        it("fails to calculate deposit in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcDeposit(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate mint in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcMint(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate withdraw in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcWithdraw(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate redeem in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcRedeem(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("converts with ZERO amounts", async () => {
+            expect(await calculatorLibrary.convertUsdToBaseLp(ZERO), "convertUsdToBaseLp").to.be.eq(ZERO)
+            expect(await calculatorLibrary.convertUsdToMetaLp(ZERO_ADDRESS, ZERO), "convertUsdToBaseLp").to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToBaseLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO),
+                "convertToBaseLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToBaseLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, true),
+                "convertToBaseLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToMetaLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO),
+                "convertToMetaLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToMetaLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, true),
+                "convertToMetaLp",
+            ).to.be.eq(ZERO)
         })
     })
 })

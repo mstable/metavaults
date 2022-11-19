@@ -240,7 +240,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                     metapool,
                     baseRewardsPool,
                     dataEmitter,
-                    factoryMetapoolCalculatorLibrary,
+                    convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
                     amounts: {
                         initialDeposit,
                         deposit: initialDeposit.div(4),
@@ -295,7 +295,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
-                factoryMetapoolCalculatorLibrary,
+                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -334,7 +334,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
-                factoryMetapoolCalculatorLibrary,
+                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -373,7 +373,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
-                factoryMetapoolCalculatorLibrary,
+                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -412,7 +412,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                 metapool,
                 baseRewardsPool,
                 dataEmitter,
-                factoryMetapoolCalculatorLibrary,
+                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
