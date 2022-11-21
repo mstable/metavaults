@@ -10,14 +10,12 @@ import { getAddress, keccak256, toUtf8Bytes } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
     Convex3CrvLiquidatorVault__factory,
-    Curve3CrvMetapoolCalculatorLibrary,
     Curve3CrvMetapoolCalculatorLibrary__factory,
     DataEmitter__factory,
     IConvexRewardsPool__factory,
     ICurve3Pool__factory,
     ICurveMetapool__factory,
     IERC20__factory,
-    MockERC20,
     MockERC20__factory,
     Nexus__factory,
 } from "types/generated"
@@ -25,7 +23,16 @@ import {
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
 
 import type { Account } from "types/common"
-import type { Convex3CrvLiquidatorVault, DataEmitter, IConvexRewardsPool, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
+import type {
+    Convex3CrvLiquidatorVault,
+    Curve3CrvMetapoolCalculatorLibrary,
+    DataEmitter,
+    IConvexRewardsPool,
+    ICurve3Pool,
+    ICurveMetapool,
+    IERC20,
+    MockERC20,
+} from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
@@ -141,7 +148,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     it("deploy and initialize Convex vault for mUSD pool", async () => {
         await setup(normalBlock)
 
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+        calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,

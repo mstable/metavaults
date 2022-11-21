@@ -1,9 +1,10 @@
 import { mUSD, musd3CRV, resolveAddress, ThreeCRV } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
+import { ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonate, impersonateAccount } from "@utils/fork"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
-import { ethers, Signer } from "ethers"
+import { ethers } from "ethers"
 import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
@@ -13,13 +14,12 @@ import {
     ICurveMetapool__factory,
     IERC20__factory,
     IERC20Metadata__factory,
-    MockERC20,
     MockERC20__factory,
 } from "types/generated"
 
+import type { Signer } from "ethers"
 import type { Account } from "types/common"
-import type { Curve3CrvMetapoolCalculatorLibrary, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
-import { ZERO_ADDRESS, ZERO } from "@utils/constants"
+import type { Curve3CrvMetapoolCalculatorLibrary, ICurve3Pool, ICurveMetapool, IERC20, MockERC20 } from "types/generated"
 
 const log = logger("test:CurveMetapoolCalcs")
 

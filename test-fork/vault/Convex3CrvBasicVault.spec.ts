@@ -18,7 +18,6 @@ import {
     ICurve3Pool__factory,
     ICurveMetapool__factory,
     IERC20Metadata__factory,
-    MockERC20,
     MockERC20__factory,
 } from "types/generated"
 
@@ -38,6 +37,7 @@ import type {
     ICurve3Pool,
     ICurveMetapool,
     IERC20Metadata,
+    MockERC20,
 } from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"

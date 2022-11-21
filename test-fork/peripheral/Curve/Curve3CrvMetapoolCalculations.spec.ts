@@ -361,12 +361,49 @@ describe("Curve 3Crv metapool calculations", async () => {
             expect(actualMetapoolVP, "Metapool virtual price").to.eq(expectedMetapoolVP)
             expect(actual3PoolVP, "3Pool virtual price").to.eq(expected3PoolVP)
 
-            await staker1.signer.sendTransaction(await musdMetapool.connect(staker1.signer).populateTransaction.get_virtual_price())
             await staker1.signer.sendTransaction(
                 await calculatorLibrary
                     .connect(staker1.signer)
                     .populateTransaction.getVirtualPrices(musdMetapool.address, musd3CRV.address, false),
             )
+        })
+        it("Metapool base virtual price", async () => {
+            const expected3PoolVP = await threePool.get_virtual_price()
+            const actual3PoolVP = await calculatorLibrary["getBaseVirtualPrice()"]()
+            expect(actual3PoolVP, "3Pool virtual price").to.eq(expected3PoolVP)
+
+            await staker1.signer.sendTransaction(
+                await calculatorLibrary.connect(staker1.signer).populateTransaction["getBaseVirtualPrice()"](),
+            )
+        })
+        it("Metapool cached base virtual price", async () => {
+            const expected3PoolVP = await threePool.get_virtual_price()
+            const actual3PoolVP = await calculatorLibrary["getBaseVirtualPrice(address,bool)"](musdMetapool.address, true)
+            expect(actual3PoolVP, "3Pool virtual price").to.eq(expected3PoolVP)
+
+            await staker1.signer.sendTransaction(
+                await calculatorLibrary
+                    .connect(staker1.signer)
+                    .populateTransaction["getBaseVirtualPrice(address,bool)"](musdMetapool.address, true),
+            )
+        })
+        it("Convert 1000 USD to 3Crv", async () => {
+            const usdAmount = simpleToExactAmount(1000)
+            const actual3Pool = await calculatorLibrary.convertUsdToBaseLp(usdAmount)
+            expect(actual3Pool, "3Pool virtual price").to.lt(usdAmount)
+        })
+        it("Convert 0 USD to 3Crv", async () => {
+            const actual3Pool = await calculatorLibrary.convertUsdToBaseLp(0)
+            expect(actual3Pool, "3Pool virtual price").to.eq(0)
+        })
+        it("Convert 1000 USD to Metapool LP", async () => {
+            const usdAmount = simpleToExactAmount(1000)
+            const actualMetapoolLP = await calculatorLibrary.convertUsdToMetaLp(musdMetapool.address, usdAmount)
+            expect(actualMetapoolLP, "3Pool virtual price").to.lt(usdAmount)
+        })
+        it("Convert 0 USD to Metapool LP", async () => {
+            const actualMetapoolLP = await calculatorLibrary.convertUsdToMetaLp(musdMetapool.address, 0)
+            expect(actualMetapoolLP, "3Pool virtual price").to.eq(0)
         })
     }
     const usdcOverweight3Pool = async () => {
