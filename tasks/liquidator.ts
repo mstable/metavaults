@@ -9,7 +9,6 @@ import { AssetProxy__factory, IERC20Metadata__factory, Liquidator__factory } fro
 import { getOrder, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
-import { buildDonateTokensInput } from "./utils/liquidatorUtil"
 import { logger } from "./utils/logger"
 import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
