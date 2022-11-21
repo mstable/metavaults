@@ -776,6 +776,9 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
     /// @dev Approves Curve's 3Pool contract to transfer assets (DAI, USDC or USDT) from this vault.
     /// Also approves the underlying Meta Vault to transfer 3Crv from this vault.
     function _resetAllowances() internal {
+        _asset.safeApprove(address(Curve3PoolCalculatorLibrary.THREE_POOL), 0);
+        IERC20(Curve3PoolCalculatorLibrary.LP_TOKEN).safeApprove(address(metaVault), 0);
+
         _asset.safeApprove(address(Curve3PoolCalculatorLibrary.THREE_POOL), type(uint256).max);
         IERC20(Curve3PoolCalculatorLibrary.LP_TOKEN).safeApprove(
             address(metaVault),

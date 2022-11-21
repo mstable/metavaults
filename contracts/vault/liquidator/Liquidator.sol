@@ -9,10 +9,10 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // Libs
 import { ILiquidatorVault } from "../../interfaces/ILiquidatorVault.sol";
-import { InitializableReentrancyGuard } from "../../shared/InitializableReentrancyGuard.sol";
-
-import { ImmutableModule } from "../../shared/ImmutableModule.sol";
+import { ILiquidatorV2 } from "../../interfaces/ILiquidatorV2.sol";
 import { DexSwapData, IDexSwap, IDexAsyncSwap } from "../../interfaces/IDexSwap.sol";
+import { InitializableReentrancyGuard } from "../../shared/InitializableReentrancyGuard.sol";
+import { ImmutableModule } from "../../shared/ImmutableModule.sol";
 
 struct Liquidation {
     mapping(address => uint256) vaultRewards;
@@ -27,7 +27,7 @@ struct Liquidation {
  * @dev     VERSION: 1.0
  *          DATE:    2022-05-11
  */
-contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGuard {
+contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGuard, ILiquidatorV2 {
     using SafeERC20 for IERC20;
 
     /// @notice Mapping of reward tokens to asset tokens to a list of liquidation batch data.
@@ -57,8 +57,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     /**
      * @param _nexus  Address of the Nexus contract that resolves protocol modules and roles.
      */
-    constructor(address _nexus) ImmutableModule(_nexus) {
-    }
+    constructor(address _nexus) ImmutableModule(_nexus) {}
 
     /**
      * Initilalise the smart contract with the address of the async and sync swappers.
@@ -445,8 +444,8 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
             fromAsset: rewardToken,
             fromAssetAmount: rewards,
             toAsset: assetToken,
-            minToAssetAmount: 0,   // is not used on async dex
-            data: data  // data(bytes orderUid, bool transfer) for cow swap
+            minToAssetAmount: 0, // is not used on async dex
+            data: data // data(bytes orderUid, bool transfer) for cow swap
         });
 
         //  initiates swap on-chain , then off-chain data should monitor when swap is done (fail or success) and call `settleSwap`

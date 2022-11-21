@@ -2,6 +2,7 @@ module.exports = {
     skipFiles: [
         "integrations",
         "upgradability",
+        "contracts/interfaces",
         "./vault/liquidity/convex/Convex3CrvBasicVault.sol",
         "./shared/SafeCastExtended.sol",
         "z_mocks",

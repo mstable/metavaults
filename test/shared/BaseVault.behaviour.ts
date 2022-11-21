@@ -379,12 +379,12 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             const { amounts } = ctx()
             await assertWithdraw(alice, bob, alice, amounts.withdraw)
         })
-        it("from the vault sender != owner, infinite approval", async () => {
+        it("from the vault, sender != owner, infinite approval", async () => {
             const { amounts, vault } = ctx()
             await vault.connect(alice.signer).approve(bob.address, ethers.constants.MaxUint256)
             await assertWithdraw(bob, bob, alice, amounts.withdraw)
         })
-        it("from the vault sender != owner, limited approval", async () => {
+        it("from the vault, sender != owner, limited approval", async () => {
             const { amounts, vault } = ctx()
             await vault.connect(alice.signer).approve(bob.address, 0)
             const shares = await vault.previewWithdraw(amounts.withdraw)
@@ -474,12 +474,12 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
         it("from the vault, sender != receiver and sender = owner", async () => {
             await assertRedeem(alice, bob, alice, ctx().amounts.redeem)
         })
-        it("from the vault sender != owner, infinite approval", async () => {
+        it("from the vault, sender != owner, infinite approval", async () => {
             const { amounts, vault } = ctx()
             await vault.connect(alice.signer).approve(bob.address, ethers.constants.MaxUint256)
             await assertRedeem(bob, bob, alice, amounts.redeem)
         })
-        it("from the vault sender != owner, limited approval", async () => {
+        it("from the vault, sender != owner, limited approval", async () => {
             const { amounts, vault } = ctx()
             await vault.connect(alice.signer).approve(bob.address, 0)
             await vault.connect(alice.signer).approve(bob.address, amounts.redeem)
@@ -515,7 +515,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             const tx = vault.connect(sa.alice.signer).pause()
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
-        it("pause successfull on governor call", async () => {
+        it("pause successful on governor call", async () => {
             const { vault, sa } = ctx()
             expect(await vault.paused()).to.not.equal(true)
             const tx = vault.connect(sa.governor.signer).pause()
@@ -527,7 +527,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
             const tx = vault.connect(sa.alice.signer).unpause()
             await expect(tx).to.be.revertedWith("Only governor can execute")
         })
-        it("unpause successfull on governor call", async () => {
+        it("unpause successful on governor call", async () => {
             const { vault, sa } = ctx()
             expect(await vault.paused()).to.not.equal(false)
             const tx = vault.connect(sa.governor.signer).unpause()

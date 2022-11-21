@@ -32,7 +32,9 @@ describe("BasicSlippage", () => {
         shouldBehaveLikeVaultManagerRole(() => ({ vaultManagerRole: slippage as VaultManagerRole, sa }))
     })
     it("fails if initialize is called more than once", async () => {
-        await expect(slippage.initialize(sa.vaultManager.address, initialSlippage)).to.be.revertedWith("Initializable: contract is already initialized")
+        await expect(slippage.initialize(sa.vaultManager.address, initialSlippage)).to.be.revertedWith(
+            "Initializable: contract is already initialized",
+        )
     })
     it("post deploy", async () => {
         await expect(initTx).to.emit(slippage, "MintSlippageChange").withArgs(sa.default.address, 99)
@@ -70,7 +72,7 @@ describe("BasicSlippage", () => {
         })
         it("should fail if invalid value", async () => {
             const tx = slippage.connect(sa.governor.signer).setDepositSlippage((await slippage.BASIS_SCALE()).add(1))
-            await expect(tx).to.be.revertedWith("Invalid deposit Slippage")
+            await expect(tx).to.be.revertedWith("Invalid deposit slippage")
         })
         it("should correctly update", async () => {
             expect(await slippage.depositSlippage(), "deposit").to.not.eq(89)
@@ -86,7 +88,7 @@ describe("BasicSlippage", () => {
         })
         it("should fail if invalid value", async () => {
             const tx = slippage.connect(sa.governor.signer).setWithdrawSlippage((await slippage.BASIS_SCALE()).add(1))
-            await expect(tx).to.be.revertedWith("Invalid withdraw Slippage")
+            await expect(tx).to.be.revertedWith("Invalid withdraw slippage")
         })
         it("should correctly update", async () => {
             expect(await slippage.withdrawSlippage(), "withdraw").to.not.eq(90)

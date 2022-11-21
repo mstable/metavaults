@@ -20,7 +20,7 @@ export const params = {
 
             if (!isValid) {
                 throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE, {
-                    value,
+                    value: value as unknown as string,
                     name: argName,
                     type: "address",
                 })
@@ -35,7 +35,7 @@ export const params = {
 
             if (!isValid) {
                 throw new HardhatError(ERRORS.ARGUMENTS.INVALID_VALUE_FOR_TYPE, {
-                    value,
+                    value: value as unknown as string,
                     name: argName,
                     type: "address[]",
                 })
