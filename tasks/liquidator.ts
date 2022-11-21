@@ -9,7 +9,6 @@ import { AssetProxy__factory, IERC20Metadata__factory, Liquidator__factory } fro
 import { getOrder, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
-import { buildDonateTokensInput } from "./utils/liquidatorUtil"
 import { logger } from "./utils/logger"
 import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
@@ -33,6 +32,7 @@ export async function deployLiquidator(
     syncSwapperAddress: string,
     asyncSwapperAddress: string,
     proxyAdmin: string,
+    proxy = true,
 ) {
     const constructorArguments = [nexusAddress]
     const liquidatorImpl = await deployContract<Liquidator>(new Liquidator__factory(signer), "Liquidator", constructorArguments)
@@ -44,17 +44,20 @@ export async function deployLiquidator(
     })
 
     // Proxy
+    if (!proxy) {
+        return liquidatorImpl
+    }
     const data = liquidatorImpl.interface.encodeFunctionData("initialize", [syncSwapperAddress, asyncSwapperAddress])
     const proxyConstructorArguments = [liquidatorImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
     await verifyEtherscan(hre, {
-        address: proxy.address,
+        address: proxyContract.address,
         contract: "contracts/upgradability/Proxies.sol:AssetProxy",
         constructorArguments: proxyConstructorArguments,
     })
 
-    return Liquidator__factory.connect(proxy.address, signer)
+    return Liquidator__factory.connect(proxyContract.address, signer)
 }
 
 subtask("liq-deploy", "Deploys a new Liquidator contract")
@@ -62,9 +65,10 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
     .addOptionalParam("asyncSwapper", "Async Swapper address override", "CowSwapDex", types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("admin", "Proxy admin name or address override. eg DelayedProxyAdmin", "InstantProxyAdmin", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { nexus, admin, syncSwapper, asyncSwapper, speed } = taskArgs
+        const { nexus, admin, syncSwapper, asyncSwapper, proxy, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const nexusAddress = resolveAddress(nexus, chain)
@@ -72,7 +76,7 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
         const asyncSwapperAddress = resolveAddress(asyncSwapper, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
 
-        return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress)
+        return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress, proxy)
     })
 
 task("liq-deploy").setAction(async (_, __, runSuper) => {

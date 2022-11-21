@@ -53,6 +53,7 @@ interface Convex3CrvBasicVaultParams {
 
 interface Convex3CrvLiquidatorVaultParams extends Convex3CrvBasicVaultParams {
     streamDuration: number
+    proxy: boolean
 }
 
 export async function deployCurve3CrvMetapoolCalculatorLibrary(hre: HardhatRuntimeEnvironment, signer: Signer) {
@@ -141,6 +142,7 @@ export async function deployConvex3CrvLiquidatorVault(
         donateToken,
         donationFee,
         feeReceiver,
+        proxy,
     } = params
 
     const linkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
@@ -160,6 +162,9 @@ export async function deployConvex3CrvLiquidatorVault(
     })
 
     // Proxy
+    if (!proxy) {
+        return { proxy: undefined, impl: vaultImpl }
+    }
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -171,9 +176,9 @@ export async function deployConvex3CrvLiquidatorVault(
         donationFee,
     ])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    return { proxy, impl: vaultImpl }
+    return { proxy: proxyContract, impl: vaultImpl }
 }
 
 subtask("convex-3crv-lib-deploy", "Deploys a Curve Metapool calculator library")
@@ -210,6 +215,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addOptionalParam("fee", "Liquidation fee scaled to 6 decimal places. default 16% = 160000", 160000, types.int)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
     .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const {
@@ -225,6 +231,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             fee,
             feeReceiver,
             vaultManager,
+            proxy,
             speed,
         } = taskArgs
 
@@ -256,7 +263,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const rewardTokens = [CRV.address, CVX.address]
 
         // Vault library
-        const { proxy, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, {
+        const { proxy: proxyContract, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, {
             calculatorLibrary: calculatorLibraryAddress,
             nexus: nexusAddress,
             asset: assetAddress,
@@ -272,9 +279,10 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             rewardTokens,
             donationFee: fee,
             feeReceiver: feeReceiverAddress,
+            proxy,
         })
 
-        return { proxy, impl }
+        return { proxyContract, impl }
     })
 task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
