@@ -1,12 +1,12 @@
 import { config } from "@tasks/deployment/convex3CrvVaults-config"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
-import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
+import { ONE_DAY, ONE_WEEK, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
-import { simpleToExactAmount } from "@utils/math"
+import { BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
-import { keccak256, toUtf8Bytes } from "ethers/lib/utils"
+import { getAddress, keccak256, toUtf8Bytes } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
     Convex3CrvLiquidatorVault__factory,
@@ -16,18 +16,28 @@ import {
     ICurve3Pool__factory,
     ICurveMetapool__factory,
     IERC20__factory,
+    MockERC20__factory,
     Nexus__factory,
 } from "types/generated"
 
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
 
 import type { Account } from "types/common"
-import type { Convex3CrvLiquidatorVault, DataEmitter, IConvexRewardsPool, ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
+import type {
+    Convex3CrvLiquidatorVault,
+    Curve3CrvMetapoolCalculatorLibrary,
+    DataEmitter,
+    IConvexRewardsPool,
+    ICurve3Pool,
+    ICurveMetapool,
+    IERC20,
+    MockERC20,
+} from "types/generated"
 
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
-const keeperAddress = resolveAddress("OperationsSigner")
 const governorAddress = resolveAddress("Governor")
+const keeperAddress = resolveAddress("OperationsSigner")
 const nexusAddress = resolveAddress("Nexus")
 const feeReceiver = resolveAddress("mStableDAO")
 const baseRewardPoolAddress = resolveAddress("CRVRewardsPool")
@@ -50,7 +60,10 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     let crvToken: IERC20
     let cvxToken: IERC20
     let daiToken: IERC20
+    let usdcToken: IERC20
+    let usdtToken: IERC20
     let musdConvexVault: Convex3CrvLiquidatorVault
+    let calculatorLibrary: Curve3CrvMetapoolCalculatorLibrary
     let threePool: ICurve3Pool
     let metaPool: ICurveMetapool
     let baseRewardsPool: IConvexRewardsPool
@@ -91,6 +104,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         crvToken = IERC20__factory.connect(CRV.address, staker1.signer)
         cvxToken = IERC20__factory.connect(CVX.address, staker1.signer)
         daiToken = IERC20__factory.connect(DAI.address, mockLiquidator.signer)
+        usdcToken = IERC20__factory.connect(USDC.address, mockLiquidator.signer)
+        usdtToken = IERC20__factory.connect(USDT.address, mockLiquidator.signer)
         threePool = ICurve3Pool__factory.connect(curveThreePoolAddress, staker1.signer)
         metaPool = ICurveMetapool__factory.connect(curveMUSDPoolAddress, staker1.signer)
         baseRewardsPool = IConvexRewardsPool__factory.connect(baseRewardPoolAddress, staker1.signer)
@@ -106,7 +121,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     }
 
     const deployVault = async () => {
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+        calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
@@ -133,7 +148,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     it("deploy and initialize Convex vault for mUSD pool", async () => {
         await setup(normalBlock)
 
-        const calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+        calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
         const libraryAddresses = {
             "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
@@ -217,6 +232,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
                 metapool: metaPool,
                 baseRewardsPool,
                 dataEmitter,
+                convex3CrvCalculatorLibrary: calculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -249,7 +265,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         })
     })
     describe("reward liquidations", () => {
-        before(async () => {
+        const liquidationSetup = async () => {
             await setup(normalBlock)
 
             // Deploy and initialize the vault
@@ -260,15 +276,79 @@ describe("Convex 3Crv Liquidator Vault", async () => {
 
             await threeCrvToken.connect(staker2.signer).approve(musdConvexVault.address, mintAmount)
             await musdConvexVault.connect(staker2.signer).mint(mintAmount, staker2.address)
+        }
+        beforeEach(async () => {
+            await loadOrExecFixture(liquidationSetup)
         })
         it("collect rewards for batch", async () => {
             await increaseTime(ONE_DAY)
             await musdConvexVault.collectRewards()
         })
         it("donate DAI tokens back to vault", async () => {
-            const daiAmount = simpleToExactAmount(1000, DAI.decimals)
-            await daiToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, daiAmount)
-            await musdConvexVault.connect(mockLiquidator.signer).donate(DAI.address, daiAmount)
+            const donateAmount = simpleToExactAmount(1000, DAI.decimals)
+            await daiToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
+            const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(DAI.address, donateAmount)
+
+            // Deposit event for the fee
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("9794853641497136119"), BN.from("9833364392187925988"))
+
+            // Deposit event for the streaming of shares
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(
+                    getAddress(mockLiquidator.address),
+                    musdConvexVault.address,
+                    BN.from("969690510508216475829"),
+                    BN.from("973503074826604672871"),
+                )
+        })
+        it("donate USDC tokens back to vault", async () => {
+            const donateAmount = simpleToExactAmount(2000, USDC.decimals)
+            await usdcToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
+            const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(USDC.address, donateAmount)
+
+            // Deposit event for the fee
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("19589780279497850787"), BN.from("19666801263319303387"))
+
+            // Deposit event for the streaming of shares
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(
+                    getAddress(mockLiquidator.address),
+                    musdConvexVault.address,
+                    BN.from("1939388247670287227957"),
+                    BN.from("1947013325068611035339"),
+                )
+        })
+        it("donate USDT tokens back to vault", async () => {
+            const donateAmount = simpleToExactAmount(3000, USDT.decimals)
+            await usdtToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
+            const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(USDT.address, donateAmount)
+
+            // Deposit event for the fee
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("29387432952198505245"), BN.from("29502974082101049187"))
+
+            // Deposit event for the streaming of shares
+            await expect(tx)
+                .to.emit(musdConvexVault, "Deposit")
+                .withArgs(
+                    getAddress(mockLiquidator.address),
+                    musdConvexVault.address,
+                    BN.from("2909355862267652019290"),
+                    BN.from("2920794434128003869611"),
+                )
+        })
+        it("should fail to donate CRV tokens back to vault", async () => {
+            const donateAmount = simpleToExactAmount(1000, CRV.decimals)
+            await crvToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
+            const tx = musdConvexVault.connect(mockLiquidator.signer).donate(CRV.address, donateAmount)
+            await expect(tx).to.rejectedWith("token not in 3Pool")
         })
     })
     describe("set donate token", () => {
@@ -308,6 +388,50 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             await expect(tx).to.emit(musdConvexVault, "DonateTokenUpdated").withArgs(USDT.address)
 
             expect(await musdConvexVault.donateToken(USDT.address), "donate token after").to.eq(USDT.address)
+        })
+    })
+    describe("Curve3CrvMetapoolCalculatorLibrary", () => {
+        let emptyPool: MockERC20
+        before("before", async () => {
+            await setup(normalBlock)
+            calculatorLibrary = await new Curve3CrvMetapoolCalculatorLibrary__factory(keeper.signer).deploy()
+            emptyPool = await new MockERC20__factory(keeper.signer).deploy("ERC20 Mock", "ERC20", 18, keeperAddress, 0)
+        })
+        it("fails to calculate deposit in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcDeposit(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate mint in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcMint(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate withdraw in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcWithdraw(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate redeem in an empty pool", async () => {
+            expect(await emptyPool.totalSupply()).to.be.eq(ZERO)
+            await expect(calculatorLibrary.calcRedeem(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("converts with ZERO amounts", async () => {
+            expect(await calculatorLibrary.convertUsdToBaseLp(ZERO), "convertUsdToBaseLp").to.be.eq(ZERO)
+            expect(await calculatorLibrary.convertUsdToMetaLp(ZERO_ADDRESS, ZERO), "convertUsdToBaseLp").to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToBaseLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO),
+                "convertToBaseLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToBaseLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, true),
+                "convertToBaseLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToMetaLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO),
+                "convertToMetaLp",
+            ).to.be.eq(ZERO)
+            expect(
+                await calculatorLibrary["convertToMetaLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, true),
+                "convertToMetaLp",
+            ).to.be.eq(ZERO)
         })
     })
 })

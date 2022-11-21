@@ -103,8 +103,11 @@ Note the Vault Manager may be an externally owned account that is controlled by 
 
 ![Update Assets Per Share](../../../docs/metaVaultUpdateAssetsPerShare.png)
 
-## Rebalance
+## Charge Performance fee
 
+Charges a performance fee by looking at the increase in assets per share since the last time a performance fee was charged. The fee is collected in vault shares which dilutes the assets per share of the vault share holders. For example, if the assets per share increased by 0.1% in the last week and the performance fee is 4%, the vault shares will be increased by 0.1% * 4% = 0.004% as a fee. If there was 100,000 vault shares, 4 (100,000 * 0.004%) vault shares will be minted as a performance fee. This dilutes the assets per shares of the existing vault shareholders by 0.004%.
+
+![Charge Performance fee](../../../docs/metaVaultChargePerformanceFee.png)
 
 # Tests
 

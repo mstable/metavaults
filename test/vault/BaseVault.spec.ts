@@ -71,6 +71,9 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
                 const tx = new factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)
                 await expect(tx).to.be.revertedWith("Asset is zero")
             })
+            it("should fail if nexus has zero address", async () => {
+                await expect(new factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith("Nexus address is zero")
+            })
         })
 
         describe("calling initialize", async () => {

@@ -1,6 +1,6 @@
 {
     "name": "@mstable/metavaults",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "mStable EIP-4626 Tokenized Vaults",
     "author": "mStable <info@mstable.org>",
     "license": "AGPL-3.0-or-later",
@@ -46,7 +46,8 @@
         "test:file": "yarn hardhat test --typecheck",
         "slither": "slither .",
         "prepublishOnly": "yarn compile && yarn compile-ts && yarn compile-abis && yarn copy-types && npx replace-tsconfig-paths",
-        "web": "ts-node ./web-config.ts"
+        "web": "ts-node ./web-config.ts",
+        "docgen": "yarn hardhat docgen"
     },
     "repository": {
         "type": "git",
@@ -91,6 +92,7 @@
         "sol-merger": "^4.1.1",
         "solc": "0.8.17",
         "solhint": "^3.3.7",
+        "solidity-docgen": "^0.6.0-beta.29",
         "ts-generator": "^0.1.1",
         "typescript": "^4.8.4"
     },

@@ -1,4 +1,6 @@
 import { ONE_DAY } from "@utils/constants"
+import { BN, simpleToExactAmount } from "@utils/math"
+import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import {
     AssetProxy__factory,
@@ -10,9 +12,10 @@ import {
 
 import { config } from "./deployment/convex3CrvVaults-config"
 import { CRV, CVX } from "./utils"
+import { getBlock } from "./utils/blocks"
 import { deployContract } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
@@ -50,6 +53,7 @@ interface Convex3CrvBasicVaultParams {
 
 interface Convex3CrvLiquidatorVaultParams extends Convex3CrvBasicVaultParams {
     streamDuration: number
+    proxy: boolean
 }
 
 export async function deployCurve3CrvMetapoolCalculatorLibrary(hre: HardhatRuntimeEnvironment, signer: Signer) {
@@ -138,6 +142,7 @@ export async function deployConvex3CrvLiquidatorVault(
         donateToken,
         donationFee,
         feeReceiver,
+        proxy,
     } = params
 
     const linkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
@@ -157,6 +162,9 @@ export async function deployConvex3CrvLiquidatorVault(
     })
 
     // Proxy
+    if (!proxy) {
+        return { proxy: undefined, impl: vaultImpl }
+    }
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -168,9 +176,9 @@ export async function deployConvex3CrvLiquidatorVault(
         donationFee,
     ])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    return { proxy, impl: vaultImpl }
+    return { proxy: proxyContract, impl: vaultImpl }
 }
 
 subtask("convex-3crv-lib-deploy", "Deploys a Curve Metapool calculator library")
@@ -207,6 +215,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addOptionalParam("fee", "Liquidation fee scaled to 6 decimal places. default 16% = 160000", 160000, types.int)
     .addOptionalParam("feeReceiver", "Address or name of account that will receive vault fees.", "mStableDAO", types.string)
     .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const {
@@ -222,6 +231,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             fee,
             feeReceiver,
             vaultManager,
+            proxy,
             speed,
         } = taskArgs
 
@@ -253,7 +263,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const rewardTokens = [CRV.address, CVX.address]
 
         // Vault library
-        const { proxy, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, {
+        const { proxy: proxyContract, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, {
             calculatorLibrary: calculatorLibraryAddress,
             nexus: nexusAddress,
             asset: assetAddress,
@@ -269,10 +279,111 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             rewardTokens,
             donationFee: fee,
             feeReceiver: feeReceiverAddress,
+            proxy,
         })
 
-        return { proxy, impl }
+        return { proxyContract, impl }
     })
 task("convex-3crv-vault-deploy").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
+const secondsToBurn = (blocktime: number, stream: { last: number; end: number; sharesPerSecond: BN }) => {
+    if (blocktime < stream.end) {
+        return blocktime - stream.last
+    } else if (stream.last < stream.end) {
+        return stream.end - stream.last
+    }
+    return 0
+}
+
+subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
+    .addParam("vault", "Vault symbol or address", undefined, types.string)
+    .addOptionalParam("owner", "Address, contract name or token symbol to get balances for. Defaults to signer", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
+    .setAction(async (taskArgs, hre) => {
+        const { vault, owner, block, speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const blk = await getBlock(hre.ethers, block)
+
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
+        const vaultContract = Convex3CrvLiquidatorVault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
+
+        await hre.run("vault-snap", {
+            vault,
+            owner,
+        })
+
+        console.log(`\nConvex3CrvLiquidatorVault`)
+        // Assets per share
+        const totalShares = await vaultContract.totalSupply({
+            blockTag: blk.blockNumber,
+        })
+        const totalAssets = await vaultContract.totalAssets({
+            blockTag: blk.blockNumber,
+        })
+        const assetsPerShare = totalAssets.mul(simpleToExactAmount(1)).div(totalShares)
+        console.log(`Assets per share : ${formatUnits(assetsPerShare).padStart(21)}`)
+
+        // Stream data
+        const stream = await vaultContract.shareStream({
+            blockTag: blk.blockNumber,
+        })
+        const streamDuration = await vaultContract.STREAM_DURATION()
+        const streamScale = await vaultContract.STREAM_PER_SECOND_SCALE()
+        const streamTotal = stream.sharesPerSecond.mul(streamDuration).div(streamScale)
+        const sharesStillStreaming = await vaultContract.streamedShares({
+            blockTag: blk.blockNumber,
+        })
+        const streamRemainingPercentage = streamTotal.gt(0) ? sharesStillStreaming.mul(10000).div(streamTotal) : BN.from(0)
+        const streamBurnable = stream.sharesPerSecond.mul(secondsToBurn(blk.blockTimestamp, stream)).div(streamScale)
+        const streamBurnablePercentage = streamTotal.gt(0) ? streamBurnable.mul(10000).div(streamTotal) : BN.from(0)
+
+        console.log(`Stream total     : ${formatUnits(streamTotal).padStart(21)} shares`)
+        console.log(`Stream burnable  : ${formatUnits(streamBurnable).padStart(21)} shares ${formatUnits(streamBurnablePercentage, 2)}%`)
+        console.log(
+            `Stream remaining : ${formatUnits(sharesStillStreaming).padStart(21)} shares ${formatUnits(streamRemainingPercentage, 2)}%`,
+        )
+        console.log(`Stream last      : ${new Date(stream.last * 1000)}`)
+        console.log(`Stream end       : ${new Date(stream.end * 1000)}`)
+
+        // Rewards
+        console.log("\nRewards accrued:")
+        const rewards = await vaultContract.callStatic.collectRewards({
+            blockTag: blk.blockNumber,
+        })
+        let i = 0
+        for (const reward of rewards.rewardTokens_) {
+            const rewardToken = await resolveAssetToken(signer, chain, reward)
+            console.log(`  ${formatUnits(rewards.rewards[i], rewardToken.decimals)} ${rewardToken.symbol}`)
+            i++
+        }
+        const donateToken = await resolveAssetToken(signer, chain, rewards.donateTokens[0])
+        console.log(`  Rewards are swapped for : ${donateToken.symbol}`)
+
+        // Fees
+        const fee = await vaultContract.donationFee({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`\nLiquidation fee : ${fee / 10000}%`)
+        const feeReceiver = await vaultContract.feeReceiver({
+            blockTag: blk.blockNumber,
+        })
+        const feeShares = await vaultContract.balanceOf(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        const feeAssets = await vaultContract.maxWithdraw(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Collected fees  : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${assetToken.symbol}`,
+        )
+    })
+
+task("convex-3crv-snap").setAction(async (_, __, runSuper) => {
     return runSuper()
 })

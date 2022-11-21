@@ -1,7 +1,7 @@
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, IERC20__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
+import { AssetProxy__factory, IERC20__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
 
 import { config } from "./deployment/convex3CrvVaults-config"
 import { usdFormatter } from "./utils"
@@ -36,6 +36,7 @@ interface PeriodicAllocationPerfFeeMetaVaultParams {
     underlyingVaults: Array<string>
     sourceParams: AssetSourcingParams
     assetPerShareUpdateThreshold: BN
+    proxy: boolean
 }
 
 export async function deployPeriodicAllocationPerfFeeMetaVaults(
@@ -60,6 +61,7 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
         sourceParams: PeriodicAllocationPerfFeeMetaVaultConf.sourceParams,
         assetPerShareUpdateThreshold: PeriodicAllocationPerfFeeMetaVaultConf.assetPerShareUpdateThreshold,
         underlyingVaults,
+        proxy: true,
     })
     return periodicAllocationPerfFeeMetaVault
 }
@@ -81,6 +83,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
         underlyingVaults,
         sourceParams,
         assetPerShareUpdateThreshold,
+        proxy,
     } = params
     const constructorArguments = [nexus, asset]
     const vaultImpl = await deployContract<PeriodicAllocationPerfFeeMetaVault>(
@@ -96,6 +99,9 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     })
 
     // Proxy
+    if (!proxy) {
+        return { proxy: undefined, impl: vaultImpl }
+    }
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -107,9 +113,9 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
         assetPerShareUpdateThreshold,
     ])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    return { proxy, impl: vaultImpl }
+    return { proxy: proxyContract, impl: vaultImpl }
 }
 
 subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
@@ -134,6 +140,7 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
     )
     .addOptionalParam("updateThreshold", "Asset per share update threshold. default 100k", 100000, types.int)
     .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const {
@@ -148,6 +155,7 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
             singleThreshold,
             updateThreshold,
             vaultManager,
+            proxy,
             speed,
         } = taskArgs
 
@@ -166,7 +174,7 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
 
         const feeReceiverAddress = resolveAddress(feeReceiver, chain)
 
-        const { proxy, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+        const { proxy: proxyContract, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
             nexus: nexusAddress,
             asset: assetToken.address,
             name,
@@ -181,9 +189,10 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
                 singleSourceVaultIndex,
             },
             assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
+            proxy,
         })
 
-        return { proxy, impl }
+        return { proxy: proxyContract, impl }
     })
 task("convex-3crv-mv-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()
@@ -203,6 +212,9 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
 
         const vaultToken = await resolveAssetToken(signer, chain, vault)
         const vaultContract = PeriodicAllocationPerfFeeMetaVault__factory.connect(vaultToken.address, signer)
+        const fraxVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-FRAX"), signer)
+        const musdVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-mUSD"), signer)
+        const busdVaultContract = IERC4626Vault__factory.connect(resolveAddress("vcx3CRV-BUSD"), signer)
         const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
         const assetContract = IERC20__factory.connect(assetToken.address, signer)
 
@@ -212,6 +224,7 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
         })
 
         console.log(`\nPeriodicAllocationPerfFeeMetaVault`)
+        // Assets
         const assetsInVault = await assetContract.balanceOf(vaultToken.address, {
             blockTag: blk.blockNumber,
         })
@@ -231,6 +244,35 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
                 2,
             )}%`,
         )
+        const fraxAssets = await fraxVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in FRAX vault    : ${usdFormatter(fraxAssets, assetToken.decimals)} ${formatUnits(
+                fraxAssets.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const busdAssets = await busdVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in BUSD vault    : ${usdFormatter(busdAssets, assetToken.decimals)} ${formatUnits(
+                busdAssets.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+        const musdAssets = await musdVaultContract.maxWithdraw(vaultContract.address, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Assets in mUSD vault    : ${usdFormatter(musdAssets, assetToken.decimals)} ${formatUnits(
+                musdAssets.mul(10000).div(totalAssets),
+                2,
+            )}%`,
+        )
+
+        // Assets per share
         console.log(
             `stored assets/share     : ${formatUnits(
                 await vaultContract.assetsPerShare({
@@ -243,15 +285,15 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
             blockTag: blk.blockNumber,
         })
         console.log(`current assets/share    : ${formatUnits(current.assetsPerShare_, 26)}`)
+        const perfAssetsPerShare = await vaultContract.perfFeesAssetPerShare({
+            blockTag: blk.blockNumber,
+        })
+        const perfPercentage = current.assetsPerShare_.sub(perfAssetsPerShare).mul(1000000).div(perfAssetsPerShare)
+        console.log(`performance assets/share: ${formatUnits(perfAssetsPerShare, 26)} ${formatUnits(perfPercentage, 4)}%`)
+
         const fee = await vaultContract.performanceFee({
             blockTag: blk.blockNumber,
         })
-        console.log(`Performance fee         : ${fee.toNumber() / 10000}%`)
-        console.log(
-            `Fee receiver            : ${await vaultContract.feeReceiver({
-                blockTag: blk.blockNumber,
-            })}`,
-        )
         console.log(
             `Active underlying vaults: ${await vaultContract.activeUnderlyingVaults({
                 blockTag: blk.blockNumber,
@@ -273,6 +315,23 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
             `Paused                  : ${await vaultContract.paused({
                 blockTag: blk.blockNumber,
             })}`,
+        )
+
+        console.log(`\nPerformance fee         : ${fee.toNumber() / 10000}%`)
+        const feeReceiver = await vaultContract.feeReceiver({
+            blockTag: blk.blockNumber,
+        })
+        console.log(`Fee receiver            : ${feeReceiver}`)
+        const feeShares = await vaultContract.balanceOf(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        const feeAssets = await vaultContract.maxWithdraw(feeReceiver, {
+            blockTag: blk.blockNumber,
+        })
+        console.log(
+            `Collected fees          : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${
+                assetToken.symbol
+            }`,
         )
     })
 task("convex-3crv-mv-snap").setAction(async (_, __, runSuper) => {

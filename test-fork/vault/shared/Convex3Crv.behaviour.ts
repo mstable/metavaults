@@ -14,6 +14,8 @@ import type { Account } from "types/common"
 import type {
     Convex3CrvBasicVault,
     Convex3CrvLiquidatorVault,
+    Curve3CrvFactoryMetapoolCalculatorLibrary,
+    Curve3CrvMetapoolCalculatorLibrary,
     DataEmitter,
     IConvexRewardsPool,
     ICurve3Pool,
@@ -24,6 +26,7 @@ import type {
 const log = logger("test:Convex3CrvVault")
 
 export type Convex3CrvVault = Convex3CrvBasicVault | Convex3CrvLiquidatorVault
+export type Convex3CrvCalculatorLibrary = Curve3CrvMetapoolCalculatorLibrary | Curve3CrvFactoryMetapoolCalculatorLibrary
 
 export interface VaultData {
     address: string
@@ -117,6 +120,7 @@ export interface Convex3CrvContext {
     metapool: ICurveMetapool
     baseRewardsPool: IConvexRewardsPool
     dataEmitter: DataEmitter
+    convex3CrvCalculatorLibrary: Convex3CrvCalculatorLibrary
     amounts: {
         initialDeposit: BigNumber
         deposit: BigNumber
@@ -323,6 +327,7 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
         })
     })
     describe("EIP-4626 operations", () => {
+        let baseVirtualPriceBefore = BN.from(0)
         before(async () => {
             // Stop automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [false])
@@ -331,6 +336,14 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             // Restore automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [true])
         })
+        beforeEach(async () => {
+            baseVirtualPriceBefore = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
+        })
+        afterEach(async () => {
+            const baseVirtualPriceAfter = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
+            expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
+        })
+
         it("user deposits 3Crv assets to vault", async () => {
             const { amounts, threeCrvToken, owner, vault } = ctx()
 

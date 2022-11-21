@@ -389,4 +389,9 @@ abstract contract PeriodicAllocationAbstractVault is
     function _afterRebalance() internal virtual override {
         _updateAssetPerShare();
     }
+
+    /// @dev Updates assetPerShare after an underlying vault is removed
+    function _afterRemoveVault() internal virtual override {
+        _updateAssetPerShare();
+    }
 }

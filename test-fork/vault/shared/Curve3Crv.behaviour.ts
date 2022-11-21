@@ -1,6 +1,6 @@
-import { logTxDetails } from "@tasks/utils"
+import { logTxDetails, ThreeCRV } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
-import { ONE_DAY } from "@utils/constants"
+import { ONE_DAY, ZERO } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
 import { BN } from "@utils/math"
 import { increaseTime } from "@utils/time"
@@ -10,7 +10,8 @@ import { ethers } from "hardhat"
 
 import type { BigNumber } from "ethers"
 import type { Account } from "types/common"
-import type { Curve3CrvBasicMetaVault, ICurve3Pool, IERC20, IERC4626Vault } from "types/generated"
+import { Curve3CrvBasicMetaVault, ICurve3Pool, IERC20, IERC20__factory, IERC4626Vault } from "types/generated"
+import { assertBNClosePercent } from "@utils/assertions"
 
 const log = logger("test:Curve3CrvVault")
 
@@ -29,6 +30,7 @@ export interface Curve3CrvContext {
     threePool: ICurve3Pool
     asset: IERC20
     owner: Account
+    governor: Account
     fixture: () => Promise<void>
 }
 export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
@@ -71,6 +73,77 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
     }
 
     describe("EIP-4626", () => {
+        describe("view functions - fresh vault", () => {
+            before(async () => {
+                await loadOrExecFixture(ctx().fixture)
+            })
+            it("totalAssets()", async () => {
+                const { metaVault, owner, vault } = ctx()
+                const totalMetaVaultShares = await metaVault.balanceOf(vault.address)
+                const total3CrvTokens = await metaVault.convertToAssets(totalMetaVaultShares)
+                const expectedAssets = await getAssetsFrom3CrvTokens(total3CrvTokens)
+                const actualTotalAssets = await vault.totalAssets()
+                expect(actualTotalAssets, "totalAssets").eq(expectedAssets)
+                log(`total assets ${actualTotalAssets} `)
+                log(`total shares ${await vault.totalSupply()} `)
+            })
+            it("convertToAssets()", async () => {
+                const { metaVault, owner, vault, amounts } = ctx()
+                const metaVaultShares = await getMetaVaultSharesFromShares(amounts.mint)
+                const threeCrvTokens = await metaVault.convertToAssets(metaVaultShares)
+                const expectedAssets = await getAssetsFrom3CrvTokens(threeCrvTokens)
+                expect(await vault.convertToAssets(amounts.mint), "convertToAssets").eq(expectedAssets)
+            })
+            it("convertToShares()", async () => {
+                const { metaVault, owner, vault, amounts } = ctx()
+                const threeCrvTokens = await get3CrvTokensFromAssets(amounts.deposit)
+                const metaVaultShares = await metaVault.convertToShares(threeCrvTokens)
+                const expectedShares = await getSharesFromMetaVaultShares(metaVaultShares)
+                expect(await vault.convertToShares(amounts.deposit), "convertToShares").eq(expectedShares)
+            })
+            it("maxDeposit()", async () => {
+                const { vault, owner } = ctx()
+                expect(await vault.maxDeposit(owner.address), "maxDeposit").eq(ethers.constants.MaxUint256)
+            })
+            it("maxMint()", async () => {
+                const { vault, owner } = ctx()
+                expect(await vault.maxMint(owner.address), "maxMint").eq(ethers.constants.MaxUint256)
+            })
+            it("maxRedeem()", async () => {
+                const { vault, owner } = ctx()
+                expect(await vault.maxRedeem(owner.address), "maxMint").eq(await vault.balanceOf(owner.address))
+            })
+            it("maxWithdraw()", async () => {
+                const { vault, owner } = ctx()
+                const ownerShares = await vault.balanceOf(owner.address)
+                const expectedAssets = await vault.callStatic["redeem(uint256,address,address)"](ownerShares, owner.address, owner.address)
+                expect(await vault.maxWithdraw(owner.address), "maxWithdraw").eq(expectedAssets)
+            })
+            it("user mints shares from vault", async () => {
+                const { amounts, metaVault, vault, owner } = ctx()
+                const receiver = owner.address
+
+                const totalSharesBefore = await vault.totalSupply()
+                expect(totalSharesBefore, "total shares").to.be.eq(ZERO)
+
+                const receiverSharesBefore = await vault.balanceOf(receiver)
+
+                const tx = await vault.connect(owner.signer).mint(amounts.mint, receiver)
+                await logTxDetails(tx, "mint")
+
+                const receivedShares = (await vault.balanceOf(receiver)).sub(receiverSharesBefore)
+
+                expect(receivedShares, "Receiver received shares").eq(amounts.mint)
+
+                expect(await vault.totalSupply(), "totalSupply").eq(totalSharesBefore.add(amounts.mint))
+
+                expect(await vault.totalAssets(), "totalAssets").eq(
+                    await getAssetsFrom3CrvTokens(
+                        await metaVault.convertToAssets(await getMetaVaultSharesFromShares(totalSharesBefore.add(amounts.mint))),
+                    ),
+                )
+            })
+        })
         describe("view functions", () => {
             before(async () => {
                 await loadOrExecFixture(ctx().fixture)
@@ -179,6 +252,12 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
                 // Is only used to get gas usage using gasReporter
                 await owner.signer.sendTransaction(await vault.populateTransaction.previewRedeem(amounts.redeem))
             })
+            it("redeem ZERO", async () => {
+                const { vault } = ctx()
+                const amount = ZERO
+                const staticPreviewAssets = await vault.previewRedeem(amount)
+                expect(staticPreviewAssets, "previewRedeem").to.eq(ZERO)
+            })
             it("withdraw", async () => {
                 const { amounts, vault, owner } = ctx()
                 // Is only used to get gas usage using gasReporter
@@ -188,6 +267,13 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
                 const staticPreviewShares = await vault.previewWithdraw(amounts.withdraw)
                 const staticWithdrawShares = await vault.callStatic.withdraw(amounts.withdraw, owner.address, owner.address)
                 expect(staticWithdrawShares, "previewWithdraw == static withdraw shares").to.eq(staticPreviewShares)
+            })
+            it("withdraw ZERO", async () => {
+                const { vault, owner } = ctx()
+                const amount = ZERO
+
+                const staticPreviewShares = await vault.previewWithdraw(amount)
+                expect(staticPreviewShares, "previewWithdraw").to.eq(ZERO)
             })
         })
         describe("vault operations", () => {
@@ -349,6 +435,102 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
                         await metaVault.convertToAssets(await getMetaVaultSharesFromShares(totalSharesBefore.sub(amounts.redeem))),
                     ),
                 )
+            })
+            it("user redeems ZERO shares from vault", async () => {
+                const { metaVault, vault, owner, asset } = ctx()
+                const amount = ZERO
+
+                await increaseTime(ONE_DAY)
+                const receiver = Wallet.createRandom().address
+
+                const totalSharesBefore = await vault.totalSupply()
+                const totalAssetsBefore = await vault.totalAssets()
+
+                const receiverAssetsBefore = await asset.balanceOf(receiver)
+
+                const tx = await vault.connect(owner.signer)["redeem(uint256,address,address)"](amount, receiver, owner.address)
+                await logTxDetails(tx, "redeem")
+                await expect(tx).to.not.emit(vault, "Withdraw")
+
+                const receivedAssets = (await asset.balanceOf(receiver)).sub(receiverAssetsBefore)
+
+                expect(receivedAssets, "receiver received assets").eq(amount)
+
+                expect(await vault.totalSupply(), "totalSupply").eq(totalSharesBefore)
+                expect(await vault.totalAssets(), "totalAssets").eq(totalAssetsBefore)
+            })
+            it("user withdraws ZERO assets from vault", async () => {
+                const { metaVault, vault, owner, asset } = ctx()
+                const amount = ZERO
+                await increaseTime(ONE_DAY)
+                const receiver = Wallet.createRandom().address
+
+                const totalSharesBefore = await vault.totalSupply()
+                const totalAssetsBefore = await vault.totalAssets()
+
+                const receiverAssetsBefore = await asset.balanceOf(receiver)
+
+                const tx = await vault.connect(owner.signer).withdraw(amount, receiver, owner.address)
+                await logTxDetails(tx, "withdraw")
+                await expect(tx).to.not.emit(vault, "Withdraw")
+
+                const receivedAssets = (await asset.balanceOf(receiver)).sub(receiverAssetsBefore)
+
+                expect(receivedAssets, "receiver received assets").eq(amount)
+
+                expect(await vault.totalSupply(), "totalSupply").eq(totalSharesBefore)
+                expect(await vault.totalAssets(), "totalAssets").eq(totalAssetsBefore)
+            })
+        })
+
+        describe("governor operations", () => {
+            before(async () => {
+                await loadOrExecFixture(ctx().fixture)
+            })
+            it("governor resets allowance", async () => {
+                const { metaVault, vault, governor, asset, threePool } = ctx()
+                const lpToken = IERC20__factory.connect(ThreeCRV.address, governor.signer)
+
+                await vault.connect(governor.signer).resetAllowances()
+
+                expect(await asset.allowance(vault.address, threePool.address), "asset allowance").to.be.eq(ethers.constants.MaxUint256)
+                expect(await lpToken.allowance(vault.address, metaVault.address), "lpToken allowance").to.be.eq(ethers.constants.MaxUint256)
+            })
+
+            it("governor liquidates vault", async () => {
+                const { metaVault, vault, governor, owner, asset, amounts } = ctx()
+                // Deposits something into the vault
+                await vault.connect(owner.signer)["deposit(uint256,address)"](amounts.initialDeposit, owner.address)
+
+                const totalMetaSharesBefore = await metaVault.balanceOf(vault.address)
+                const assetsGovBefore = await asset.balanceOf(governor.address)
+
+                expect(totalMetaSharesBefore, "total shares").to.be.gt(ZERO)
+                const totalAssetsBefore = await vault.totalAssets()
+                const totalSupplyBefore = await vault.totalSupply()
+
+                // Rescue tokens from a hack
+                await vault.connect(governor.signer).liquidateVault(ZERO)
+
+                const totalMetaSharesAfter = await metaVault.balanceOf(vault.address)
+                const assetsGovAfter = await asset.balanceOf(governor.address)
+                const totalAssetsAfter = await vault.totalAssets()
+                const totalSupplyAfter = await vault.totalSupply()
+
+                expect(totalAssetsAfter, "total assets").to.be.eq(ZERO)
+                expect(totalMetaSharesAfter, "total meta shares").to.be.eq(ZERO)
+                expect(totalSupplyAfter, "total supply does not change").to.be.eq(totalSupplyBefore)
+                expect(assetsGovAfter, "governor assets").to.be.gt(assetsGovBefore)
+                assertBNClosePercent(assetsGovAfter.sub(assetsGovBefore), totalAssetsBefore, "0.1", "assets rescued")
+            })
+
+            it("only governor resets allowance", async () => {
+                const { vault } = ctx()
+                await expect(vault.resetAllowances(), "resetAllowances").to.be.revertedWith("Only governor can execute")
+            })
+            it("only governor liquidates vault", async () => {
+                const { vault } = ctx()
+                await expect(vault.liquidateVault(ZERO), "liquidateVault").to.be.revertedWith("Only governor can execute")
             })
         })
     })

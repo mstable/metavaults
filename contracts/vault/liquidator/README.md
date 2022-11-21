@@ -4,7 +4,7 @@ The Liquidator module is responsible for collecting reward tokens from vaults, s
 
 The Liquidator's main task is to batch the swapping of rewards collected from multiple vaults. This socializes the gas costs in swapping rewards across multiple vaults.
 
-The Liquidator uses a [Swapper](../swap/README.md) module to do on-chain token swaps. A swapper typically uses a swap aggregator like 1Inch or Coswap but can use decentralized exchanges like Uniswap or Balancer.
+The Liquidator uses a [Swapper](../swap/README.md) module to do on-chain token swaps. A swapper typically uses a swap aggregator like 1Inch or CowSwap but can use decentralized exchanges like Uniswap or Balancer.
 
 # Contracts
 

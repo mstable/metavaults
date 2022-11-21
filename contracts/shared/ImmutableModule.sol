@@ -45,31 +45,11 @@ abstract contract ImmutableModule is ModuleKeys {
     }
 
     /**
-     * @dev Modifier to allow function calls only from the Governance.
-     *      Governance is either Governor address or Governance address.
-     */
-    modifier onlyGovernance() {
-        require(
-            msg.sender == _governor() || msg.sender == _governance(),
-            "Only governance can execute"
-        );
-        _;
-    }
-
-    /**
      * @dev Returns Governor address from the Nexus
      * @return Address of Governor Contract
      */
     function _governor() internal view returns (address) {
         return nexus.governor();
-    }
-
-    /**
-     * @dev Returns Governance Module address from the Nexus
-     * @return Address of the Governance (Phase 2)
-     */
-    function _governance() internal view returns (address) {
-        return nexus.getModule(KEY_GOVERNANCE);
     }
 
     /**
@@ -83,26 +63,10 @@ abstract contract ImmutableModule is ModuleKeys {
     }
 
     /**
-     * @dev Return Liquidator module address from the Nexus
-     * @return  Address of the Liquidator contract
-     */
-    function _liquidator() internal view returns (address) {
-        return nexus.getModule(KEY_LIQUIDATOR);
-    }
-
-    /**
      * @dev Return Liquidator V2 module address from the Nexus
      * @return  Address of the Liquidator V2 contract
      */
     function _liquidatorV2() internal view returns (address) {
         return nexus.getModule(KEY_LIQUIDATOR_V2);
-    }
-
-    /**
-     * @dev Return ProxyAdmin module address from the Nexus
-     * @return Address of the ProxyAdmin contract
-     */
-    function _proxyAdmin() internal view returns (address) {
-        return nexus.getModule(KEY_PROXY_ADMIN);
     }
 }

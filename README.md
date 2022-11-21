@@ -74,7 +74,7 @@ Key folders:
 
 ## Testing
 
-Tests are written with [Hardhat](https://hardhat.org/), [Ethers.js](https://docs.ethers.io), [Waffle](https://ethereum-waffle.readthedocs.io/) & [Typescript](https://www.typescriptlang.org/), using [Typechain](https://github.com/dethcrypto/TypeChain) to generate typings for all contracts. Tests are executed using `hardhat` in hardhats evm.
+Tests are written with [Hardhat](https://hardhat.org/), [Ethers.js](https://docs.ethers.io), [Mocha](https://mochajs.org/) & [Typescript](https://www.typescriptlang.org/), using [Typechain](https://github.com/dethcrypto/TypeChain) to generate typings for all contracts. Tests are executed using `hardhat` in hardhats evm.
 
 ```
 $ yarn test
@@ -84,7 +84,7 @@ $ yarn test
 
 [Solidity-coverage](https://github.com/sc-forks/solidity-coverage) is used to run coverage analysis on test suite.
 
-This produces reports that are visible in the `/coverage` folder, and navigatable/uploadable. Ultimately they are used as a reference that there is some sort of adequate cover, although they will not be a source of truth for a robust test framework. Reports publically available on [coveralls](https://coveralls.io/github/mstable/metavaults).
+This produces reports that are visible in the `/coverage` folder, and navigatable/uploadable. Ultimately they are used as a reference that there is some sort of adequate cover, although they will not be a source of truth for a robust test framework. Reports are publicly available on [coveralls](https://coveralls.io/github/mstable/metavaults).
 
 _NB: solidity-coverage runs with solc `optimizer=false` (see [discussion](https://github.com/sc-forks/solidity-coverage/issues/417))_
 
@@ -176,6 +176,18 @@ export NODE_URL=https://mainnet.infura.io/v3/yourApiKey
 # To transfer 1000 MTA tokens from the signer account being used to the mStable DAO
 yarn task token-transfer --network mainnet --asset MTA --recipient mStableDAO -- amount 1000
 ```
+
+## Document generation from Natspec
+
+The contract Natspec can be generated into a markdown file in the `docs/natspec` folder using the following command.
+
+```
+yarn docgen
+```
+
+The markdown for the relevant contracts can then be copied into GitBook.
+
+Unfortunately the generated markdown will not include inherited classes. These need to be manually include for now. 
 
 ## Other mStable Meta Vault repositories
 

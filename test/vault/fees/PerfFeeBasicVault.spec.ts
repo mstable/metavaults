@@ -74,8 +74,12 @@ describe("Performance Fees", async () => {
 
         const tx = await vault.connect(sa.vaultManager.signer).chargePerformanceFee()
 
-        const assetsPerShareAfter = calculateAssetsPerShare(data)
-        const feeShares = calculateFeeShares(data, assetsPerShareAfter)
+        const assetsPerShareCurrent = calculateAssetsPerShare(data)
+        const feeShares = calculateFeeShares(data, assetsPerShareCurrent)
+        const assetsPerShareAfter = calculateAssetsPerShare({
+            ...data,
+            totalShares: BN.from(data.totalShares).add(feeShares),
+        })
 
         if (feeShares.gt(0)) {
             await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, assetsPerShareAfter)
@@ -85,10 +89,8 @@ describe("Performance Fees", async () => {
         expect(await vault.balanceOf(feeReceiver.address), "fee shares after").to.eq(feeSharesBefore.add(feeShares))
 
         const dataAfter = {
-            staker: data.staker,
-            stakerShares: data.stakerShares,
+            ...data,
             totalShares: feeShares.add(data.totalShares),
-            totalAssets: data.totalAssets,
             perfFeesAssetsPerShare: assetsPerShareAfter,
         }
 
@@ -145,6 +147,11 @@ describe("Performance Fees", async () => {
         it("should fail if arguments are wrong", async () => {
             await expect(new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS)).to.be.revertedWith(
                 "Asset is zero",
+            )
+        })
+        it("should fail if nexus has zero address", async () => {
+            await expect(new PerfFeeBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS)).to.be.revertedWith(
+                "Nexus address is zero",
             )
         })
     })
@@ -330,14 +337,19 @@ describe("Performance Fees", async () => {
                     totalAssets: totalAssets,
                 }
                 const feeShares = calculateFeeShares(data, calculateAssetsPerShare(data))
+                const assetsPerShareAfter = calculateAssetsPerShare({
+                    ...data,
+                    totalShares: data.totalShares.add(feeShares),
+                })
 
                 const newPerfFee = 100
 
-                expect(await vault.performanceFee(), "PerformaceFees").to.not.eq(newPerfFee)
+                expect(await vault.performanceFee(), "PerformanceFees").to.not.eq(newPerfFee)
                 const tx = vault.connect(sa.governor.signer).setPerformanceFee(newPerfFee)
-                await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, calculateAssetsPerShare(data))
+                await expect(tx).to.emit(vault, "PerformanceFee").withArgs(feeReceiver.address, feeShares, assetsPerShareAfter)
                 expect(tx).to.emit(vault, "PerformanceFeeUpdated").withArgs(newPerfFee)
-                expect(await vault.performanceFee(), "PerformaceFees").to.eq(newPerfFee)
+                expect(tx).to.emit(vault, "AssetsPerShareUpdated")
+                expect(await vault.performanceFee(), "PerformanceFees").to.eq(newPerfFee)
             })
         })
         describe("set fee receiver", async () => {

@@ -66,7 +66,7 @@ abstract contract AbstractSlippage is VaultManagerRole {
 
     /// @param _slippage Deposit slippage to apply as basis points i.e. 1% = 100
     function _setDepositSlippage(uint256 _slippage) internal {
-        require(_slippage <= BASIS_SCALE, "Invalid deposit Slippage");
+        require(_slippage <= BASIS_SCALE, "Invalid deposit slippage");
         depositSlippage = _slippage;
 
         emit DepositSlippageChange(msg.sender, _slippage);
@@ -74,7 +74,7 @@ abstract contract AbstractSlippage is VaultManagerRole {
 
     /// @param _slippage Withdraw slippage to apply as basis points i.e. 1% = 100
     function _setWithdrawSlippage(uint256 _slippage) internal {
-        require(_slippage <= BASIS_SCALE, "Invalid withdraw Slippage");
+        require(_slippage <= BASIS_SCALE, "Invalid withdraw slippage");
         withdrawSlippage = _slippage;
 
         emit WithdrawSlippageChange(msg.sender, _slippage);

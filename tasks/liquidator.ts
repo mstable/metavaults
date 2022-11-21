@@ -9,7 +9,6 @@ import { AssetProxy__factory, IERC20Metadata__factory, Liquidator__factory } fro
 import { getOrder, placeSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
-import { buildDonateTokensInput } from "./utils/liquidatorUtil"
 import { logger } from "./utils/logger"
 import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
@@ -33,6 +32,7 @@ export async function deployLiquidator(
     syncSwapperAddress: string,
     asyncSwapperAddress: string,
     proxyAdmin: string,
+    proxy = true,
 ) {
     const constructorArguments = [nexusAddress]
     const liquidatorImpl = await deployContract<Liquidator>(new Liquidator__factory(signer), "Liquidator", constructorArguments)
@@ -44,17 +44,20 @@ export async function deployLiquidator(
     })
 
     // Proxy
+    if (!proxy) {
+        return liquidatorImpl
+    }
     const data = liquidatorImpl.interface.encodeFunctionData("initialize", [syncSwapperAddress, asyncSwapperAddress])
     const proxyConstructorArguments = [liquidatorImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
     await verifyEtherscan(hre, {
-        address: proxy.address,
+        address: proxyContract.address,
         contract: "contracts/upgradability/Proxies.sol:AssetProxy",
         constructorArguments: proxyConstructorArguments,
     })
 
-    return Liquidator__factory.connect(proxy.address, signer)
+    return Liquidator__factory.connect(proxyContract.address, signer)
 }
 
 subtask("liq-deploy", "Deploys a new Liquidator contract")
@@ -62,9 +65,10 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
     .addOptionalParam("asyncSwapper", "Async Swapper address override", "CowSwapDex", types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("admin", "Proxy admin name or address override. eg DelayedProxyAdmin", "InstantProxyAdmin", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { nexus, admin, syncSwapper, asyncSwapper, speed } = taskArgs
+        const { nexus, admin, syncSwapper, asyncSwapper, proxy, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const nexusAddress = resolveAddress(nexus, chain)
@@ -72,7 +76,7 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
         const asyncSwapperAddress = resolveAddress(asyncSwapper, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
 
-        return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress)
+        return deployLiquidator(hre, signer, nexusAddress, syncSwapperAddress, asyncSwapperAddress, proxyAdminAddress, proxy)
     })
 
 task("liq-deploy").setAction(async (_, __, runSuper) => {
@@ -95,10 +99,18 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
 
         const receipt = await tx.wait()
         const events = receipt.events?.find((e) => e.event === "CollectedRewards")
-        events?.args?.rewards.forEach((rewards, i) => {
-            // TODO include reward symbol, formatted amounts and vault symbol
-            log(`Collected ${rewards} rewards from vault ${i}`)
-        })
+
+        let i = 0
+        for (const rewards of events?.args?.rewards) {
+            let j = 0
+            for (const reward of rewards) {
+                const vaultToken = await resolveAssetToken(signer, chain, vaultsAddress[i])
+                const rewardToken = await resolveAssetToken(signer, chain, events?.args?.rewardTokens[i][j])
+                log(`Collected ${formatUnits(reward, rewardToken.decimals)} ${rewardToken.symbol} rewards from vault ${vaultToken.symbol}`)
+                j++
+            }
+            i++
+        }
     })
 task("liq-collect-rewards").setAction(async (_, __, runSuper) => {
     await runSuper()
@@ -116,9 +128,11 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
     .addOptionalParam("transfer", "Transfer sell tokens from liquidator?.", true, types.boolean)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("swapper", "Name or address to override the CowSwapDex contract", "CowSwapDex", types.string)
+    .addOptionalParam("readonly", "Quote swap but not initiate.", false, types.boolean)
+    .addOptionalParam("maxFee", "Max fee in from tokens", 0, types.int)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { from, to, liquidator, receiver, transfer, swapper, speed } = taskArgs
+        const { from, to, liquidator, maxFee, readonly, receiver, transfer, swapper, speed } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const liquidatorAddress = resolveAddress(liquidator, chain)
@@ -149,14 +163,25 @@ subtask("liq-init-swap", "Initiate CowSwap swap of rewards to donate tokens")
         log(`Sell ${formatUnits(rewards, sellToken.decimals)} ${sellToken.symbol} rewards`)
         const sellOrder = await placeSellOrder(context, sellOrderParams)
         log(`uid ${sellOrder.orderUid}`)
-        log(`fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)}`)
+        const feePercentage = sellOrder.fromAssetFeeAmount.mul(10000).div(rewards)
+        log(`fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} ${formatUnits(feePercentage, 2)}%`)
         log(`buy ${formatUnits(sellOrder.toAssetAmountAfterFee, buyToken.decimals)} ${buyToken.symbol}`)
 
-        // Initiate the order and sign
-        const data = encodeInitiateSwap(sellOrder.orderUid, transfer)
-        const tx = await liquidatorContract.initiateSwap(sellToken.address, buyToken.address, data)
+        const gasPrice = await hre.ethers.provider.getGasPrice()
+        log(`gas price ${formatUnits(gasPrice, "gwei")}`)
 
-        await logTxDetails(tx, `liquidator initiateSwap of ${sellToken.symbol} to ${buyToken.symbol}`)
+        const maxFeeScaled = simpleToExactAmount(maxFee, sellToken.decimals)
+        if (maxFeeScaled.gt(0) && sellOrder.fromAssetFeeAmount.gt(maxFeeScaled)) {
+            throw Error(`Fee ${formatUnits(sellOrder.fromAssetFeeAmount, sellToken.decimals)} is greater than maxFee ${maxFee}`)
+        }
+
+        if (!readonly) {
+            // Initiate the order and sign
+            const data = encodeInitiateSwap(sellOrder.orderUid, transfer)
+            const tx = await liquidatorContract.initiateSwap(sellToken.address, buyToken.address, data)
+
+            await logTxDetails(tx, `liquidator initiateSwap of ${sellToken.symbol} to ${buyToken.symbol}`)
+        }
     })
 task("liq-init-swap").setAction(async (_, __, runSuper) => {
     await runSuper()
@@ -232,21 +257,36 @@ task("liq-sync-swap").setAction(async (_, __, runSuper) => {
 
 subtask("liq-donate-tokens", "Donate purchased tokens to vaults")
     .addParam("vaults", "Comma separated vault symbols or addresses", undefined, types.string)
+    .addParam("rewards", "Comma separated symbols or addresses of the reward tokens", undefined, types.string)
+    .addOptionalParam("purchase", "Symbol or address of the purchased token", "DAI", types.string)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { liquidator, speed, vaults } = taskArgs
+        const { liquidator, speed, rewards, purchase, vaults } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
 
         const liquidatorAddress = resolveAddress(liquidator, chain)
         const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
-        const vaultsAddress = await resolveMultipleAddress(chain, vaults)
-        // TODO need option to restrict the reward and purchase tokens
-        const { rewardTokens, purchaseTokens, vaults: vaultAddresses } = await buildDonateTokensInput(signer, vaultsAddress)
-        log(`rewardTokens: ${rewardTokens}`)
-        log(`purchaseTokens: ${purchaseTokens}`)
-        log(`purchaseVaultAddresses: ${vaultAddresses}`)
+        const rewardAddresses = await resolveMultipleAddress(chain, rewards)
+        const vaultAddresses = await resolveMultipleAddress(chain, vaults)
+        const purchaseToken = await resolveAddress(purchase, chain)
+
+        const rewardTokens = []
+        const vaultTokens = []
+        const purchaseTokens = []
+        // For each vault
+        vaultAddresses.forEach((vaultAddress) => {
+            // For each reward token
+            rewardAddresses.forEach((rewardAddress) => {
+                rewardTokens.push(rewardAddress)
+                vaultTokens.push(vaultAddress)
+                purchaseTokens.push(purchaseToken)
+            })
+        })
+        log(`reward tokens ${rewardTokens}`)
+        log(`vaults ${vaultTokens}`)
+        log(`purchase tokens ${purchaseTokens}`)
 
         const tx = await liquidatorContract.donateTokens(rewardTokens, purchaseTokens, vaultAddresses)
         await logTxDetails(tx, `liquidator.donateTokens(${rewardTokens}, ${purchaseTokens}, ${vaultAddresses})`)

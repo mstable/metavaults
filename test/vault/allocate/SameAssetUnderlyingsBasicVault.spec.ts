@@ -84,6 +84,9 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         })
         it("should fail if arguments are wrong", async () => {
             await expect(
+                new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(ZERO_ADDRESS, ZERO_ADDRESS),
+            ).to.be.revertedWith("Nexus address is zero")
+            await expect(
                 new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, ZERO_ADDRESS),
             ).to.be.revertedWith("Asset is zero")
         })

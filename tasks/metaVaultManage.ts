@@ -1,10 +1,13 @@
+import { impersonate } from "@utils/fork"
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import {
     AssetPerShareAbstractVault__factory,
     FeeAdminAbstractVault__factory,
+    IERC20__factory,
     IERC20Metadata__factory,
+    IERC4626Vault__factory,
     PerfFeeAbstractVault__factory,
     PeriodicAllocationAbstractVault__factory,
     SameAssetUnderlyingsAbstractVault__factory,
@@ -12,7 +15,7 @@ import {
 
 import { logTxDetails } from "./utils/deploy-utils"
 import { logger } from "./utils/logger"
-import { getChain, resolveAddress } from "./utils/networkAddressFactory"
+import { getChain, resolveAddress, resolveAssetToken, resolveVaultToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
 const log = logger("task:mv")
@@ -60,8 +63,8 @@ subtask("mv-charge-perf-fee", "Vault Manager charges a performance fee since the
         const receipt = await tx.wait()
         const prefFeeEvent = receipt.events?.find((e) => e.event === "PerformanceFee")
         if (prefFeeEvent) {
-            log(`${prefFeeEvent.args.feeReceiver} received ${prefFeeEvent.args.feeShares} shares as a fee`)
-            log(`Fee assets/share updated to ${formatUnits(prefFeeEvent.args.assetsPerShare)}`)
+            log(`${prefFeeEvent.args.feeReceiver} received ${formatUnits(prefFeeEvent.args.feeShares)} shares as a fee`)
+            log(`Fee assets/share updated to ${formatUnits(prefFeeEvent.args.assetsPerShare, 26)}`)
         } else {
             log("No performance fee was charged")
         }
@@ -242,7 +245,7 @@ task("mv-update-asset-per-share").setAction(async (_, __, runSuper) => {
 })
 
 subtask("mv-settle", "Vault Manager invests the assets sitting in the vault to underlying vaults.")
-    .addParam("vault", "Symbol or address of the meta vault.", undefined, types.string)
+    .addParam("vault", "Symbol or address of the meta vault.", "mv3CRV-CVX", types.string)
     .addParam(
         "underlyings",
         'json array. eg [{"vaultIndex": 3, "assets": 10000},{"vaultIndex": 4, "assets": 20000}]',
@@ -306,6 +309,94 @@ subtask("mv-rebalance", "Vault Manager rebalances the assets in the underlying v
         await logTxDetails(tx, `${signerAddress} rebalance ${vault} meta vault`)
     })
 task("mv-rebalance").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
+
+subtask("vault-slippage", "Slippage from a deposit and full redeem")
+    .addParam("vault", "Vault symbol or address. eg mvDAI-3PCV or vcx3CRV-FRAX, ", undefined, types.string)
+    .addParam("amount", "Amount as vault shares to burn.", undefined, types.float)
+    .addOptionalParam("approve", "Will approve the vault to transfer the assets", true, types.boolean)
+    .addOptionalParam("metaVault", "Symbol or address of the meta vault.", "mv3CRV-CVX", types.string)
+    .addOptionalParam("settle", "Settle the meta vault", false, types.boolean)
+    .setAction(async (taskArgs, hre) => {
+        const { approve, amount, vault, metaVault, settle, speed } = taskArgs
+
+        if (hre?.network.name === "mainnet") throw Error("Slippage calculation not supported on mainnet. Use a fork instead")
+
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+        const signerAddress = await signer.getAddress()
+
+        const vaultToken = await resolveVaultToken(signer, chain, vault)
+        const vaultContract = IERC4626Vault__factory.connect(vaultToken.address, signer)
+        const assetToken = await resolveAssetToken(signer, chain, vaultToken.assetSymbol)
+        const assetsScaled = simpleToExactAmount(amount, assetToken.decimals)
+
+        if (approve) {
+            const assetContract = IERC20__factory.connect(assetToken.address, signer)
+            const approveTx = await assetContract.approve(vaultToken.address, assetsScaled)
+            await logTxDetails(
+                approveTx,
+                `approve ${vaultToken.symbol} vault to transfer ${formatUnits(assetsScaled, assetToken.decimals)} ${
+                    assetToken.symbol
+                } assets`,
+            )
+        }
+
+        // Deposit
+        const tx = await vaultContract.deposit(assetsScaled, signerAddress)
+        const receipt = await tx.wait()
+        const depositEvent = receipt.events.find((e) => e.event == "Deposit" && e.address == vaultToken.address)
+        const shares = depositEvent.args.shares
+        log(`Deposit ${amount} ${assetToken.symbol} for ${formatUnits(shares, vaultToken.decimals)} ${vaultToken.symbol} shares`)
+
+        if (settle) {
+            const metaVaultAddress = await resolveAddress(metaVault, chain)
+            const metaVaultContract = PeriodicAllocationAbstractVault__factory.connect(metaVaultAddress, signer)
+
+            const threeCrvAddress = await resolveAddress("3Crv", chain)
+            const threeCrvContract = IERC20Metadata__factory.connect(threeCrvAddress, signer)
+            const threeCrvInMetaVault = await threeCrvContract.balanceOf(metaVaultAddress)
+
+            const settlements = [
+                {
+                    vaultIndex: 0,
+                    assets: threeCrvInMetaVault.div(3),
+                },
+                {
+                    vaultIndex: 1,
+                    assets: threeCrvInMetaVault.div(3),
+                },
+                {
+                    vaultIndex: 2,
+                    assets: threeCrvInMetaVault.div(3),
+                },
+            ]
+
+            const vaultManagerSigner = await impersonate(resolveAddress("VaultManager", chain))
+            const settleTx = await metaVaultContract.connect(vaultManagerSigner).settle(settlements)
+            await logTxDetails(settleTx, `${signerAddress} settle ${vault} meta vault`)
+        }
+
+        // Redeem
+        const redeemedAssets = await vaultContract.callStatic.redeem(shares, signerAddress, signerAddress)
+        log(
+            `Redeemed ${formatUnits(redeemedAssets, assetToken.decimals)} ${assetToken.symbol} from ${formatUnits(
+                shares,
+                vaultToken.decimals,
+            )} ${vaultToken.symbol} shares`,
+        )
+        const diff = redeemedAssets.sub(assetsScaled)
+        const diffPercentage = diff.mul(1000000).div(assetsScaled)
+
+        log(
+            `Deposit ${formatUnits(assetsScaled, assetToken.decimals)} ${assetToken.symbol}, redeemed ${formatUnits(
+                redeemedAssets,
+                assetToken.decimals,
+            )} ${assetToken.symbol} diff ${formatUnits(diff, assetToken.decimals)} ${formatUnits(diffPercentage, 4)}%`,
+        )
+    })
+task("vault-slippage").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 

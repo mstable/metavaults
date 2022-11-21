@@ -1,35 +1,50 @@
-import { musd3CRV, resolveAddress, ThreeCRV } from "@tasks/utils"
+import { mUSD, musd3CRV, resolveAddress, ThreeCRV } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
-import { impersonateAccount } from "@utils/fork"
+import { ZERO, ZERO_ADDRESS } from "@utils/constants"
+import { impersonate, impersonateAccount } from "@utils/fork"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "ethers"
+import { formatUnits } from "ethers/lib/utils"
 import * as hre from "hardhat"
-import { ICurve3Pool__factory, ICurveMetapool__factory, IERC20__factory, IERC20Metadata__factory } from "types/generated"
+import {
+    Convex3CrvLiquidatorVault__factory,
+    Curve3CrvMetapoolCalculatorLibrary__factory,
+    ICurve3Pool__factory,
+    ICurveMetapool__factory,
+    IERC20__factory,
+    IERC20Metadata__factory,
+    MockERC20__factory,
+} from "types/generated"
 
+import type { Signer } from "ethers"
 import type { Account } from "types/common"
-import type { ICurve3Pool, ICurveMetapool, IERC20 } from "types/generated"
+import type { Curve3CrvMetapoolCalculatorLibrary, ICurve3Pool, ICurveMetapool, IERC20, MockERC20 } from "types/generated"
 
 const log = logger("test:CurveMetapoolCalcs")
 
 const curveThreePoolAddress = resolveAddress("CurveThreePool")
 const curveMUSDPoolAddress = resolveAddress("CurveMUSDPool")
-const staker1Address = "0xd632f22692fac7611d2aa1c0d552930d43caed3b"
+const threeCrvWhaleAddress = "0xd632f22692fac7611d2aa1c0d552930d43caed3b"
 const mpTokenWhaleAddress = "0xe6e6e25efda5f69687aa9914f8d750c523a1d261"
 
 const defaultWithdrawSlippage = 100
 const defaultDepositSlippage = 100
+const deployerAddress = resolveAddress("OperationsSigner")
 
 describe("Curve musd3Crv Metapool", async () => {
-    let staker1: Account
+    let threeCrvWhale: Account
     let mpTokenWhale: Account
     let threeCrvToken: IERC20
+    let musdToken: IERC20
     let threePool: ICurve3Pool
     let musdMetapool: ICurveMetapool
     let musd3CrvToken: IERC20
+    let deployer: Signer
+
     const { network } = hre
 
-    const reset = async (blockNumber: number) => {
+    const reset = async (blockNumber?: number) => {
         if (network.name === "hardhat") {
             await network.provider.request({
                 method: "hardhat_reset",
@@ -43,12 +58,14 @@ describe("Curve musd3Crv Metapool", async () => {
                 ],
             })
         }
-        staker1 = await impersonateAccount(staker1Address)
+        threeCrvWhale = await impersonateAccount(threeCrvWhaleAddress)
         mpTokenWhale = await impersonateAccount(mpTokenWhaleAddress)
+        deployer = await impersonate(deployerAddress)
     }
 
     const initialise = (owner: Account) => {
         threeCrvToken = IERC20__factory.connect(ThreeCRV.address, owner.signer)
+        musdToken = IERC20__factory.connect(mUSD.address, owner.signer)
         threePool = ICurve3Pool__factory.connect(curveThreePoolAddress, owner.signer)
         musdMetapool = ICurveMetapool__factory.connect(curveMUSDPoolAddress, owner.signer)
         musd3CrvToken = IERC20__factory.connect(musd3CRV.address, owner.signer)
@@ -200,8 +217,8 @@ describe("Curve musd3Crv Metapool", async () => {
             })
             liquidityAmounts.forEach((liquidityAmount) => {
                 it(`block ${blockNumber}, Deposit amount ${liquidityAmount.toLocaleString("en-US")}`, async () => {
-                    initialise(staker1)
-                    await deposit(musdMetapool, musd3CrvToken, staker1, liquidityAmount)
+                    initialise(threeCrvWhale)
+                    await deposit(musdMetapool, musd3CrvToken, threeCrvWhale, liquidityAmount)
                 })
             })
             mpTokensAmounts.forEach((mpTokensAmount) => {
@@ -218,10 +235,378 @@ describe("Curve musd3Crv Metapool", async () => {
             })
             mpTokensAmounts.forEach((mpTokensAmount) => {
                 it(`block ${blockNumber}, mpTokens demand amount ${mpTokensAmount.toLocaleString("en-US")}`, async () => {
-                    initialise(staker1)
-                    await mint(musdMetapool, musd3CrvToken, staker1, mpTokensAmount)
+                    initialise(threeCrvWhale)
+                    await mint(musdMetapool, musd3CrvToken, threeCrvWhale, mpTokensAmount)
                 })
             })
+        })
+    })
+
+    const logPool = async () => {
+        const musdBalance = await musdMetapool.balances(0)
+        const threeCrvBalance = await musdMetapool.balances(1)
+        const totalBalance = musdBalance.add(threeCrvBalance)
+        log(`mUSD balance: ${formatUnits(musdBalance, mUSD.decimals)} ${formatUnits(musdBalance.mul(10000).div(totalBalance), 2)}%`)
+        log(
+            `3Crv balance: ${formatUnits(threeCrvBalance, ThreeCRV.decimals)} ${formatUnits(
+                threeCrvBalance.mul(10000).div(totalBalance),
+                2,
+            )}%`,
+        )
+        log(`total supply  ${formatUnits(await musd3CrvToken.totalSupply())}`)
+        log(`virtual price ${formatUnits(await musdMetapool.get_virtual_price())}\n`)
+    }
+    describe(`Add 3Crv liquidity worked example`, () => {
+        let metapoolLibrary: Curve3CrvMetapoolCalculatorLibrary
+        let musdBalanceBefore: BN
+        let threeCrvBalanceBefore: BN
+        const addAmount = simpleToExactAmount(100000, 18)
+
+        beforeEach(async () => {
+            await reset(15860000)
+            const metapoolLibAddress = resolveAddress("Curve3CrvMetapoolCalculatorLibrary")
+            metapoolLibrary = Curve3CrvMetapoolCalculatorLibrary__factory.connect(metapoolLibAddress, mpTokenWhale.signer)
+
+            initialise(threeCrvWhale)
+
+            musdBalanceBefore = await musdMetapool.balances(0)
+            threeCrvBalanceBefore = await musdMetapool.balances(1)
+
+            log(`mUSD balance before: ${formatUnits(musdBalanceBefore, mUSD.decimals)}`)
+            log(`3Crv balance before: ${formatUnits(threeCrvBalanceBefore, ThreeCRV.decimals)}`)
+        })
+        it("Less 3Crv", async () => {
+            const musdBalanced = simpleToExactAmount(2000000) // 2m
+            const threeCrvBalanced = simpleToExactAmount(6000000) // 6m
+
+            const musdWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                musdBalanceBefore.sub(musdBalanced).sub(simpleToExactAmount(437)),
+                0,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(musdWithdrawResult.burnAmount_, 0, 0)
+
+            const threeCrvWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                threeCrvBalanceBefore.sub(threeCrvBalanced).sub(simpleToExactAmount(38)),
+                1,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(threeCrvWithdrawResult.burnAmount_, 1, 0)
+
+            log("balanced pool")
+            await logPool()
+
+            await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, addAmount)
+            const lpTokens = await musdMetapool.connect(threeCrvWhale.signer).callStatic.add_liquidity([0, addAmount], 0)
+            const virtualPrice = await musdMetapool.get_virtual_price()
+            const dollarValue = virtualPrice.mul(lpTokens)
+            log(
+                `Received ${formatUnits(lpTokens)} lp tokens worth ${formatUnits(dollarValue, 36)} USD from adding ${formatUnits(
+                    addAmount,
+                )} 3Crv liquidity`,
+            )
+        })
+        it("More 3Crv", async () => {
+            const musdBalanced = simpleToExactAmount(6000000) // 6m
+            const threeCrvBalanced = simpleToExactAmount(2000000) // 2m
+
+            const musdWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                musdBalanceBefore.sub(musdBalanced).sub(simpleToExactAmount(13)),
+                0,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(musdWithdrawResult.burnAmount_, 0, 0)
+
+            const threeCrvWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                threeCrvBalanceBefore.sub(threeCrvBalanced).sub(simpleToExactAmount(450)),
+                1,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(threeCrvWithdrawResult.burnAmount_, 1, 0)
+
+            log("balanced pool")
+            await logPool()
+
+            await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, addAmount)
+            const lpTokens = await musdMetapool.connect(threeCrvWhale.signer).callStatic.add_liquidity([0, addAmount], 0)
+            const virtualPrice = await musdMetapool.get_virtual_price()
+            const dollarValue = virtualPrice.mul(lpTokens)
+            log(
+                `Received ${formatUnits(lpTokens)} lp tokens worth ${formatUnits(dollarValue, 36)} USD from adding ${formatUnits(
+                    addAmount,
+                )} 3Crv liquidity`,
+            )
+        })
+    })
+    describe(`Sandwich attack worked example`, () => {
+        let metapoolLibrary: Curve3CrvMetapoolCalculatorLibrary
+        const threeCrvBalanced = simpleToExactAmount(6000000) // 6m
+        const attackerAdd3CrvBefore = simpleToExactAmount(50000000) // 50m
+        const attackerRemoveLpBefore = simpleToExactAmount(6500000) //6.5m
+        const victim3CrvBefore = simpleToExactAmount(100000) // 100k
+        let victimBalancedLpTokens: BN
+        let victimDollarValueBefore: BN
+        let otherLpTokens: BN
+
+        beforeEach(async () => {
+            await reset(15860000)
+            const metapoolLibAddress = resolveAddress("Curve3CrvMetapoolCalculatorLibrary")
+            metapoolLibrary = Curve3CrvMetapoolCalculatorLibrary__factory.connect(metapoolLibAddress, mpTokenWhale.signer)
+
+            initialise(threeCrvWhale)
+
+            const musdBalanceBefore = await musdMetapool.balances(0)
+            const threeCrvBalanceBefore = await musdMetapool.balances(1)
+
+            log(`mUSD balance before: ${formatUnits(musdBalanceBefore, mUSD.decimals)}`)
+            log(`3Crv balance before: ${formatUnits(threeCrvBalanceBefore, ThreeCRV.decimals)}`)
+
+            const musdWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                musdBalanceBefore.sub(threeCrvBalanced).sub(simpleToExactAmount(13)),
+                0,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(musdWithdrawResult.burnAmount_, 0, 0)
+
+            const threeCrvWithdrawResult = await metapoolLibrary.calcWithdraw(
+                musdMetapool.address,
+                musd3CrvToken.address,
+                // need to fudge the number a little bit as fees are also taken out
+                threeCrvBalanceBefore.sub(threeCrvBalanced).sub(simpleToExactAmount(78)),
+                1,
+            )
+
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(threeCrvWithdrawResult.burnAmount_, 1, 0)
+
+            log("balanced pool")
+            await logPool()
+
+            log(`lp whale balance before: ${formatUnits(await musd3CrvToken.balanceOf(mpTokenWhale.address))}`)
+
+            const virtualPrice = await musdMetapool.get_virtual_price()
+            const attackerLpValue = virtualPrice.mul(attackerRemoveLpBefore)
+            log(`attacker lp tokens ${formatUnits(attackerRemoveLpBefore, 18)} worth ${formatUnits(attackerLpValue, 36)} USD`)
+            const totalLpTokens = await musd3CrvToken.totalSupply()
+            otherLpTokens = totalLpTokens.sub(attackerRemoveLpBefore)
+            const otherLpValue = virtualPrice.mul(otherLpTokens)
+            log(`other lp tokens ${formatUnits(otherLpTokens, 18)} worth ${formatUnits(otherLpValue, 36)} USD`)
+        })
+        it("add liquidity to balanced pool", async () => {
+            await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, victim3CrvBefore)
+            victimBalancedLpTokens = await musdMetapool.connect(threeCrvWhale.signer).callStatic.add_liquidity([0, victim3CrvBefore], 0)
+            const virtualPrice = await musdMetapool.get_virtual_price()
+            victimDollarValueBefore = virtualPrice.mul(victimBalancedLpTokens)
+            log(
+                `Received ${formatUnits(victimBalancedLpTokens)} lp tokens worth ${formatUnits(
+                    victimDollarValueBefore,
+                    36,
+                )} USD from adding ${formatUnits(victim3CrvBefore)} 3Crv liquidity`,
+            )
+        })
+        describe.skip("add liquidity to imbalance pool", () => {
+            let attackerLpTokens: BN
+            beforeEach(async () => {
+                // Attacker's first tx adds 3Crv to the pool
+                await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, attackerAdd3CrvBefore)
+                // static call to easily get the lp tokens
+                attackerLpTokens = await musdMetapool.connect(threeCrvWhale.signer).callStatic.add_liquidity([0, attackerAdd3CrvBefore], 0)
+                await musdMetapool.connect(threeCrvWhale.signer).add_liquidity([0, attackerAdd3CrvBefore], 0)
+
+                log("Attacker added 3Crv to the pool")
+                await logPool()
+            })
+            it("sandwich attack", async () => {
+                // victim tx is second tx that adds 3Crv to the pool
+                await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, victim3CrvBefore)
+                // static call to easily get the lp tokens
+                const victimImbalancedLpTokens = await musdMetapool
+                    .connect(threeCrvWhale.signer)
+                    .callStatic.add_liquidity([0, victim3CrvBefore], 0)
+                await musdMetapool.connect(threeCrvWhale.signer).add_liquidity([0, victim3CrvBefore], 0)
+                const victimLpTokenDiff = victimImbalancedLpTokens.sub(victimBalancedLpTokens)
+                const victimLpTokenDiffPercent = victimLpTokenDiff.mul(100000000).div(victimBalancedLpTokens)
+                log(
+                    `victim got ${formatUnits(victimImbalancedLpTokens)} diff ${formatUnits(victimLpTokenDiff)} ${formatUnits(
+                        victimLpTokenDiffPercent,
+                        6,
+                    )}% musd3CRV lp tokens`,
+                )
+                const virtualPrice = await musdMetapool.get_virtual_price()
+                const victimDollarValueAfter = virtualPrice.mul(victimImbalancedLpTokens)
+                const victimDollarValueDiff = victimDollarValueAfter.sub(victimDollarValueBefore)
+                const victimDollarLpTokenDiffPercent = victimDollarValueDiff.mul(100000000).div(victimDollarValueBefore)
+                log(
+                    `victim USD value of lp tokens ${formatUnits(victimDollarValueAfter)} diff ${formatUnits(
+                        victimDollarValueDiff,
+                    )} ${formatUnits(victimDollarLpTokenDiffPercent, 6)}%`,
+                )
+
+                // third tx the attacker redeems their extra metapool lp tokens for 3Crv
+                const attacker3CrvAfter = await musdMetapool
+                    .connect(threeCrvWhale.signer)
+                    .callStatic.remove_liquidity_one_coin(attackerLpTokens, 1, 0)
+                await musdMetapool.connect(threeCrvWhale.signer).remove_liquidity_one_coin(attackerLpTokens, 1, 0)
+                log("After 3rd tx")
+                const attacker3CrvDiff = attacker3CrvAfter.sub(attackerAdd3CrvBefore)
+                const attacker3CrvDiffPercentage = attacker3CrvDiff.mul(1000000).div(attackerAdd3CrvBefore)
+                log(
+                    `attacker withdrew ${formatUnits(attacker3CrvAfter)} 3Crv diff ${formatUnits(attacker3CrvDiff)} ${formatUnits(
+                        attacker3CrvDiffPercentage,
+                        4,
+                    )}% from ${formatUnits(attackerLpTokens)} lp tokens`,
+                )
+
+                await logPool()
+
+                const victim3CrvAfter = await musdMetapool
+                    .connect(mpTokenWhale.signer)
+                    .callStatic.remove_liquidity_one_coin(victimImbalancedLpTokens, 1, 0)
+                await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(victimImbalancedLpTokens, 1, 0)
+                const victim3CrvDiff = victim3CrvAfter.sub(victim3CrvBefore)
+                const victim3CrvDiffPercent = victim3CrvDiff.mul(10000).div(victim3CrvBefore)
+                log("After victim removes liquidity")
+                log(
+                    `victim after ${formatUnits(victim3CrvAfter)} 3Crv ${formatUnits(victim3CrvDiff)} ${formatUnits(
+                        victim3CrvDiffPercent,
+                        2,
+                    )}%`,
+                )
+                await logPool()
+            })
+            it("deposit to mUSD vault should fail due to sandwich protection", async () => {
+                const vaultAddress = resolveAddress("vcx3CRV-mUSD")
+                const musdVault = Convex3CrvLiquidatorVault__factory.connect(vaultAddress, threeCrvWhale.signer)
+                await threeCrvToken.connect(threeCrvWhale.signer).approve(vaultAddress, attackerAdd3CrvBefore)
+                const tx = musdVault["deposit(uint256,address)"](attackerAdd3CrvBefore, threeCrvWhale.address)
+                await expect(tx).revertedWith("Slippage screwed you")
+            })
+        })
+        it("remove liquidity to imbalanced pool", async () => {
+            // Attacker's first tx remove mUSD from the pool
+            // static call to easily get the 3Crv tokens removed
+            const attackerRemovedMusd = await musdMetapool
+                .connect(mpTokenWhale.signer)
+                .callStatic.remove_liquidity_one_coin(attackerRemoveLpBefore, 0, 0)
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(attackerRemoveLpBefore, 0, 0)
+            log(
+                `Attacker removed ${formatUnits(attackerRemovedMusd)} mUSD from the pool using ${formatUnits(
+                    attackerRemoveLpBefore,
+                )} lp tokens`,
+            )
+
+            log("3Crv removed from the pool")
+            await logPool()
+
+            // victim tx that adds 3Crv to the pool
+            await threeCrvToken.connect(threeCrvWhale.signer).approve(musdMetapool.address, victim3CrvBefore)
+            // static call to easily get the lp tokens
+            const victimImbalancedLpTokens = await musdMetapool
+                .connect(threeCrvWhale.signer)
+                .callStatic.add_liquidity([0, victim3CrvBefore], 0)
+            await musdMetapool.connect(threeCrvWhale.signer).add_liquidity([0, victim3CrvBefore], 0)
+            const victimLpTokenDiff = victimImbalancedLpTokens.sub(victimBalancedLpTokens)
+            const victimLpTokenDiffPercent = victimLpTokenDiff.mul(100000000).div(victimBalancedLpTokens)
+            log(
+                `victim got ${formatUnits(victimImbalancedLpTokens)} diff ${formatUnits(victimLpTokenDiff)} ${formatUnits(
+                    victimLpTokenDiffPercent,
+                    6,
+                )}% musd3CRV lp tokens`,
+            )
+            const virtualPrice = await musdMetapool.get_virtual_price()
+            const victimDollarValueAfter = virtualPrice.mul(victimImbalancedLpTokens)
+            const victimDollarValueDiff = victimDollarValueAfter.sub(victimDollarValueBefore)
+            const victimDollarLpTokenDiffPercent = victimDollarValueDiff.mul(100000000).div(victimDollarValueBefore)
+            log(
+                `victim USD value of lp tokens ${formatUnits(victimDollarValueAfter, 36)} diff ${formatUnits(
+                    victimDollarValueDiff,
+                    36,
+                )} ${formatUnits(victimDollarLpTokenDiffPercent, 6)}%`,
+            )
+
+            // third tx the attacker adds the mUSD back to the pool
+            await musdToken.connect(mpTokenWhale.signer).approve(musdMetapool.address, attackerRemovedMusd)
+            const attackerLpAfter = await musdMetapool.connect(mpTokenWhale.signer).callStatic.add_liquidity([attackerRemovedMusd, 0], 0)
+            await musdMetapool.connect(mpTokenWhale.signer).add_liquidity([attackerRemovedMusd, 0], 0)
+            log("After 3rd tx")
+            const attackerLpDiff = attackerLpAfter.sub(attackerRemoveLpBefore)
+            const attackerLpDiffPercentage = attackerLpDiff.mul(1000000).div(attackerRemoveLpBefore)
+            log(
+                `attacker received ${formatUnits(attackerLpAfter)} lp tokens (musd3Crv) diff ${formatUnits(attackerLpDiff)} ${formatUnits(
+                    attackerLpDiffPercentage,
+                    4,
+                )}% from adding ${formatUnits(attackerRemovedMusd)} mUSD`,
+            )
+
+            await logPool()
+
+            const victim3CrvAfter = await musdMetapool
+                .connect(mpTokenWhale.signer)
+                .callStatic.remove_liquidity_one_coin(victimImbalancedLpTokens, 1, 0)
+            await musdMetapool.connect(mpTokenWhale.signer).remove_liquidity_one_coin(victimImbalancedLpTokens, 1, 0)
+            const victim3CrvDiff = victim3CrvAfter.sub(victim3CrvBefore)
+            const victim3CrvDiffPercent = victim3CrvDiff.mul(10000).div(victim3CrvBefore)
+            log("After victim removes liquidity")
+            log(
+                `victim after ${formatUnits(victim3CrvAfter)} 3Crv ${formatUnits(victim3CrvDiff)} ${formatUnits(
+                    victim3CrvDiffPercent,
+                    2,
+                )}%`,
+            )
+            const otherLpValueAfter = virtualPrice.mul(otherLpTokens)
+            log(`other lp tokens ${formatUnits(otherLpTokens, 18)} worth ${formatUnits(otherLpValueAfter, 36)} USD`)
+            await logPool()
+        })
+    })
+    describe("Curve3CrvMetapoolCalculatorLibrary", () => {
+        let metapoolLibrary: Curve3CrvMetapoolCalculatorLibrary
+
+        let emptyPool: MockERC20
+        before(async () => {
+            await reset(15860000)
+            const metapoolLibAddress = resolveAddress("Curve3CrvMetapoolCalculatorLibrary")
+            metapoolLibrary = Curve3CrvMetapoolCalculatorLibrary__factory.connect(metapoolLibAddress, mpTokenWhale.signer)
+            initialise(threeCrvWhale)
+
+            emptyPool = await new MockERC20__factory(deployer).deploy("ERC20 Mock", "ERC20", 18, deployerAddress, 0)
+        })
+        it("fails to calculate deposit in an empty pool", async () => {
+            await expect(metapoolLibrary.calcDeposit(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate mint in an empty pool", async () => {
+            await expect(metapoolLibrary.calcMint(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate withdraw in an empty pool", async () => {
+            await expect(metapoolLibrary.calcWithdraw(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("fails to calculate redeem in an empty pool", async () => {
+            await expect(metapoolLibrary.calcRedeem(ZERO_ADDRESS, emptyPool.address, 500, 0)).to.be.revertedWith("empty pool")
+        })
+        it("converts with ZERO amounts", async () => {
+            expect(await metapoolLibrary.convertUsdToBaseLp(ZERO)).to.be.eq(ZERO)
+            expect(await metapoolLibrary.convertUsdToMetaLp(ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(
+                await metapoolLibrary["convertToBaseLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, false),
+            ).to.be.eq(ZERO)
+            expect(await metapoolLibrary["convertToBaseLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
+            expect(
+                await metapoolLibrary["convertToMetaLp(address,address,uint256,bool)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO, false),
+            ).to.be.eq(ZERO)
+            expect(await metapoolLibrary["convertToMetaLp(address,address,uint256)"](ZERO_ADDRESS, ZERO_ADDRESS, ZERO)).to.be.eq(ZERO)
         })
     })
 })
