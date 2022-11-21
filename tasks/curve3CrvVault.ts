@@ -28,6 +28,7 @@ interface Curve3CrvBasicMetaVaultParams {
     symbol: string
     vaultManager: string
     proxyAdmin: string
+    proxy: boolean
 }
 interface Curve3CrvMetaVaultDeployed {
     proxy: AssetProxy
@@ -54,7 +55,7 @@ export async function deployCurve3PoolCalculatorLibrary(hre: HardhatRuntimeEnvir
 }
 
 export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, signer: Signer, params: Curve3CrvBasicMetaVaultParams) => {
-    const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin } = params
+    const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin, proxy } = params
 
     const libraryAddresses = { "contracts/peripheral/Curve/Curve3PoolCalculatorLibrary.sol:Curve3PoolCalculatorLibrary": calculatorLibrary }
 
@@ -72,11 +73,14 @@ export const deployCurve3CrvMetaVault = async (hre: HardhatRuntimeEnvironment, s
     })
 
     // Proxy
+    if (!proxy) {
+        return { proxy: undefined, impl: vaultImpl }
+    }
     const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
-    const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
+    const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
-    return { proxy, impl: vaultImpl }
+    return { proxy: proxyContract, impl: vaultImpl }
 }
 
 export async function deployCurve3CrvMetaVaults(
@@ -107,6 +111,7 @@ export async function deployCurve3CrvMetaVaults(
             symbol: curve3CrvPool.symbol,
             vaultManager,
             proxyAdmin,
+            proxy: true,
         })
         curve3CrvMetaVaults[pool] = curve3CrvMetaVaultDeployed
     }
@@ -135,9 +140,10 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Pool Meta Vault")
     .addOptionalParam("calculatorLibrary", "Name or address of the Curve calculator library.", "Curve3CrvCalculatorLibrary", types.string)
     .addOptionalParam("slippage", "Max slippage in basis points. default 1% = 100", 100, types.int)
     .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
+    .addOptionalParam("proxy", "Deploy a proxy contract", true, types.boolean)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, vaultManager, speed } = taskArgs
+        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, vaultManager, proxy, speed } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -149,7 +155,7 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Pool Meta Vault")
         const metaVaultAddress = resolveAddress(metaVault, chain)
         const calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
 
-        const { proxy, impl } = await deployCurve3CrvMetaVault(hre, signer, {
+        const { proxy: proxyContract, impl } = await deployCurve3CrvMetaVault(hre, signer, {
             nexus: nexusAddress,
             asset: assetToken.address,
             name,
@@ -159,9 +165,10 @@ subtask("curve-3crv-meta-vault-deploy", "Deploys Curve 3Pool Meta Vault")
             proxyAdmin: proxyAdminAddress,
             slippageData: { mint: slippage, deposit: slippage, redeem: slippage, withdraw: slippage },
             calculatorLibrary: calculatorLibraryAddress,
+            proxy,
         })
 
-        return { proxy, impl }
+        return { proxyContract, impl }
     })
 task("curve-3crv-meta-vault-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()

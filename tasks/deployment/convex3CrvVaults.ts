@@ -121,6 +121,7 @@ const deployerConvex3CrvVault =
             feeReceiver: resolveAddress("mStableDAO"),
             donationFee: 10000,
             factory: convex3CrvPool.isFactory,
+            proxy: true,
         })
     }
 export async function deployConvex3CrvVaults(
@@ -182,7 +183,15 @@ export const deployCommon = async (
     const cowSwapDex = !!asyncSwapperAddress
         ? new CowSwapDex__factory(signer).attach(asyncSwapperAddress)
         : await deployCowSwapDex(hre, signer, nexus.address)
-    const liquidator = await deployLiquidator(hre, signer, nexus.address, oneInchDexSwap.address, cowSwapDex.address, proxyAdmin.address)
+    const liquidator = await deployLiquidator(
+        hre,
+        signer,
+        nexus.address,
+        oneInchDexSwap.address,
+        cowSwapDex.address,
+        proxyAdmin.address,
+        true,
+    )
     return { oneInchDexSwap, cowSwapDex, liquidator }
 }
 
