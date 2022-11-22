@@ -146,8 +146,12 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         )
 
         expect(await busdFraxConvexVault.nexus(), "nexus").eq(nexusAddress)
-        expect((await busdFraxConvexVault.metapool()).toLowerCase(), "curve Metapool").to.equal(config.convexFraxBpPools.busd.curveMetapool.toLowerCase())
-        expect((await busdFraxConvexVault.metapoolToken()).toLowerCase(), "metapool token").to.equal(config.convexFraxBpPools.busd.curveMetapoolToken.toLowerCase())
+        expect((await busdFraxConvexVault.metapool()).toLowerCase(), "curve Metapool").to.equal(
+            config.convexFraxBpPools.busd.curveMetapool.toLowerCase(),
+        )
+        expect((await busdFraxConvexVault.metapoolToken()).toLowerCase(), "metapool token").to.equal(
+            config.convexFraxBpPools.busd.curveMetapoolToken.toLowerCase(),
+        )
         expect(await busdFraxConvexVault.basePool(), "FraxBp pool").to.equal(resolveAddress("FraxBP"))
         expect(await busdFraxConvexVault.booster(), "booster").to.equal(booster)
         expect(await busdFraxConvexVault.convexPoolId(), "convex Pool Id").to.equal(config.convexFraxBpPools.busd.convexPoolId)
@@ -268,7 +272,9 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         it("donate USDC tokens back to vault", async () => {
             const usdcAmount = simpleToExactAmount(1000, USDC.decimals)
             await usdcToken.connect(mockLiquidator.signer).approve(busdFraxConvexVault.address, usdcAmount)
-            await busdFraxConvexVault.connect(mockLiquidator.signer).donate(USDC.address, usdcAmount)
+            const tx = await busdFraxConvexVault.connect(mockLiquidator.signer).donate(USDC.address, usdcAmount)
+            // Deposit events
+            await expect(tx).to.not.emit(busdFraxConvexVault, "Deposit")
         })
     })
     describe("set donate token", () => {

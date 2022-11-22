@@ -1,7 +1,7 @@
 import { usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { crvFRAX } from "@tasks/utils/tokens"
-import { ONE_DAY, SAFE_INFINITY } from "@utils/constants"
+import { ONE_DAY, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -20,10 +20,12 @@ import type {
     ICurveMetapool,
     IERC20,
 } from "types/generated"
+import { assertBNClose } from "@utils/assertions"
 
 const log = logger("test:ConvexFraxBpVault")
 
 export type ConvexFraxBpVault = ConvexFraxBpBasicVault | ConvexFraxBpLiquidatorVault
+const isConvexFraxBpLiquidatorVault = (vault: ConvexFraxBpVault): boolean => "donate" in vault
 
 export interface VaultData {
     address: string
@@ -333,10 +335,20 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
         })
         it("user deposits crvFrax assets to vault", async () => {
             const { amounts, crvFraxToken, owner, vault } = ctx()
+            let feeReceiver = ZERO_ADDRESS
+            let streamedSharesBefore = ZERO
+            if (isConvexFraxBpLiquidatorVault(vault)) {
+                const vaultL = vault as ConvexFraxBpLiquidatorVault
+                feeReceiver = await vaultL.feeReceiver()
+                streamedSharesBefore = await vaultL.streamedShares()
+            }
 
             const receiver = Wallet.createRandom().address
             const ownerAssetsBefore = await crvFraxToken.balanceOf(owner.address)
             const totalAssetsBefore = await vault.totalAssets()
+            const receiverSharesBefore = await vault.balanceOf(receiver)
+            const feeReceiverSharesBefore = await vault.balanceOf(feeReceiver)
+            const donatedAssetsBefore = await crvFraxToken.balanceOf(vault.address)
 
             // Enough assets for deposit
             log(`owner's crvFrax balance ${usdFormatter(ownerAssetsBefore)}`)
@@ -361,14 +373,43 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
             expect(await crvFraxToken.balanceOf(owner.address), "owner assets").eq(ownerAssetsBefore.sub(amounts.initialDeposit))
             // Shares
             const totalSharesAfter = await vault.totalSupply({ blockTag: txDeposit.blockNumber })
-            const sharesMinted = totalSharesAfter.sub(totalSharesBefore)
-            expect(sharesMinted, "minted shares == preview shares").eq(previewShares)
-            expect(await vault.balanceOf(receiver), "receiver shares").eq(sharesMinted)
+            const receiverSharesAfter = await vault.balanceOf(receiver)
+            const receiverSharesMinted = receiverSharesAfter.sub(receiverSharesBefore)
+            expect(receiverSharesMinted, "minted shares == preview shares").eq(previewShares)
+
             // Total assets
             const totalAssetsAfter = await vault.totalAssets()
             const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore)
+            const donatedAssetsAfter = await crvFraxToken.balanceOf(vault.address)
             const assetsSlippage = basisPointDiff(amounts.initialDeposit, totalAssetsDiff)
             expect(assetsSlippage, "total assets diff to deposit amount").lte(50).gte(-50)
+            // Add checks for donations
+            if (isConvexFraxBpLiquidatorVault(vault)) {
+                const vaultL = vault as ConvexFraxBpLiquidatorVault
+
+                const feeReceiverSharesAfter = await vaultL.balanceOf(feeReceiver)
+                const streamedSharesAfter = await vaultL.streamedShares()
+
+                const feeReceiverSharesMinted = feeReceiverSharesAfter.sub(feeReceiverSharesBefore)
+                const streamedSharesMinted = streamedSharesAfter.sub(streamedSharesBefore)
+                const sharesMinted = totalSharesAfter.sub(totalSharesBefore)
+                const donatedSharesMinted = sharesMinted.sub(receiverSharesMinted)
+
+                const donationFee = await vaultL.donationFee()
+                const feeScale = await vaultL.FEE_SCALE()
+                const feeReceiverSharesExpected = donatedSharesMinted.mul(donationFee).div(feeScale)
+                const streamedSharesExpected = donatedSharesMinted.sub(feeReceiverSharesExpected)
+
+                assertBNClose(
+                    sharesMinted,
+                    receiverSharesMinted.add(feeReceiverSharesMinted).add(streamedSharesMinted),
+                    BN.from(10),
+                    "total shares minted",
+                )
+                assertBNClose(feeReceiverSharesMinted, feeReceiverSharesExpected, BN.from(10), "fee receiver shares minted")
+                assertBNClose(streamedSharesMinted, streamedSharesExpected, BN.from(10), "shares to streamed minted")
+                expect(donatedAssetsAfter, "donated assets after").eq(ZERO)
+            }
         })
         it("user redeems some shares from vault", async () => {
             const { amounts, crvFraxToken, owner, vault } = ctx()

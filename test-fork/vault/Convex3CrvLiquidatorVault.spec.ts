@@ -277,60 +277,24 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             await daiToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
             const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(DAI.address, donateAmount)
 
-            // Deposit event for the fee
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("9794853641497136119"), BN.from("9833364392187925988"))
-
-            // Deposit event for the streaming of shares
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(
-                    getAddress(mockLiquidator.address),
-                    musdConvexVault.address,
-                    BN.from("969690510508216475829"),
-                    BN.from("973503074826604672871"),
-                )
+            // Deposit events
+            await expect(tx).to.not.emit(musdConvexVault, "Deposit")
         })
         it("donate USDC tokens back to vault", async () => {
             const donateAmount = simpleToExactAmount(2000, USDC.decimals)
             await usdcToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
             const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(USDC.address, donateAmount)
 
-            // Deposit event for the fee
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("19589780279497850787"), BN.from("19666801263319303387"))
-
-            // Deposit event for the streaming of shares
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(
-                    getAddress(mockLiquidator.address),
-                    musdConvexVault.address,
-                    BN.from("1939388247670287227957"),
-                    BN.from("1947013325068611035339"),
-                )
+            // Deposit events
+            await expect(tx).to.not.emit(musdConvexVault, "Deposit")
         })
         it("donate USDT tokens back to vault", async () => {
             const donateAmount = simpleToExactAmount(3000, USDT.decimals)
             await usdtToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
             const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(USDT.address, donateAmount)
 
-            // Deposit event for the fee
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(getAddress(mockLiquidator.address), feeReceiver, BN.from("29387432952198505245"), BN.from("29502974082101049187"))
-
-            // Deposit event for the streaming of shares
-            await expect(tx)
-                .to.emit(musdConvexVault, "Deposit")
-                .withArgs(
-                    getAddress(mockLiquidator.address),
-                    musdConvexVault.address,
-                    BN.from("2909355862267652019290"),
-                    BN.from("2920794434128003869611"),
-                )
+            // Deposit events
+            await expect(tx).to.not.emit(musdConvexVault, "Deposit")
         })
         it("should fail to donate CRV tokens back to vault", async () => {
             const donateAmount = simpleToExactAmount(1000, CRV.decimals)

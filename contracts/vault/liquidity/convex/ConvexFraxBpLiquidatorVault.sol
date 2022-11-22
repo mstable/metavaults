@@ -136,8 +136,7 @@ contract ConvexFraxBpLiquidatorVault is
      * @dev Converts donated tokens (FRAX, USDC) to vault assets (crvFRAX) and shares.
      * Transfers token from donor to vault.
      * Adds the token to the frazBP to receive the vault asset (crvFRAX) in exchange.
-     * The resulting asset (crvFRAX) is added to the Curve frax Metapool.
-     * The Curve Metapool LP token, eg BUSDFRAXBP3CRV-f, is added to the Convex pool and staked.
+     * The resulting asset (crvFRAX) stays in the vault to be deposit in the next deposit / mint tx
      */
     function _convertTokens(address token, uint256 amount)
         internal
@@ -177,18 +176,7 @@ contract ConvexFraxBpLiquidatorVault is
         minMetapoolTokens = (minMetapoolTokens * (BASIS_SCALE - depositSlippage)) / BASIS_SCALE;
 
         assets_ = _asset.balanceOf(address(this));
-        // Add asset (crvFRAX) to metapool with slippage protection.
-        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
-
-        // Calculate share value of the new assets before depositing the metapool tokens to the Convex pool.
-        shares_ = _getSharesFromMetapoolTokens(
-            metapoolTokens,
-            baseRewardPool.balanceOf(address(this)),
-            totalSupply()
-        );
-
-        // Deposit Curve.fi Metapool LP token, eg BUSDFRAXBP3CRV-f, in Convex pool, eg cvxBUSDFRAXBP3CRV-f, and stake.
-        booster.deposit(convexPoolId, metapoolTokens, true);
+        shares_ = 0;
     }
 
     /***************************************
@@ -327,6 +315,14 @@ contract ConvexFraxBpLiquidatorVault is
         address owner
     ) internal virtual override(AbstractVault, ConvexFraxBpAbstractVault) returns (uint256 shares) {
         shares = ConvexFraxBpAbstractVault._withdraw(assets, receiver, owner);
+    }
+
+    /// @dev use LiquidatorStreamAbstractVault implementation.
+    function _afterDepositHook(
+        uint256 newShares,
+        uint256 newAssets
+    ) internal virtual override(LiquidatorStreamAbstractVault, ConvexFraxBpAbstractVault) {
+        LiquidatorStreamAbstractVault._afterDepositHook(newShares, newAssets);
     }
 
     function _convertToAssets(uint256 shares)

@@ -33,6 +33,14 @@ import type {
     VaultManagerRole,
 } from "types/generated"
 
+interface StreamedSharesAssertion {
+    tx: TransactionResponse
+    lastTxTimestamp: BigNumberish
+    txShares: BigNumberish
+    streamedSharesBefore: BigNumberish
+    stakerSharesBefore: BigNumberish
+}
+
 const defaultDonationFee = 10000 // 1%
 
 describe("Streamed Liquidator Fee Vault", async () => {
@@ -46,13 +54,8 @@ describe("Streamed Liquidator Fee Vault", async () => {
     let liquidator: Liquidator
     let vault: LiquidatorStreamFeeBasicVault
 
-    const assertStreamedShares = async (
-        tx: TransactionResponse,
-        lastTxTimestamp: BigNumberish,
-        txShares: BigNumberish,
-        streamedSharesBefore: BigNumberish,
-        stakerSharesBefore: BigNumberish,
-    ): Promise<{ streamedShares: BN; lastTxTimestamp: BN }> => {
+    const assertStreamedShares = async (assertion: StreamedSharesAssertion): Promise<{ streamedShares: BN; lastTxTimestamp: BN }> => {
+        const { tx, lastTxTimestamp, txShares, streamedSharesBefore, stakerSharesBefore } = assertion
         const totalSharesBefore = BN.from(streamedSharesBefore).add(stakerSharesBefore)
 
         const currentTxTimestamp = await getTimestampFromTx(tx)
@@ -90,9 +93,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
     ) => {
         const tokenToDonate = await vault.donateToken(ZERO_ADDRESS)
         expect(asset.address, "Token to donate").to.be.eq(tokenToDonate)
+        const balanceBefore = await asset.balanceOf(vault.address)
         // Donate
         const tx = await vault.donate(asset.address, txAmount)
 
+        const balanceAfter = await asset.balanceOf(vault.address)
         const currentTxTimestamp = await getTimestampFromTx(tx)
         const remainingStreamSeconds = BN.from(currentTxTimestamp).sub(lastTxTimestamp).lt(ONE_DAY)
             ? BN.from(lastTxTimestamp).add(ONE_DAY).sub(currentTxTimestamp)
@@ -110,6 +115,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
         // Transfer event of assets to vault
         await expect(tx).to.emit(asset, "Transfer").withArgs(sa.default.address, vault.address, txAmount)
+        await expect(balanceAfter, "vault assets balance").to.be.eq(balanceBefore.add(txAmount))
         // Mint event of fee shares
         await expect(tx).to.emit(vault, "Transfer").withArgs(ZERO_ADDRESS, sa.feeReceiver.address, newFeeShares)
         // Mint event of vault's streamed shares
@@ -308,14 +314,13 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
             const tx = await vault.mint(mintAmount, sa.default.address)
 
-            await assertStreamedShares(tx, 0, mintAmount, 0, 0)
+            await assertStreamedShares({ tx, lastTxTimestamp: 0, txShares: mintAmount, streamedSharesBefore: 0, stakerSharesBefore: 0 })
         })
         it("deposit", async () => {
             const depositAmount = simpleToExactAmount(1000)
 
             const tx = await vault.deposit(depositAmount, sa.default.address)
-
-            await assertStreamedShares(tx, 0, depositAmount, 0, 0)
+            await assertStreamedShares({ tx, lastTxTimestamp: 0, txShares: depositAmount, streamedSharesBefore: 0, stakerSharesBefore: 0 })
         })
         it("mint and partial redeem", async () => {
             const mintAmount = simpleToExactAmount(1000)
@@ -325,7 +330,13 @@ describe("Streamed Liquidator Fee Vault", async () => {
             const txAmount = mintAmount.div(3)
             const tx = await vault.redeem(txAmount, sa.default.address, sa.default.address)
 
-            await assertStreamedShares(tx, 0, txAmount.mul(-1), 0, mintAmount)
+            await assertStreamedShares({
+                tx,
+                lastTxTimestamp: 0,
+                txShares: txAmount.mul(-1),
+                streamedSharesBefore: 0,
+                stakerSharesBefore: mintAmount,
+            })
         })
         it("mint and partial withdraw", async () => {
             const mintAmount = simpleToExactAmount(1000)
@@ -335,7 +346,13 @@ describe("Streamed Liquidator Fee Vault", async () => {
             const txAmount = mintAmount.div(4)
             const tx = await vault.withdraw(txAmount, sa.default.address, sa.default.address)
 
-            await assertStreamedShares(tx, 0, txAmount.mul(-1), 0, mintAmount)
+            await assertStreamedShares({
+                tx,
+                lastTxTimestamp: 0,
+                txShares: txAmount.mul(-1),
+                streamedSharesBefore: 0,
+                stakerSharesBefore: mintAmount,
+            })
         })
     })
     context("donated shares", () => {
