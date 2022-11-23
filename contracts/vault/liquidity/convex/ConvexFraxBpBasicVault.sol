@@ -58,7 +58,7 @@ contract ConvexFraxBpBasicVault is ConvexFraxBpAbstractVault, Initializable {
         InitializableToken._initialize(_name, _symbol, decimals_);
     }
 
-    function _afterDepositHook(uint256, uint256) internal virtual override {
+    function _afterSharesMintedHook(uint256, uint256) internal virtual override {
         // do nothing
     }
 }

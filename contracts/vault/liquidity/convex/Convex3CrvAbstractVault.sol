@@ -149,7 +149,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
      * @dev Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
      * If the vault has any 3Crv balance, it is added to the mint/deposit 3Crv that is added to the Metapool
      * and LP deposited to the Convex pool. The resulting shares are proportionally split between the reciever
-     * and the vault via _afterDepositHook fn.
+     * and the vault via _afterSharesMintedHook fn.
      *
      * @param _assets The amount of underlying assets to be transferred to the vault.
      * @param _receiver The account that the vault shares will be minted to.
@@ -191,7 +191,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
         // Account any new shares, assets.
-        _afterDepositHook(sharesToMint - shares, assetsToDeposit - _assets);
+        _afterSharesMintedHook(sharesToMint - shares, assetsToDeposit - _assets);
     }
 
     /// @dev Converts vault assets to shares in two steps
@@ -290,7 +290,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 donatedShares = donatedAssets == 0
             ? 0
             : (shares * requiredMetapoolTokens) / donatedMetapoolTokens;
-        _afterDepositHook(donatedShares, donatedAssets);
+        _afterSharesMintedHook(donatedShares, donatedAssets);
     }
 
     /// @dev Converts vault shares to assets in two steps
@@ -633,8 +633,20 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         }
     }
 
-    /// @dev Function accrue rewards to be implemented, invoked after deposit or mint
-    function _afterDepositHook(uint256 newShares, uint256 newAssets) internal virtual;
+    /**
+     * Called be the `deposit` and `mint` functions after the assets have been transferred into the vault
+     * but before shares are minted.
+     * Typically, the hook implementation deposits the assets into the underlying vaults or platforms.
+     *
+     * @dev the shares returned from `totalSupply` and `balanceOf` have not yet been updated with the minted shares.
+     * The assets returned from `totalAssets` and `assetsOf` are typically updated as part of the `_afterDepositHook` hook but it depends on the implementation.
+     *
+     * If an vault is implementing multiple vault capabilities, the `_afterDepositHook` function that updates the assets amounts should be executed last.
+     *
+     * @param newShares the amount of underlying assets to be transferred to the vault.
+     * @param newAssets the amount of vault shares to be minted.
+     */
+    function _afterSharesMintedHook(uint256 newShares, uint256 newAssets) internal virtual;
 
     /***************************************
                     Emergency Functions

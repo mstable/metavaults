@@ -150,7 +150,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
      * @dev Vault assets (crvFRAX) -> Metapool LP tokens, eg BUSDFRAXBP3CRV-f -> vault shares.
      * If the vault has any crvFRAX balance, it is added to the mint/deposit crvFRAX that is added to the Metapool
      * and LP deposited to the Convex pool. The resulting shares are proportionally split between the reciever
-     * and the vault via _afterDepositHook fn.
+     * and the vault via _afterSharesMintedHook fn.
      *
      * @param _assets The amount of underlying assets to be transferred to the vault.
      * @param _receiver The account that the vault shares will be minted to.
@@ -192,7 +192,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
         // Account any new shares, assets.
-        _afterDepositHook(sharesToMint - shares, assetsToDeposit - _assets);
+        _afterSharesMintedHook(sharesToMint - shares, assetsToDeposit - _assets);
     }
 
     /// @dev Converts vault assets to shares in two steps
@@ -293,7 +293,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         uint256 donatedShares = donatedAssets == 0
             ? 0
             : (shares * requiredMetapoolTokens) / donatedMetapoolTokens;
-        _afterDepositHook(donatedShares, donatedAssets);
+        _afterSharesMintedHook(donatedShares, donatedAssets);
     }
 
     /// @dev Converts vault shares to assets in two steps
@@ -642,7 +642,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     }
 
     /// @dev Function accrue rewards to be implemented, invoked after deposit or mint
-    function _afterDepositHook(uint256 newShares, uint256 newAssets) internal virtual;
+    function _afterSharesMintedHook(uint256 newShares, uint256 newAssets) internal virtual;
 
     /***************************************
                     Emergency Functions

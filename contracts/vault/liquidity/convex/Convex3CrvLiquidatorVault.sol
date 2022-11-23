@@ -372,7 +372,7 @@ contract Convex3CrvLiquidatorVault is
     }
 
     /// @dev use LiquidatorStreamAbstractVault._streamNewShares implementation.
-    function _afterDepositHook(
+    function _afterSharesMintedHook(
         uint256 newShares,
         uint256 newAssets
     ) internal virtual override(Convex3CrvAbstractVault) {

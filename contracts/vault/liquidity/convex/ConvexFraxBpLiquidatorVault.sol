@@ -318,7 +318,7 @@ contract ConvexFraxBpLiquidatorVault is
     }
 
     /// @dev use LiquidatorStreamAbstractVault._streamNewShares implementation.
-    function _afterDepositHook(
+    function _afterSharesMintedHook(
         uint256 newShares,
         uint256 newAssets
     ) internal virtual override(ConvexFraxBpAbstractVault) {
