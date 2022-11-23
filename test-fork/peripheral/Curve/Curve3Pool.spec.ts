@@ -25,7 +25,7 @@ const defaultDepositSlippage = 100
 
 const usdtUserAddress = "0x5754284f345afc66a98fbb0a0afe71e0f007b949" // >1B at block 14810528
 const daiUserAddress = "0x075e72a5edf65f0a5f44699c7654c1a76941ddc8" // 250M at block 14810528
-const usdcUserAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // 2.5B at block 14810528
+const usdcUserAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // 2.5B at block 14810528
 const threePoolWhaleAddress = "0xd632f22692fac7611d2aa1c0d552930d43caed3b" // 500M at block 14810528
 
 const mediumDepegBlock = 14759700 // 12 May 0700 AM UTC .975USDT

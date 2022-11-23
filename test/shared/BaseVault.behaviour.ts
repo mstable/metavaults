@@ -9,7 +9,8 @@ import type { StandardAccounts } from "@utils/machines"
 import type { BN } from "@utils/math"
 import type { BytesLike } from "ethers/lib/utils"
 import type { Account } from "types"
-import type { AbstractVault, Convex3CrvAbstractVault, DataEmitter, IERC20, IERC20Metadata, LightAbstractVault } from "types/generated"
+import { AbstractVault, Convex3CrvAbstractVault, DataEmitter, IERC20, IERC20Metadata, IERC20Metadata__factory, LightAbstractVault } from "types/generated"
+import { USDC } from "@tasks/utils"
 
 export type BaseAbstractVault = AbstractVault | LightAbstractVault
 

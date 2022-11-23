@@ -21,7 +21,7 @@ const log = logger("test:FraxBpMetapoolCalcs")
 const fraxBpPoolAddress = resolveAddress("FraxBP")
 const alUsdFraxBpPoolAddress = "0xb30da2376f63de30b42dc055c93fa474f31330a5"
 
-const usdcWhaleAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
+const usdcWhaleAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // Maker: PSM-USDC-A
 const alUsdWhaleAddress = "0x9735F7d3Ea56b454b24fFD74C58E9bD85cfaD31B" // Alchemix Finance: Three Pool Asset Manager
 const alUsdFraxBpWhaleAddress = "0x740BA8aa0052E07b925908B380248cb03f3DE5cB" // alUSDFRAXB3CRV-f-gauge
 const fraxBpWhaleAddress = "0xCFc25170633581Bf896CB6CDeE170e3E3Aa59503" // crvFRAX-gauge

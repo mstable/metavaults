@@ -419,6 +419,7 @@ export const mBPT: Token = {
 }
 
 // Vaults
+// TODO - tokens for frax vaults after deploy
 export const vcx3CRVmUSD: Token = {
     symbol: "vcx3CRV-mUSD",
     address: "0xB9B47E72819934d7A5d60Bf08cD2C78072383EBb",
