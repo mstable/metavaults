@@ -597,17 +597,17 @@ describe("Save+ Basic and Meta Vaults", async () => {
         await setBalancesToAccount(threeCrvWhale2, [] as ERC20[], tokensToMockBalance, 10000000000)
 
         // Mock balances on swappers to simulate swaps
-        cvxToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
-        crvToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
-        daiToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
-        usdcToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
-        usdtToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
+        await cvxToken.transfer(syncSwapper.address, simpleToExactAmount(10000, CVX.decimals))
+        await crvToken.transfer(syncSwapper.address, simpleToExactAmount(10000, CRV.decimals))
+        await daiToken.transfer(syncSwapper.address, simpleToExactAmount(10000, DAI.decimals))
+        await usdcToken.transfer(syncSwapper.address, simpleToExactAmount(10000, USDC.decimals))
+        await usdtToken.transfer(syncSwapper.address, simpleToExactAmount(10000, USDT.decimals))
 
-        cvxToken.transfer(swapper.address, simpleToExactAmount(10000))
-        crvToken.transfer(swapper.address, simpleToExactAmount(10000))
-        daiToken.transfer(swapper.address, simpleToExactAmount(10000))
-        usdcToken.transfer(swapper.address, simpleToExactAmount(10000))
-        usdtToken.transfer(swapper.address, simpleToExactAmount(10000))
+        await cvxToken.transfer(swapper.address, simpleToExactAmount(10000, CVX.decimals))
+        await crvToken.transfer(swapper.address, simpleToExactAmount(10000, CRV.decimals))
+        await daiToken.transfer(swapper.address, simpleToExactAmount(10000, DAI.decimals))
+        await usdcToken.transfer(swapper.address, simpleToExactAmount(10000, USDC.decimals))
+        await usdtToken.transfer(swapper.address, simpleToExactAmount(10000, USDT.decimals))
 
         // Stakers approve vaults to take their tokens
         await threeCrvToken.connect(threeCrvWhale1.signer).approve(periodicAllocationPerfFeeMetaVault.address, ethers.constants.MaxUint256)

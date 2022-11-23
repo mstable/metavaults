@@ -67,12 +67,7 @@ Finally, the DAI 3Pool Convex Meta Vault mints shares (mvDAI-3PCV) to the shareh
 
 A shareholder deposits 3Crv into the Meta Vault and receives vault shares (mv3CRV-CVX). The shares are minted using the assets per share after the last settlement.
 
-Every 5 days, the Vault Manager settles all deposits to the underlying vaults. This can be to a single vault or across all underlying vaults. The vault manager has the discretion at settlement to decide on what proportions of the deposited 3Crv are invested to which underlying vault.
-
-A 5% performance fee is charged on any increase in the meta vault's assets per share. The new assets per share is stored for the next 5 days of deposits and calculating the performance fee at the next settlement.
-No performance fee is charged if the assets per share drops. The lower assets per share will be saved and used when charing the next performance fee.
-
-The performance fee is charged by minting new meta vault shares to the vault's fee receiver. The amount of shares minted ensures all shareholder's assets per share increases by the increase in the underlying assets less the performance fee.
+When there's enough 3Crv in the Meta Vault and it's gas efficient, the Vault Manager settles the deposits to the underlying vaults. This can be to a single vault or across all underlying vaults. The vault manager has the discretion at settlement to decide on what proportions of the deposited 3Crv are invested to which underlying vault. They can also leave some 3Crv in the Meta Vault for small withdrawals.
 
 ![Deposit Meta Vault](./docs/savePlusValueFlowDeposit.png)
 
@@ -84,7 +79,7 @@ Shareholders can deposit directly to the Convex vault. They do not have to go th
 
 ## Liquidation of Rewards
 
-The Vault Manager executes a number of transactions to collect the rewards (CRV and CVX) from the Convex Basic Vaults, swap them for DAI, donate the DAI back to the vaults which then streams the increase in assets per share over a day period.
+The Vault Manager executes a number of transactions to collect the rewards (CRV and CVX) from the Convex Basic Vaults, swap them for DAI, donate the DAI back to the vaults which then streams the increase in assets per share over a week period.
 
 ![Liquidation of rewards](./docs/savePlusValueFlowLiquidation.png)
 
@@ -107,3 +102,11 @@ If there is not enough assets in the meta vault to cover the withdraw, the requi
 The below diagram shows the 3Crv is withdrawn form just one underlying Convex Vault. A single underlying vault is used if the asset withdraw amount is less than 10% of the meta vault's total assets. If it withdrawn assets is great than 10%, then the required assets are withdrawn proportionally from the underlying vaults.
 
 ![Withdraw Stablecoin Meta Vault](./docs/savePlusValueFlowWithdraw.png)
+
+## Meta Vault Performance Fee
+
+A 4% performance fee is charged on any increase in the meta vault's assets per share every week. No performance fee is charged if the assets per share drops. The lower assets per share will be saved and used when charing the next performance fee.
+
+The performance fee is charged by minting new meta vault shares to the vault's fee receiver. The amount of shares minted ensures all shareholder's assets per share increases by the increase in the underlying assets less the performance fee.
+
+![Charge Performance Fee Meta Vault](./docs/savePlusValueFlowChargePerfFee.png)
