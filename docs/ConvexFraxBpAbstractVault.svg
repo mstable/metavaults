@@ -9,13 +9,13 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 1501.2)">
 <title>UmlClassDiagram</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-1501.2 2266.31,-1501.2 2266.31,4 -4,4"/>
-<!-- 44 -->
+<!-- 39 -->
 <g id="node1" class="node">
-<title>44</title>
+<title>39</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-909.9 0,-1337.1 1184.41,-1337.1 1184.41,-909.9 0,-909.9"/>
 <text text-anchor="middle" x="592.21" y="-1320.5" font-family="Times,serif" font-size="14.00">&lt;&lt;Library&gt;&gt;</text>
 <text text-anchor="middle" x="592.21" y="-1303.7" font-family="Times,serif" font-size="14.00">CurveFraxBpMetapoolCalculatorLibrary</text>
-<text text-anchor="middle" x="592.21" y="-1286.9" font-family="Times,serif" font-size="14.00">..contractsperipheralCurveCurveFraxBpMetapoolCalculatorLibrary.sol</text>
+<text text-anchor="middle" x="592.21" y="-1286.9" font-family="Times,serif" font-size="14.00">../contracts/peripheral/Curve/CurveFraxBpMetapoolCalculatorLibrary.sol</text>
 <polyline fill="none" stroke="black" points="0,-1278.7 1184.41,-1278.7 "/>
 <text text-anchor="start" x="8" y="-1262.1" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="8" y="-1245.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;BASE_POOL: address</text>
@@ -46,7 +46,7 @@
 <polygon fill="#f2f2f2" stroke="black" points="1202.43,-750.3 1202.43,-1496.7 1801.98,-1496.7 1801.98,-750.3 1202.43,-750.3"/>
 <text text-anchor="middle" x="1502.21" y="-1480.1" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="1502.21" y="-1463.3" font-family="Times,serif" font-size="14.00">AbstractVault</text>
-<text text-anchor="middle" x="1502.21" y="-1446.5" font-family="Times,serif" font-size="14.00">..contractsvaultAbstractVault.sol</text>
+<text text-anchor="middle" x="1502.21" y="-1446.5" font-family="Times,serif" font-size="14.00">../contracts/vault/AbstractVault.sol</text>
 <polyline fill="none" stroke="black" points="1202.43,-1438.3 1801.98,-1438.3 "/>
 <text text-anchor="start" x="1210.43" y="-1421.7" font-family="Times,serif" font-size="14.00">Internal:</text>
 <text text-anchor="start" x="1210.43" y="-1404.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;_asset: IERC20</text>
@@ -71,16 +71,16 @@
 <text text-anchor="start" x="1210.43" y="-1094.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_afterDepositHook(assets: uint256, shares: uint256, receiver: address, fromDeposit: bool)</text>
 <text text-anchor="start" x="1210.43" y="-1077.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_beforeWithdrawHook(assets: uint256, shares: uint256, owner: address, fromRedeem: bool)</text>
 <text text-anchor="start" x="1210.43" y="-1060.9" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="1210.43" y="-1044.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address): (shares: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
+<text text-anchor="start" x="1210.43" y="-1044.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address): (shares: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-1027.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewDeposit(assets: uint256): (shares: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-1010.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxDeposit(caller: address): (maxAssets: uint256)</text>
-<text text-anchor="start" x="1210.43" y="-993.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;mint(shares: uint256, receiver: address): (assets: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
+<text text-anchor="start" x="1210.43" y="-993.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;mint(shares: uint256, receiver: address): (assets: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-976.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewMint(shares: uint256): (assets: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-960.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxMint(owner: address): (maxShares: uint256)</text>
-<text text-anchor="start" x="1210.43" y="-943.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;withdraw(assets: uint256, receiver: address, owner: address): (shares: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
+<text text-anchor="start" x="1210.43" y="-943.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;withdraw(assets: uint256, receiver: address, owner: address): (shares: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-926.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewWithdraw(assets: uint256): (shares: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-909.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxWithdraw(owner: address): (maxAssets: uint256)</text>
-<text text-anchor="start" x="1210.43" y="-892.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address): (assets: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
+<text text-anchor="start" x="1210.43" y="-892.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address): (assets: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-876.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;previewRedeem(shares: uint256): (assets: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-859.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;maxRedeem(owner: address): (maxShares: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-842.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;asset(): (assetTokenAddress: address)</text>
@@ -90,59 +90,58 @@
 <text text-anchor="start" x="1210.43" y="-775.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;abstract&gt;&gt; totalAssets(): (totalManagedAssets: uint256)</text>
 <text text-anchor="start" x="1210.43" y="-758.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_assetArg: address)</text>
 </g>
-<!-- 73 -->
+<!-- 68 -->
 <g id="node3" class="node">
-<title>73</title>
-<polygon fill="#f2f2f2" stroke="black" points="1820.11,-893.1 1820.11,-1353.9 2262.31,-1353.9 2262.31,-893.1 1820.11,-893.1"/>
-<text text-anchor="middle" x="2041.21" y="-1337.3" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
-<text text-anchor="middle" x="2041.21" y="-1320.5" font-family="Times,serif" font-size="14.00">AbstractSlippage</text>
-<text text-anchor="start" x="1828.11" y="-1303.7" font-family="Times,serif" font-size="14.00">..contractsvault</text>
-<text text-anchor="middle" x="2041.21" y="-1286.9" font-family="Times,serif" font-size="14.00">iquidityAbstractSlippage.sol</text>
-<polyline fill="none" stroke="black" points="1820.11,-1278.7 2262.31,-1278.7 "/>
-<text text-anchor="start" x="1828.11" y="-1262.1" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="1828.11" y="-1245.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;BASIS_SCALE: uint256</text>
-<text text-anchor="start" x="1828.11" y="-1228.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;redeemSlippage: uint256</text>
-<text text-anchor="start" x="1828.11" y="-1211.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;depositSlippage: uint256</text>
-<text text-anchor="start" x="1828.11" y="-1194.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;withdrawSlippage: uint256</text>
-<text text-anchor="start" x="1828.11" y="-1178.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;mintSlippage: uint256</text>
-<polyline fill="none" stroke="black" points="1820.11,-1169.9 2262.31,-1169.9 "/>
-<text text-anchor="start" x="1828.11" y="-1153.3" font-family="Times,serif" font-size="14.00">Internal:</text>
-<text text-anchor="start" x="1828.11" y="-1136.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_initialize(_slippageData: SlippageData)</text>
-<text text-anchor="start" x="1828.11" y="-1119.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setRedeemSlippage(_slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-1102.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setDepositSlippage(_slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-1086.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setWithdrawSlippage(_slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-1069.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setMintSlippage(_slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-1052.5" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="1828.11" y="-1035.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setRedeemSlippage(_slippage: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
-<text text-anchor="start" x="1828.11" y="-1018.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setDepositSlippage(_slippage: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
-<text text-anchor="start" x="1828.11" y="-1002.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setWithdrawSlippage(_slippage: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
-<text text-anchor="start" x="1828.11" y="-985.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setMintSlippage(_slippage: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
-<text text-anchor="start" x="1828.11" y="-968.5" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="1828.11" y="-951.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; RedeemSlippageChange(sender: address, slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-934.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; DepositSlippageChange(sender: address, slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-918.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; WithdrawSlippageChange(sender: address, slippage: uint256)</text>
-<text text-anchor="start" x="1828.11" y="-901.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; MintSlippageChange(sender: address, slippage: uint256)</text>
+<title>68</title>
+<polygon fill="#f2f2f2" stroke="black" points="1820.11,-901.5 1820.11,-1345.5 2262.31,-1345.5 2262.31,-901.5 1820.11,-901.5"/>
+<text text-anchor="middle" x="2041.21" y="-1328.9" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
+<text text-anchor="middle" x="2041.21" y="-1312.1" font-family="Times,serif" font-size="14.00">AbstractSlippage</text>
+<text text-anchor="middle" x="2041.21" y="-1295.3" font-family="Times,serif" font-size="14.00">../contracts/vault/liquidity/AbstractSlippage.sol</text>
+<polyline fill="none" stroke="black" points="1820.11,-1287.1 2262.31,-1287.1 "/>
+<text text-anchor="start" x="1828.11" y="-1270.5" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="1828.11" y="-1253.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;BASIS_SCALE: uint256</text>
+<text text-anchor="start" x="1828.11" y="-1236.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;redeemSlippage: uint256</text>
+<text text-anchor="start" x="1828.11" y="-1220.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;depositSlippage: uint256</text>
+<text text-anchor="start" x="1828.11" y="-1203.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;withdrawSlippage: uint256</text>
+<text text-anchor="start" x="1828.11" y="-1186.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;mintSlippage: uint256</text>
+<polyline fill="none" stroke="black" points="1820.11,-1178.3 2262.31,-1178.3 "/>
+<text text-anchor="start" x="1828.11" y="-1161.7" font-family="Times,serif" font-size="14.00">Internal:</text>
+<text text-anchor="start" x="1828.11" y="-1144.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_initialize(_slippageData: SlippageData)</text>
+<text text-anchor="start" x="1828.11" y="-1128.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setRedeemSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1111.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setDepositSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1094.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setWithdrawSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1077.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_setMintSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1060.9" font-family="Times,serif" font-size="14.00">External:</text>
+<text text-anchor="start" x="1828.11" y="-1044.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setRedeemSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1027.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setDepositSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-1010.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setWithdrawSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-993.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;setMintSlippage(_slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-976.9" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="1828.11" y="-960.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; RedeemSlippageChange(sender: address, slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-943.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; DepositSlippageChange(sender: address, slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-926.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; WithdrawSlippageChange(sender: address, slippage: uint256)</text>
+<text text-anchor="start" x="1828.11" y="-909.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; MintSlippageChange(sender: address, slippage: uint256)</text>
 </g>
-<!-- 102 -->
+<!-- 97 -->
 <g id="node4" class="node">
-<title>102</title>
+<title>97</title>
 <polygon fill="#f2f2f2" stroke="black" points="1107.9,-0.5 1107.9,-713.3 1896.51,-713.3 1896.51,-0.5 1107.9,-0.5"/>
 <text text-anchor="middle" x="1502.21" y="-696.7" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="1502.21" y="-679.9" font-family="Times,serif" font-size="14.00">ConvexFraxBpAbstractVault</text>
-<text text-anchor="start" x="1115.9" y="-663.1" font-family="Times,serif" font-size="14.00">..contractsvault</text>
-<text text-anchor="middle" x="1502.21" y="-646.3" font-family="Times,serif" font-size="14.00">iquidityconvexConvexFraxBpAbstractVault.sol</text>
-<polyline fill="none" stroke="black" points="1107.9,-638.1 1896.51,-638.1 "/>
-<text text-anchor="start" x="1115.9" y="-621.5" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="1115.9" y="-604.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;ASSET_SCALE: uint256</text>
-<text text-anchor="start" x="1115.9" y="-587.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapool: address</text>
-<text text-anchor="start" x="1115.9" y="-571.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapoolToken: address</text>
-<text text-anchor="start" x="1115.9" y="-554.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapoolTokenScale: uint256</text>
-<text text-anchor="start" x="1115.9" y="-537.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;basePool: address</text>
-<text text-anchor="start" x="1115.9" y="-520.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;booster: IConvexBooster</text>
-<text text-anchor="start" x="1115.9" y="-503.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;convexPoolId: uint256</text>
-<text text-anchor="start" x="1115.9" y="-487.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;baseRewardPool: IConvexRewardsPool</text>
-<polyline fill="none" stroke="black" points="1107.9,-478.9 1896.51,-478.9 "/>
-<text text-anchor="start" x="1115.9" y="-462.3" font-family="Times,serif" font-size="14.00">Internal:</text>
+<text text-anchor="middle" x="1502.21" y="-663.1" font-family="Times,serif" font-size="14.00">../contracts/vault/liquidity/convex/ConvexFraxBpAbstractVault.sol</text>
+<polyline fill="none" stroke="black" points="1107.9,-654.9 1896.51,-654.9 "/>
+<text text-anchor="start" x="1115.9" y="-638.3" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="1115.9" y="-621.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;ASSET_SCALE: uint256</text>
+<text text-anchor="start" x="1115.9" y="-604.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapool: address</text>
+<text text-anchor="start" x="1115.9" y="-587.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapoolToken: address</text>
+<text text-anchor="start" x="1115.9" y="-571.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;metapoolTokenScale: uint256</text>
+<text text-anchor="start" x="1115.9" y="-554.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;basePool: address</text>
+<text text-anchor="start" x="1115.9" y="-537.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;booster: IConvexBooster</text>
+<text text-anchor="start" x="1115.9" y="-520.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;convexPoolId: uint256</text>
+<text text-anchor="start" x="1115.9" y="-503.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;baseRewardPool: IConvexRewardsPool</text>
+<polyline fill="none" stroke="black" points="1107.9,-495.7 1896.51,-495.7 "/>
+<text text-anchor="start" x="1115.9" y="-479.1" font-family="Times,serif" font-size="14.00">Internal:</text>
+<text text-anchor="start" x="1115.9" y="-462.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;abstract&gt;&gt; _afterSharesMintedHook(newShares: uint256, newAssets: uint256)</text>
 <text text-anchor="start" x="1115.9" y="-445.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_initialize()</text>
 <text text-anchor="start" x="1115.9" y="-428.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_deposit(assets: uint256, receiver: address): (shares: uint256)</text>
 <text text-anchor="start" x="1115.9" y="-411.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_depositInternal(_assets: uint256, _receiver: address, _slippage: uint256): (shares: uint256)</text>
@@ -163,31 +162,31 @@
 <text text-anchor="start" x="1115.9" y="-159.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_getMetapoolTokensFromShares(_shares: uint256, _totalMetapoolTokens: uint256, _totalShares: uint256): (metapoolTokens: uint256)</text>
 <text text-anchor="start" x="1115.9" y="-143.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_resetAllowances()</text>
 <text text-anchor="start" x="1115.9" y="-126.3" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="1115.9" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address, customDepositSlippage: uint256): (shares: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
-<text text-anchor="start" x="1115.9" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address, customRedeemSlippage: uint256): (assets: uint256) &lt;&lt;whenNotPaused&gt;&gt;</text>
-<text text-anchor="start" x="1115.9" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;liquidateVault(minAssets: uint256) &lt;&lt;onlyGovernor&gt;&gt;</text>
-<text text-anchor="start" x="1115.9" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;resetAllowances() &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="1115.9" y="-109.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;deposit(assets: uint256, receiver: address, customDepositSlippage: uint256): (shares: uint256)</text>
+<text text-anchor="start" x="1115.9" y="-92.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;redeem(shares: uint256, receiver: address, owner: address, customRedeemSlippage: uint256): (assets: uint256)</text>
+<text text-anchor="start" x="1115.9" y="-75.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;liquidateVault(minAssets: uint256)</text>
+<text text-anchor="start" x="1115.9" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;resetAllowances()</text>
 <text text-anchor="start" x="1115.9" y="-42.3" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="1115.9" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_data: ConstructorData)</text>
 <text text-anchor="start" x="1115.9" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;totalAssets(): (totalManagedAssets: uint256)</text>
 </g>
-<!-- 102&#45;&gt;44 -->
+<!-- 97&#45;&gt;39 -->
 <g id="edge3" class="edge">
-<title>102&#45;&gt;44</title>
+<title>97&#45;&gt;39</title>
 <path fill="none" stroke="black" stroke-dasharray="5,2" d="M1107.7,-689.37C1021.73,-761.61 932.83,-836.3 853.57,-902.9"/>
 <polygon fill="black" stroke="black" points="850.84,-900.62 845.43,-909.73 855.34,-905.98 850.84,-900.62"/>
 </g>
-<!-- 102&#45;&gt;26 -->
+<!-- 97&#45;&gt;26 -->
 <g id="edge2" class="edge">
-<title>102&#45;&gt;26</title>
+<title>97&#45;&gt;26</title>
 <path fill="none" stroke="black" d="M1502.21,-713.34C1502.21,-715.64 1502.21,-717.95 1502.21,-720.25"/>
 <polygon fill="none" stroke="black" points="1491.71,-720.25 1502.21,-750.25 1512.71,-720.25 1491.71,-720.25"/>
 </g>
-<!-- 102&#45;&gt;73 -->
+<!-- 97&#45;&gt;68 -->
 <g id="edge1" class="edge">
-<title>102&#45;&gt;73</title>
-<path fill="none" stroke="black" d="M1785.42,-713.55C1794.21,-725.71 1802.83,-737.82 1811.21,-749.8 1837.27,-787.07 1863.72,-827.28 1888.94,-867.01"/>
-<polygon fill="none" stroke="black" points="1880.23,-872.88 1905.1,-892.67 1898,-861.69 1880.23,-872.88"/>
+<title>97&#45;&gt;68</title>
+<path fill="none" stroke="black" d="M1785.42,-713.55C1794.21,-725.71 1802.83,-737.82 1811.21,-749.8 1839.12,-789.72 1867.47,-833 1894.29,-875.46"/>
+<polygon fill="none" stroke="black" points="1885.49,-881.2 1910.33,-901.04 1903.29,-870.04 1885.49,-881.2"/>
 </g>
 </g>
 </svg>
