@@ -169,7 +169,7 @@ const bundle = () => {
 const publish = () => {
     // publish
     try {
-        sh.exec(`npm publish`, { cwd: paths.out })
+        sh.exec(`npm publish  --access public`, { cwd: paths.out })
     } catch (e) {
         console.error("Error publishing npm package ", e)
     }
@@ -179,6 +179,6 @@ const publish = () => {
         clean()
         compile()
         bundle()
-        //publish()
-        //clean()
+        publish()
+        clean()
     })()
