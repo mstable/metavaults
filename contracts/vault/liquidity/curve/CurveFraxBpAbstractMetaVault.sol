@@ -774,6 +774,9 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
     /// @dev Approves Curve's FraxBp contract to transfer assets (FRAX, USDC) from this vault.
     /// Also approves the underlying Meta Vault to transfer crvFrax from this vault.
     function _resetAllowances() internal {
+        _asset.safeApprove(address(CurveFraxBpCalculatorLibrary.FRAXBP_POOL), 0);
+        IERC20(CurveFraxBpCalculatorLibrary.LP_TOKEN).safeApprove(address(metaVault), 0);
+        
         _asset.safeApprove(address(CurveFraxBpCalculatorLibrary.FRAXBP_POOL), type(uint256).max);
         IERC20(CurveFraxBpCalculatorLibrary.LP_TOKEN).safeApprove(
             address(metaVault),
