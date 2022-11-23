@@ -41,7 +41,7 @@
         "task:fork:polly": "yarn hardhat --config tasks-fork-polygon.config.ts --typecheck",
         "test": "yarn hardhat test --typecheck",
         "test:fork": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/**/*.spec.ts --typecheck",
-        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test  --testfiles 'test/**/*.ci.spec.ts' --typecheck",
+        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test  ./test-fork/**/*.ci.spec.ts --typecheck",
         "test:file:fork": "yarn hardhat --config hardhat-fork.config.ts test --typecheck",
         "test:file": "yarn hardhat test --typecheck",
         "slither": "slither .",
