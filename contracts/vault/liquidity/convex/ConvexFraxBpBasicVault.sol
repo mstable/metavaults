@@ -57,4 +57,8 @@ contract ConvexFraxBpBasicVault is ConvexFraxBpAbstractVault, Initializable {
         uint8 decimals_ = InitializableToken(address(metapoolToken)).decimals();
         InitializableToken._initialize(_name, _symbol, decimals_);
     }
+
+    function _afterSharesMintedHook(uint256, uint256) internal virtual override {
+        // do nothing
+    }
 }

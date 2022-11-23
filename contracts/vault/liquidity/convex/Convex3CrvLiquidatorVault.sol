@@ -144,8 +144,7 @@ contract Convex3CrvLiquidatorVault is
      * @dev Converts donated tokens (DAI, USDC or USDT) to vault assets (3Crv) and shares.
      * Transfers token from donor to vault.
      * Adds the token to the Curve 3Pool to receive the vault asset (3Crv) in exchange.
-     * The resulting asset (3Crv) is added to the Curve Metapool.
-     * The Curve Metapool LP token, eg mUSD3Crv, is added to the Convex pool and staked.
+     * The assets assets (3Crv) stay in the vault without changing the number of shares.
      */
     function _convertTokens(address token, uint256 amount)
         internal
@@ -190,18 +189,8 @@ contract Convex3CrvLiquidatorVault is
 
         // Get vault's asset (3Crv) balance after adding token to Curve's 3Pool.
         assets_ = _asset.balanceOf(address(this));
-        // Add asset (3Crv) to metapool with slippage protection.
-        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
 
-        // Calculate share value of the new assets before depositing the metapool tokens to the Convex pool.
-        shares_ = _getSharesFromMetapoolTokens(
-            metapoolTokens,
-            baseRewardPool.balanceOf(address(this)),
-            totalSupply()
-        );
-
-        // Deposit Curve.fi Metapool LP token, eg musd3CRV, in Convex pool, eg cvxmusd3CRV, and stake.
-        booster.deposit(convexPoolId, metapoolTokens, true);
+        shares_ = 0;
     }
 
     /***************************************
@@ -380,6 +369,14 @@ contract Convex3CrvLiquidatorVault is
         address owner
     ) internal virtual override(AbstractVault, Convex3CrvAbstractVault) returns (uint256 shares) {
         shares = Convex3CrvAbstractVault._withdraw(assets, receiver, owner);
+    }
+
+    /// @dev use LiquidatorStreamAbstractVault._streamNewShares implementation.
+    function _afterSharesMintedHook(
+        uint256 newShares,
+        uint256 newAssets
+    ) internal virtual override(Convex3CrvAbstractVault) {
+        LiquidatorStreamAbstractVault._streamNewShares(newShares, newAssets);
     }
 
     /***************************************
