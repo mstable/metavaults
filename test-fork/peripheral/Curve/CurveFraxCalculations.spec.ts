@@ -16,7 +16,7 @@ import type { CurveFraxBpCalculatorLibrary, ICurveFraxBP, IERC20 } from "types/g
 const log = logger("test:FraxBPCalcs")
 
 const fraxWhaleAddress = "0xd632f22692fac7611d2aa1c0d552930d43caed3b" // Frax Finance: FRAX3CRV-f Token
-const usdcWhaleAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
+const usdcWhaleAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // Maker: PSM-USDC-A
 const fraxBpWhaleAddress = "0xCFc25170633581Bf896CB6CDeE170e3E3Aa59503" // Curve crvFRAX Gauge
 
 describe("Curve FRAX calculations", async () => {

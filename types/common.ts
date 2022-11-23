@@ -3,8 +3,10 @@ import type { BigNumber as BN, Signer } from "ethers"
 
 import type {
     Convex3CrvLiquidatorVault,
+    ConvexFraxBpLiquidatorVault,
     CowSwapDex,
     Curve3CrvBasicMetaVault,
+    CurveFraxBpBasicMetaVault,
     IERC20Metadata,
     OneInchDexSwap,
     PeriodicAllocationPerfFeeMetaVault,
@@ -40,5 +42,6 @@ export interface DexTradeData {
 }
 
 export type AnyVault = (Convex3CrvLiquidatorVault | Curve3CrvBasicMetaVault | PeriodicAllocationPerfFeeMetaVault) & IERC20Metadata
+export type AnyFraxVault = (ConvexFraxBpLiquidatorVault | CurveFraxBpBasicMetaVault | PeriodicAllocationPerfFeeMetaVault) & IERC20Metadata
 export type SyncSwapper = OneInchDexSwap
 export type AsyncSwapper = CowSwapDex

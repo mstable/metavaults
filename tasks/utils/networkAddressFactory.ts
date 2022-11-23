@@ -43,6 +43,8 @@ export const contractNames = [
     "Curve3CrvCalculatorLibrary",
     "Curve3CrvMetapoolCalculatorLibrary",
     "Curve3CrvFactoryMetapoolCalculatorLibrary",
+    "CurveFraxBpMetapoolCalculatorLibrary",
+    "CurveFraxBpCalculatorLibrary",
 ] as const
 export type ContractNames = typeof contractNames[number]
 
@@ -111,6 +113,11 @@ export const getChainAddress = (contractName: ContractNames, chain: Chain): stri
                 return "0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9"
             case "Curve3CrvCalculatorLibrary":
                 return "0x092C1b41163c85054F008A486BA72347B919aFa7"
+            // TODO - Add Library address
+            case "CurveFraxBpMetapoolCalculatorLibrary":
+                return "TODO"
+            case "CurveFraxBpCalculatorLibrary":
+                return "TODO"
             default:
         }
     } else if (chain === Chain.polygon) {

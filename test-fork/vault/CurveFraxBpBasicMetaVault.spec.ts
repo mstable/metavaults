@@ -26,7 +26,7 @@ const deployerAddress = resolveAddress("OperationsSigner")
 const nexusAddress = resolveAddress("Nexus")
 const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const fraxUserAddress = "0xDcEF968d416a41Cdac0ED8702fAC8128A64241A2" // ~350M at block 15966213
-const usdcUserAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
+const usdcUserAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // Maker: PSM-USDC-A
 
 const normalBlock = 15966213
 
