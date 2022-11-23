@@ -5,6 +5,7 @@ import { BN, simpleToExactAmount } from "./math"
 
 import type { Signer } from "ethers"
 import type { Account, ERC20 } from "types"
+import { BUSD, FRAX, USDC } from "@tasks/utils"
 
 const log = logger("fork")
 
@@ -110,9 +111,10 @@ export const setBalance = async (userAddress: string, tokenAddress: string, amou
         const balanceSlot = await findBalancesSlot(tokenAddress)
         // key, slot
         index = utils.solidityKeccak256(["uint256", "uint256"], [userAddress, balanceSlot])
+        console.log(`slotIndex: ${index} for tokenAddress: ${tokenAddress}, userAddress: ${userAddress}`)
     }
 
-    log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
+    console.log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
     await setStorageAt(tokenAddress, toBytes32(BN.from(index)), toBytes32(amount).toString())
 }
 /**
@@ -184,5 +186,48 @@ export async function setBalancesToAccount(
         usdtTokenAddress,
         simpleToExactAmount(amount),
         "0xbc40fbf4394cd00f78fae9763b0c2c71b21ea442c42fdadc5b720537240ebac1",
+    )
+}
+
+/**
+ * Sets balance to a given account
+ *
+ * @param {Account} account to set balance
+ * @param {[ERC20]} tokensTransfer Tokens that sets the balance by token.transfer tx
+ * @param {{
+ *         busdTokenAddress: string, usdcTokenAddress: string, fraxTokenAddress: string
+ *     }} tokensStorage Tokens that sets the balance by manipulation of their storage
+ * @param {number} [amount=10000] Amount of tokens to set
+ */
+export async function setBalancesToAccountForFraxBp(
+    account: Account,
+    tokensTransfer: Array<ERC20>,
+    tokensStorage: {
+        busdTokenAddress: string
+        usdcTokenAddress: string
+        fraxTokenAddress: string
+    },
+    amount = 10000,
+) {
+    const { busdTokenAddress, usdcTokenAddress, fraxTokenAddress } = tokensStorage
+
+    await Promise.all(tokensTransfer.map((token) => token.transfer(account.address, simpleToExactAmount(amount))))
+
+    // Set balance directly by manipulating the contract storage
+    await setBalance(
+        account.address,
+        fraxTokenAddress,
+        simpleToExactAmount(amount, FRAX.decimals),
+    )
+    await setBalance(
+        account.address,
+        usdcTokenAddress,
+        simpleToExactAmount(amount, USDC.decimals),
+    )
+    // TODO - Not working, fix later
+    await setBalance(
+        account.address,
+        busdTokenAddress,
+        simpleToExactAmount(amount, BUSD.decimals),
     )
 }
