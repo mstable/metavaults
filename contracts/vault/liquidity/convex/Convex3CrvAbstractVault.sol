@@ -147,8 +147,9 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
 
     /**
      * @dev Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
-     * If the vault has a 3Crv balance. This balance is added to the mint/deposit 3Crv that is added to the Metapool and LP deposited to the Convex pool.
-     * The resulting shares are proportionally split between the minter/depositor and the vault via _afterDepositHook fn.
+     * If the vault has any 3Crv balance, it is added to the mint/deposit 3Crv that is added to the Metapool
+     * and LP deposited to the Convex pool. The resulting shares are proportionally split between the reciever
+     * and the vault via _afterDepositHook fn.
      *
      * @param _assets The amount of underlying assets to be transferred to the vault.
      * @param _receiver The account that the vault shares will be minted to.
@@ -189,13 +190,14 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         _mint(_receiver, shares);
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
-        // Accrue donated shares, assets.
+        // Account any new shares, assets.
         _afterDepositHook(sharesToMint - shares, assetsToDeposit - _assets);
     }
 
     /// @dev Converts vault assets to shares in two steps
     /// Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
     /// Override `AbstractVault._previewDeposit`.
+    /// changes - It takes into account any asset balance to be included in the deposit.
     function _previewDeposit(uint256 assets)
         internal
         view
@@ -284,7 +286,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-        // Accrue donated shares, assets.
+        // Account any new shares, assets.
         uint256 donatedShares = donatedAssets == 0
             ? 0
             : (shares * requiredMetapoolTokens) / donatedMetapoolTokens;
@@ -294,6 +296,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
     /// @dev Converts vault shares to assets in two steps
     /// Vault shares -> Metapool LP tokens, eg musd3Crv -> vault assets (3Crv)
     /// Override `AbstractVault._previewMint`.
+    /// changes - It takes into account any asset balance to be included in the next mint.
     function _previewMint(uint256 shares) internal view virtual override returns (uint256 assets) {
         if (shares > 0) {
             uint256 donatedAssets = _asset.balanceOf(address(this));

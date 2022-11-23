@@ -371,12 +371,12 @@ contract Convex3CrvLiquidatorVault is
         shares = Convex3CrvAbstractVault._withdraw(assets, receiver, owner);
     }
 
-    /// @dev use LiquidatorStreamAbstractVault implementation.
+    /// @dev use LiquidatorStreamAbstractVault._streamNewShares implementation.
     function _afterDepositHook(
         uint256 newShares,
         uint256 newAssets
-    ) internal virtual override(LiquidatorStreamAbstractVault, Convex3CrvAbstractVault) {
-        LiquidatorStreamAbstractVault._afterDepositHook(newShares, newAssets);
+    ) internal virtual override(Convex3CrvAbstractVault) {
+        LiquidatorStreamAbstractVault._streamNewShares(newShares, newAssets);
     }
 
     /***************************************

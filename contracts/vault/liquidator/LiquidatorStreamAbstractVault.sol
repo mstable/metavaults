@@ -98,14 +98,20 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
     }
 
     /**
-     * @notice Converts donated tokens into vault assets, it does not affect total supply nor
-     * assets per share. 
+     * @notice Converts donated tokens into vault assets, mints shares so the assets per share
+     * does not increase initially, and then burns the new shares over a period of time
+     * so the assets per share gradually increases.
+     * For example, if 1,000 DAI is being donated is worth 800 vault shares and the donation fee is 16%. 128 (800 * 16%)
+     * of the new vault shares are minted to the fee receiver. The remaining 672 vault shares are minted to the vault so
+     * the assets per shares of the shareholders does not increase. Over the next week the new vault shares will be burnt
+     * which will increase the assets per share to the shareholders.
      *
      * @param token The address of the token being donated to the vault.
      @ @param amount The amount of tokens being donated to the vault.
      */
     function donate(address token, uint256 amount) external virtual override streamRewards {
-        _convertTokens(token, amount);
+        (uint256 newShares, uint256 newAssets) = _convertTokens(token, amount);
+        _streamNewShares(newShares, newAssets);
     }
 
     /**
@@ -183,7 +189,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
      * @param newShares The amount of shares to stream.
      * @param newAssets The amount of assets to stream.
      */
-    function _afterDepositHook(uint256 newShares, uint256 newAssets) internal virtual {
+    function _streamNewShares(uint256 newShares, uint256 newAssets) internal virtual {
         if (newShares > 0) {
             StreamData memory stream = shareStream;
             uint256 remainingStreamShares = _streamedShares(stream);

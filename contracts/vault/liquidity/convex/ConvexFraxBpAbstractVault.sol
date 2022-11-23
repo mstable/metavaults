@@ -148,8 +148,9 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
 
     /**
      * @dev Vault assets (crvFRAX) -> Metapool LP tokens, eg BUSDFRAXBP3CRV-f -> vault shares.
-     * If the vault has a crvFRAX balance. This balance is added to the mint/deposit crvFRAX that is added to the Metapool and LP deposited to the Convex pool.
-     * The resulting shares are proportionally split between the minter/depositor and the vault via _afterDepositHook fn.
+     * If the vault has any crvFRAX balance, it is added to the mint/deposit crvFRAX that is added to the Metapool
+     * and LP deposited to the Convex pool. The resulting shares are proportionally split between the reciever
+     * and the vault via _afterDepositHook fn.
      *
      * @param _assets The amount of underlying assets to be transferred to the vault.
      * @param _receiver The account that the vault shares will be minted to.
@@ -190,16 +191,21 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         _mint(_receiver, shares);
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
-        // Accrue donated shares, assets.
+        // Account any new shares, assets.
         _afterDepositHook(sharesToMint - shares, assetsToDeposit - _assets);
     }
 
     /// @dev Converts vault assets to shares in two steps
     /// Vault assets (crvFRAX) -> Metapool LP tokens, eg BUSDFRAXBP3CRV-f -> vault shares
     /// Override `AbstractVault._previewDeposit`.
-    function _previewDeposit(
-        uint256 assets
-    ) internal view virtual override returns (uint256 shares) {
+    /// changes - It takes into account any asset balance to be included in the deposit.
+    function _previewDeposit(uint256 assets)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 shares)
+    {
         if (assets > 0) {
             // Take into account any asset balance.
             uint256 assetsToDeposit = _asset.balanceOf(address(this)) + assets;
@@ -283,7 +289,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
-        // Accrue donated shares, assets.
+        // Account any new shares, assets.
         uint256 donatedShares = donatedAssets == 0
             ? 0
             : (shares * requiredMetapoolTokens) / donatedMetapoolTokens;
@@ -293,6 +299,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     /// @dev Converts vault shares to assets in two steps
     /// Vault shares -> Metapool LP tokens, eg BUSDFRAXBP3CRV-f -> vault assets (crvFRAX)
     /// Override `AbstractVault._previewMint`.
+    /// changes - It takes into account any asset balance to be included in the next mint.
     function _previewMint(uint256 shares) internal view virtual override returns (uint256 assets) {
         if (shares > 0) {
             uint256 donatedAssets = _asset.balanceOf(address(this));
@@ -484,9 +491,13 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
 
     /// @dev Override `AbstractVault._previewRedeem`.
     /// Vault shares -> Metapool LP tokens, eg BUSDFRAXBP3CRV-f -> vault assets (crvFRAX)
-    function _previewRedeem(
-        uint256 shares
-    ) internal view virtual override returns (uint256 assets) {
+    function _previewRedeem(uint256 shares)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 assets)
+    {
         if (shares > 0) {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
@@ -529,9 +540,13 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     }
 
     /// @dev Override `AbstractVault._convertToShares`.
-    function _convertToShares(
-        uint256 assets
-    ) internal view virtual override returns (uint256 shares) {
+    function _convertToShares(uint256 assets)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 shares)
+    {
         if (assets > 0) {
             uint256 metapoolTokens = CurveFraxBpMetapoolCalculatorLibrary.convertToMetaLp(
                 metapool,
@@ -586,9 +601,11 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     /// @dev Utility function to convert FRAX/USDC LP tokens (crvFRAX) to expected Curve Metapool LP tokens (BUSDFRAXBP3CRV-f).
     /// @param _assetsAmount Amount of FraxBP (crvFRAX) LP tokens.
     /// @return expectedMetapoolTokens Amount of Curve Metapool tokens (BUSDFRAXBP3CRV-f) expected from curve.
-    function _getMetapoolTokensForAssets(
-        uint256 _assetsAmount
-    ) internal view returns (uint256 expectedMetapoolTokens) {
+    function _getMetapoolTokensForAssets(uint256 _assetsAmount)
+        internal
+        view
+        returns (uint256 expectedMetapoolTokens)
+    {
         // crvFRAX virtual price in USD. Non-manipulable
         uint256 threePoolVirtualPrice = ICurveFraxBP(basePool).get_virtual_price();
         // Metapool virtual price in USD

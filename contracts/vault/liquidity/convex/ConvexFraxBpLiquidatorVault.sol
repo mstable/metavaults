@@ -317,12 +317,12 @@ contract ConvexFraxBpLiquidatorVault is
         shares = ConvexFraxBpAbstractVault._withdraw(assets, receiver, owner);
     }
 
-    /// @dev use LiquidatorStreamAbstractVault implementation.
+    /// @dev use LiquidatorStreamAbstractVault._streamNewShares implementation.
     function _afterDepositHook(
         uint256 newShares,
         uint256 newAssets
-    ) internal virtual override(LiquidatorStreamAbstractVault, ConvexFraxBpAbstractVault) {
-        LiquidatorStreamAbstractVault._afterDepositHook(newShares, newAssets);
+    ) internal virtual override(ConvexFraxBpAbstractVault) {
+        LiquidatorStreamAbstractVault._streamNewShares(newShares, newAssets);
     }
 
     function _convertToAssets(uint256 shares)
