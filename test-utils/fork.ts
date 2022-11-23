@@ -197,18 +197,18 @@ export async function setBalancesToAccountForFraxBp(
     await Promise.all(tokensTransfer.map((token) => token.transfer(account.address, simpleToExactAmount(amount))))
 
     // Set balance directly by manipulating the contract storage
-    await setBalance(
+    await setTokenBalance(
         account.address,
         fraxTokenAddress,
         simpleToExactAmount(amount, FRAX.decimals),
     )
-    await setBalance(
+    await setTokenBalance(
         account.address,
         usdcTokenAddress,
         simpleToExactAmount(amount, USDC.decimals),
     )
     // TODO - Not working, fix later
-    await setBalance(
+    await setTokenBalance(
         account.address,
         busdTokenAddress,
         simpleToExactAmount(amount, BUSD.decimals),
