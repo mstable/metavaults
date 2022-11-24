@@ -94,10 +94,10 @@ export const setTokenBalance = async (userAddress: string, tokenAddress: string,
         const balanceSlot = await findBalancesSlot(tokenAddress)
         // key, slot
         index = utils.solidityKeccak256(["uint256", "uint256"], [userAddress, balanceSlot])
-        console.log(`slotIndex: ${index} for tokenAddress: ${tokenAddress}, userAddress: ${userAddress}`)
+        log(`slotIndex: ${index} for tokenAddress: ${tokenAddress}, userAddress: ${userAddress}`)
     }
 
-    console.log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
+    log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
     await setStorageAt(tokenAddress, toBytes32(BN.from(index)), toBytes32(amount).toString())
 }
 /**
