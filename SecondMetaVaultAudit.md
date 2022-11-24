@@ -1,14 +1,18 @@
 # Second Meta Vaults Security Audit
 
-Scope of the security audit of [mStable](https://mstable.org/)'s FRAX-based Meta Vaults, November 2022.
+Scope of the second security audit of [mStable](https://mstable.org/)'s vaults will be focused on the Meta Vault. This is an [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault that periodically invests deposited assets into the underlying EIP-4626 vaults and charges a performance fee.
 
 # Logic
 
-See [FraxBP Convex Vaults](./FraxBPConvexVaults.md) for an explanation of what the different vaults do and how value flows between them.
+See [3Crv Convex Vaults](./3CrvConvexVaults.md) and [FraxBP Convex Vaults](./FraxBPConvexVaults.md) for explanations of what the different vaults do and how value flows between them.
+The [PeriodicAllocationPerfFeeMetaVault](./contracts/vault/meta/PeriodicAllocationPerfFeeMetaVault.sol) contract is the same for both the 3CRv and FraxBP Meta Vaults. It can also be used to integrate to other underlying vaults that are compliant with the [EIP-4626](https://eips.ethereum.org/EIPS/eip-4626) vault standard.
+
+More detailed documentation of the Meta Vault can be found in the [README](./contracts/vault/meta/README.md) including:
+-   [Capabilities](./contracts/vault/meta/README.md#periodicallocationperffeemetavault)
+-   [Contract Diagrams](./contracts/vault/meta/README.md#diagrams)
+-   [Processes](./contracts/vault/meta/README.md#periodicallocationperffeemetavault-processes)
 
 # Code
-
-Only the contracts used by the FRAX-based vaults will be audited. Also, simpler contracts that have been previously audited are out of scope given the tight timeframes.
 
 All code is in the [metavaults](https://github.com/mstable/metavaults) repository with tag ??? and commit hash ??? on the [fraxBP](https://github.com/mstable/metavaults/tree/fraxBP) branch.
 
@@ -18,34 +22,35 @@ All contract are under the [contracts](./contracts/) folder.
 
 ## In scope
 
--   [peripheral](./contracts/peripheral/)
-    -   [Curve](./contracts/peripheral/Curve) just the [CurveFraxBpCalculatorLibrary](./contracts/peripheral/Curve/CurveFraxBpCalculatorLibrary.sol) and [CurveFraxBpMetapoolCalculatorLibrary](./contracts/peripheral/Curve/CurveFraxBpMetapoolCalculatorLibrary.sol) libraries. The Curve3Crv* libraries have previously been audited and are not used by the FRAX-based vaults.
--   [shares](./contracts/shared/) just the [SingleSlotMapper](./contracts/shared/SingleSlotMapper.sol) contract as it has not been audited. The others have been through multiple audits.
--   [vault](./contracts/vault) all vault contract except the ones listed below in the out of scope section.
-    -   [liquidity/convex](./contracts/vault/liquidity/convex/) the three ConvexFraxBp* vaults are in scope.
-    -   [liquidity/curve](./contracts/vault/liquidity/curve/) the two CurveFraxBp* vaults are in scope.
-    - [swap](./contracts/vault/swap/) only [CowSwapDex](./contracts/vault/swap/CowSwapDex.sol) is in scope. The 1Inch synchronous swapper is not currently used.
+Base contract
+-  [PeriodicAllocationPerfFeeMetaVault](./contracts/vault/meta/PeriodicAllocationPerfFeeMetaVault.sol)
+
+Inherited contracts
+-  [PeriodicAllocationAbstractVault](./contracts/vault/allocate/PeriodicAllocationAbstractVault.sol)
+-  [PerfFeeAbstractVault](./contracts/vault/fee/PerfFeeAbstractVault.sol)
+-  [FeeAdminAbstractVault](./contracts/vault/fee/FeeAdminAbstractVault.sol)
+-  [AssetPerShareAbstractVault](./contracts/vault/allocate/AssetPerShareAbstractVault.sol)
+-  [SameAssetUnderlyingsAbstractVault](./contracts/vault/allocate/SameAssetUnderlyingsAbstractVault.sol)
+-  [AbstractVault](./contracts/vault/AbstractVault.sol)
+-  [InitializableToken](./contracts/tokens/InitializableToken.sol)
+-  [VaultManagerRole](./contracts/shared/VaultManagerRole.sol)
+-  [InitializableTokenDetails](./contracts/tokens/InitializableTokenDetails.sol)
+-  [ImmutableModule](./contracts/shared/ImmutableModule.sol)
+-  [ModuleKeys](./contracts/shared/ModuleKeys.sol)
 
 ## Out of scope
 
-Any contracts in the following are out of scope as they have previously been audited or are just used for testing.
+The inherited Open Zeppelin contracts are out of scope
+-  @openzeppelin/contracts/token/ERC20/ERC20.sol
+-  @openzeppelin/contracts/utils/Context.sol
+-  @openzeppelin/contracts/security/Pausable.sol
+-  @openzeppelin/contracts/proxy/utils/Initializable.sol
 
--   [governance](./contracts/governance) all out of scope as perviously audited.
--   [interfaces](./contracts/interfaces) contract interfaces.
--   [nexus](./contracts/nexus) all out of scope as perviously audited.
--   [peripheral](./contracts/peripheral/)
-    -   [Convex](./contracts/peripheral/Convex) are just interfaces.
-    -   [Curve](./contracts/peripheral/Curve) are interfaces, libraries or testing contracts. The libraries are ports of Curve's Vyper code with gas optimizations. They are stateless so are not a high risk of containing security issues. Given their logic complexity and they have previously been audited, they are out of scope of this audit.
-    -   [Cowswap](./contracts/peripheral/Cowswap/) are just interfaces.
-    -   [OneInch](./contracts/peripheral/OneInch) are just interfaces and will not be initially used.
--   [token](./contracts/tokens) all out scope as perviously audited.
--   [upgradability](./contracts/upgradability) all out of scope as perviously audited.
--   [vault](./contracts/vault) any BasicVaults are out of scope as they are just used for testing. Specifically, `PeriodicAllocationBasicVault`, `SameAssetUnderlyingsBasicVault`, `PerfFeeBasicVault`, `LiquidatorBasicVault`, `LiquidatorStreamBasicVault`, `LiquidatorStreamFeeBasicVault`, `Convex3CrvBasicVault`, `Curve3CrvBasicMetaVault` and `BasicSlippage` are all out of scope.
-    -   [liquidity/convex](./contracts/vault/liquidity/convex/) the three Convex3Crv* vaults are out of scope.
-    -   [liquidity/curve](./contracts/vault/liquidity/curve/) the two Curve3Crv* vaults are out of scope.
-    -   [swap](./contracts/vault/swap/) contracts [BasicDexSwap](./contracts/vault/swap/BasicDexSwap.sol) and [OneInchDexSwap](./contracts/vault/swap/OneInchDexSwap.sol) are out of scope.
--   [z_mocks](./contracts/z_mocks/) are just used for unit testing.
--   [BasicVault](./contracts/vault/BasicVault.sol) and [LightBasicVault](./contracts/vault/LightBasicVault.sol) are out of scope.
+The following related contracts are out of scope
+-  [Nexus](./contracts/shared/Nexus.sol) used to manage the `Governor` and `Keeper` roles used by the Meta Vault.
+-  [Proxies](./contracts/upgradability/Proxies.sol) proxy contract.
+-  [InstantProxyAdmin](./contracts/upgradability/InstantProxyAdmin.sol) proxy admin with no time delay.
+-  [DelayedProxyAdmin](./contracts/upgradability/DelayedProxyAdmin.sol) proxy admin with one week time delay.
 
 # Third Party Dependencies
 
