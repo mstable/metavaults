@@ -26,6 +26,8 @@ This covers the `Curve3CrvBasicMetaVault` and `CurveFraxBpBasicMetaVault` vaults
     * Setting the slippage limits for mint, deposit, redeem and withdraw.
 * One week time delay for proxy upgrades by the `Governor`.
 
+See [Trusted Accounts](../../../../TrustedAccounts.md) for more information about the `Governor`.
+
 # Diagrams
 
 ## Stablecoin (DAI/USDC/USDT) Convex 3Crv Meta Vault

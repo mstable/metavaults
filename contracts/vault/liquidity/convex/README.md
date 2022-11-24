@@ -31,7 +31,7 @@ This covers the `Convex3CrvLiquidatorVault` and `ConvexFraxBpLiquidatorVault` va
 * Invests 3Crv assets in a Curve Metapool and LP token staked in Convex for boosted returns.
 * Sandwich attack protection on ERC4626 operations `deposit`, `mint`, `withdraw` and `redeem`.
 * Liquidation of Convex rewards like CRV and CVX for more reinvested 3Crv assets.
-* Front running protection against liquidation of rewards by streaming the increase in assets per share.
+* Front-running protection against liquidation of rewards by streaming the increase in assets per share.
 * Fee charged on liquidated Convex rewards.
 * Vault operations are pausable by the `Governor`.
 * Emergency asset recovery by the `Governor`.
@@ -39,6 +39,8 @@ This covers the `Convex3CrvLiquidatorVault` and `ConvexFraxBpLiquidatorVault` va
     * Setting the slippage limits for mint, deposit, redeem and withdraw.
     * Setting the account that receives the liquidation fee.
 * One week time delay for proxy upgrades by the `Governor`.
+
+See [Trusted Accounts](../../../../TrustedAccounts.md) for more information about the `Governor`.
 
 # Diagrams
 
