@@ -52,6 +52,36 @@ The following related contracts are out of scope
 -  [InstantProxyAdmin](./contracts/upgradability/InstantProxyAdmin.sol) proxy admin with no time delay.
 -  [DelayedProxyAdmin](./contracts/upgradability/DelayedProxyAdmin.sol) proxy admin with one week time delay.
 
+# Tests
+
+## Unit tests
+
+`yarn test` will run all the units tests but to test that cover the above in scope contracts are
+
+```
+yarn test:file ./test/vault/allocate/PeriodicAllocationBasicVault.spec.ts
+yarn test:file ./test/vault/allocate/SameAssetUnderlyingsBasicVault.spec.ts
+yarn test:file ./test/vault/fees/PerfFeeBasicVault.spec.ts
+```
+
+## Fork Tests
+
+Rather than mocking external protocols like Curve and Convex, fork tests are used to test the integration with these protocols. This was we are testing exactly as the protocols work and not our assumptions on how they are implemented. The `PeriodicAllocationPerfFeeMetaVault` contract is tested with the following fork tests.
+
+```
+export NODE_URL=<url to mainnet node>
+# Convex 3Crv vaults
+yarn test:file:fork ./test-fork/vault/savePlus.spec.ts
+# Convex FraxBP vaults
+yarn test:file:fork ./test-fork/vault/saveFraxPlus.spec.ts
+```
+
+## Coverage
+
+Coveralls is used to report on the code coverage of the unit and fork tests.
+
+https://coveralls.io/github/mstable/metavaults
+
 # Third Party Dependencies
 
 ## Contract Libraries

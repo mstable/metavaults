@@ -7,9 +7,14 @@ Provide liquidity to [Curve](https://curve.readthedocs.io/) pools.
 -   [Curve3CrvAbstractMetaVault](./Curve3CrvAbstractMetaVault.sol) Abstract ERC-4626 vault with one of DAI/USDC/USDT asset invested in 3Pool, and then deposited in the Convex 3Crv Meta Vault.
 -   [Curve3CrvBasicMetaVault](./Curve3CrvBasicMetaVault.sol) Basic implementation of Curve3CrvBasicMetaVault.
 
+-   [CurveFraxBpAbstractMetaVault](./CurveFraxBpAbstractMetaVault.sol) Abstract ERC-4626 vault with one of USDC/FRAX asset invested in the Curve USDC/FRAX pool, and then deposited in the Convex FraxBP Meta Vault.
+-   [CurveFraxBpBasicMetaVault](./CurveFraxBpvBasicMetaVault.sol) Basic implementation of CurveFraxBpBasicMetaVault.
+
 # Capabilities
 
-## Curve3CrvBasicMetaVault
+## Curve*BasicMetaVault
+
+This covers the `Curve3CrvBasicMetaVault` and `CurveFraxBpBasicMetaVault` vaults.
 
 * [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) compliant tokenized vault.
 * [ERC-20](https://eips.ethereum.org/EIPS/eip-20) compliant token.
@@ -39,6 +44,8 @@ Provide liquidity to [Curve](https://curve.readthedocs.io/) pools.
 
 # Processes
 
+The following processes are for the 3Pool-based vaults but the FRAX-based vaults functionally work the same.
+
 ## Total Assets
 
 Get the total assets in USD in a `Curve3CrvAbstractMetaVault`.
@@ -54,19 +61,19 @@ Shareholder previews the number of shares returned from a deposit of assets (DAI
 
 ![Preview Deposit Assets](../../../../docs/curve3CrvVaultPreviewDeposit.png)
 
-# Deposit
+## Deposit
 
 Shareholder deposits assets (DAI) into a `Curve3CrvAbstractMetaVault` for vault shares.
 
 ![Deposit Assets](../../../../docs/curve3CrvVaultDeposit.png)
 
-# Preview Mint
+## Preview Mint
 
 Shareholder previews the number of assets (DAI) required to deposit for an amount of vault share from a `Curve3CrvAbstractMetaVault`.
 
 ![Preview Mint Shares](../../../../docs/curve3CrvVaultPreviewMint.png)
 
-# Mint
+## Mint
 
 Shareholder mints vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
 
@@ -78,20 +85,31 @@ Shareholder previews the number of shares burned from a withdrawal of assets (DA
 
 ![Preview Withdraw Assets](../../../../docs/curve3CrvVaultPreviewWithdraw.png)
 
-# Withdraw
+## Withdraw
 
 Shareholder withdraws assets (DAI) from a `Curve3CrvAbstractMetaVault` for vault shares.
 
 ![Withdraw Assets](../../../../docs/curve3CrvVaultWithdraw.png)
 
-# Preview Redeem
+## Preview Redeem
 
 Shareholder previews the number of assets (DAI) received for redeeming an amount of vault share from a `Curve3CrvAbstractMetaVault`.
 
 ![Preview Redeem Shares](../../../../docs/curve3CrvVaultPreviewRedeem.png)
 
-# Redeem
+## Redeem
 
 Shareholder redeems vault shares in exchange for assets (DAI) in a `Curve3CrvAbstractMetaVault`.
 
 ![Mint Shares](../../../../docs/curve3CrvVaultRedeem.png)
+
+# Tests
+
+Fork tests
+
+```
+export NODE_URL=your provider url
+yarn test:file:fork ./test-fork/vault/Curve3CrvBasicMetaVault.test.ts
+yarn test:file:fork ./test-fork/vault/CurveFraxBpBasicMetaVault.test.ts
+```
+

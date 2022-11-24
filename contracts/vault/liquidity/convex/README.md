@@ -12,9 +12,19 @@ Vaults that deposit into a Curve 3Pool (3Crv) based Metapool before depositing t
 -   [Convex3CrvBasicVault](./Convex3CrvBasicVault.sol) basic implementation of `Convex3CrvAbstractVault` used for testing purposes.
 -   [Convex3CrvLiquidatorVault](./Convex3CrvLiquidatorVault.sol) ERC-4626 vault that deposits Curve 3Pool LP tokens (3Crv) in a Curve Metapool, eg musd3Crv; deposits the Metapool LP token in Convex; and stakes the Convex LP tokens, eg cvxmusd3Crv, in Convex for CRV and CVX rewards. The Convex rewards are swapped for a Curve 3Pool token, eg DAI, USDC or USDT, using the [Liquidator module](../liquidator/README.md) and donated back to the vault. On donation back to the vault, the DAI, USDC or USDT is deposited into the underlying Curve Metapool; the Curve Metapool LP token is deposited into the corresponding Convex pool and the Convex LP token staked.
 
+## Convex Vault for FRAX-based Curve Metapools (crvFRAX)
+
+Vaults that deposit into a Curve USDC/FRAX (crvFRAX) based Metapool before depositing the LP token into a Convex pool.
+
+-   [ConvexFraxBpAbstractVault](./ConvexFraxBpAbstractVault.sol) abstract ERC-4626 vault with a Curve.fi Frax base-pool (crvFRAX) asset invested in a Curve Metapool, deposited in a Convex pool and then staked.
+-   [ConvexFraxBpBasicVault](./ConvexFraxBpBasicVault.sol) basic implementation of `ConvexFraxBpAbstractVault` used for testing purposes.
+-   [ConvexFraxBpLiquidatorVault](./ConvexFraxBpLiquidatorVault.sol) ERC-4626 vault that deposits Curve FraxBP LP tokens (crvFRAX) in a Curve Metapool; deposits the Metapool LP token in Convex; and stakes the Convex LP tokens in Convex for CRV and CVX rewards. The Convex rewards are swapped for a Curve FraxBP token, eg USDC or FRAX, using the [Liquidator module](../liquidator/README.md) and donated back to the vault. On donation back to the vault, the USDC or FRAX is deposited into the underlying Curve Metapool; the Curve Metapool LP token is deposited into the corresponding Convex pool and the Convex LP token staked.
+
 # Capabilities
 
-## Convex3CrvLiquidatorVault
+## Convex*LiquidatorVault
+
+This covers the `Convex3CrvLiquidatorVault` and `ConvexFraxBpLiquidatorVault` vaults.
 
 * [ERC-4626](https://eips.ethereum.org/EIPS/eip-4626) compliant tokenized vault.
 * [ERC-20](https://eips.ethereum.org/EIPS/eip-20) compliant token.
@@ -53,6 +63,8 @@ Vaults that deposit into a Curve 3Pool (3Crv) based Metapool before depositing t
 # Processes
 
 ## Curve 3Pool (3Crv) based Metapools
+
+The following processes are for the 3Pool-based vaults but the FRAX-based vaults functionally work the same.
 
 ### Total Assets
 
@@ -118,4 +130,5 @@ Fork tests
 export NODE_URL=your provider url
 yarn test:file:fork ./test-fork/vault/Convex3CrvBasicVault.spec.ts
 yarn test:file:fork ./test-fork/vault/Convex3CrvLiquidatorVault.spec.ts
+yarn test:file:fork ./test-fork/vault/ConvexFraxBpLiquidatorVault.spec.ts
 ```
