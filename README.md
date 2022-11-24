@@ -206,6 +206,7 @@ Unfortunately the generated markdown will not include inherited classes. These n
 -   https://yield.mstable.org Meta Vault user Interface
 -   https://docs.mstable.org User documentation
 -   https://developers.mstable.org Developer documentation
+-   https://immunefi.com/bounty/mstable/ Bug bounty
 
 ## mStable version 1 app and documentation.
 

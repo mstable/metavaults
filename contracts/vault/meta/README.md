@@ -28,6 +28,8 @@ A Meta Vault is composed of other ERC-4626 compliant vaults.
     * Setting the account that receives the performance fee.
 * One week time delay for proxy upgrades by the `Governor`.
 
+See [Trusted Accounts](../../../TrustedAccounts.md) for more information about the `Governor` and `VaultManager`.
+
 # Diagrams
 
 ## Meta Vault with Periodic Allocation and Performance Fee
