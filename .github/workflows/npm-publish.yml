@@ -35,5 +35,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
       - run: npm ci
       - run: npm publish --access public
+      - run: yarn web
         env:
           NODE_AUTH_TOKEN: ${{secrets.GH_NPM_TOKEN}}

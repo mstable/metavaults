@@ -138,11 +138,11 @@ const bundle = () => {
             main: names.main,
             types: names.types,
             // Enable if it is desired to publish to git hub packages
-            // publishConfig: {
-            //     registry: "https://npm.pkg.github.com/",
-            //     email: "info@mstable.com",
-            //     scope: "@mstable",
-            // },
+            publishConfig: {
+                registry: "https://registry.npmjs.org",
+                email: "info@mstable.com",
+                scope: "@mstable",
+            },
         })
     } catch (e) {
         console.error("Error writing package.json ", e)
