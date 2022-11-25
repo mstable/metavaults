@@ -9,7 +9,7 @@ import { getSigner } from "./utils/signerFactory"
 
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
-import type { AssetProxy, CurveFraxBpBasicMetaVault, CurveFraxBpPool, CurveFraxBpCalculatorLibrary } from "types"
+import type { AssetProxy, CurveFraxBpBasicMetaVault, CurveFraxBpCalculatorLibrary, CurveFraxBpPool } from "types"
 
 // deployCurveFraxBpMetaVault
 type SlippageData = {
@@ -53,10 +53,16 @@ export async function deployCurveFraxBpCalculatorLibrary(hre: HardhatRuntimeEnvi
     return calculatorLibrary
 }
 
-export const deployCurveFraxBpMetaVault = async (hre: HardhatRuntimeEnvironment, signer: Signer, params: CurveFraxBpBasicMetaVaultParams) => {
+export const deployCurveFraxBpMetaVault = async (
+    hre: HardhatRuntimeEnvironment,
+    signer: Signer,
+    params: CurveFraxBpBasicMetaVaultParams,
+) => {
     const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin } = params
 
-    const libraryAddresses = { "contracts/peripheral/Curve/CurveFraxBpCalculatorLibrary.sol:CurveFraxBpCalculatorLibrary": calculatorLibrary }
+    const libraryAddresses = {
+        "contracts/peripheral/Curve/CurveFraxBpCalculatorLibrary.sol:CurveFraxBpCalculatorLibrary": calculatorLibrary,
+    }
 
     const constructorArguments = [nexus, asset, metaVault]
     const vaultImpl = await deployContract<CurveFraxBpBasicMetaVault>(
