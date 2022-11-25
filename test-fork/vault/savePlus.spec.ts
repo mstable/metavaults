@@ -1506,27 +1506,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
                 })
             })
-            describe("liquidation", async () => {
-                it("collect rewards", async () => {
-                    await assertLiquidatorCollectRewards([
-                        convex3CrvLiquidatorVaults.musd.address,
-                        convex3CrvLiquidatorVaults.frax.address,
-                        convex3CrvLiquidatorVaults.busd.address,
-                    ])
-                })
-                it("swap rewards for tokens to donate", async () => {
-                    // Given that all underlying vaults are setup to donate DAI
-                    // Swap CRV, CVX for DAI and evaluate balances on liquidator
-                    await assertLiquidatorSwap()
-                })
-                it("donate purchased tokens", async () => {
-                    // When tokens are donated
-                    await assertLiquidatorDonateTokens(
-                        [daiToken, daiToken, daiToken, daiToken],
-                        [musdConvexVault.address, fraxConvexVault.address, busdConvexVault.address],
-                    )
-                })
-            })
             describe("after settlement", () => {
                 it("partial withdraw", async () => {
                     await assertVaultWithdraw(daiWhale, daiToken, daiMetaVault, simpleToExactAmount(60000, DAI.decimals))
@@ -1541,11 +1520,11 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 it("total redeem", async () => {
                     await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter)
                     await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter)
-                    const redeemAmount = await usdtMetaVault.connect(usdtWhale.signer).maxRedeem(usdtWhale.address)
-                    // TODO , when the last user of the vault redeems all USDT, the pool has issues, available assets < maxWithdraw/Redeem.
-                    // some slippage tolerance can be added to solve this issue instead of reverting the tx.
-                    // @contracts/vault/allocate/PeriodicAllocationAbstractVault.sol#270L `if (totalUnderlyingAssets >= requiredAssets)`
-                    await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, redeemAmount.mul(99999).div(100000))
+
+                    // need to move ahead at leave 10 minutes so the mUSD metapool cache is not used
+                    await increaseTime(ONE_HOUR)
+                    await periodicAllocationPerfFeeMetaVault.connect(vaultManager.signer).updateAssetPerShare()
+                    await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter)
 
                     // 4626
                     expect(await daiMetaVault.balanceOf(daiWhale.address), "dai vault user balance").to.be.eq(0)

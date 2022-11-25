@@ -30,7 +30,7 @@ import {
     PeriodicAllocationPerfFeeMetaVault__factory,
 } from "types/generated"
 
-import { buildDonateTokensInput, CRV, CVX, logTxDetails, crvFRAX, USDC, usdFormatter, FRAX, BUSD } from "../../tasks/utils"
+import { buildDonateTokensInput, BUSD, CRV, crvFRAX, CVX, FRAX, logTxDetails, USDC, usdFormatter } from "../../tasks/utils"
 
 import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
@@ -1426,27 +1426,6 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     )
                 })
             })
-            describe("liquidation", async () => {
-                it("collect rewards", async () => {
-                    await assertLiquidatorCollectRewards([
-                        convexFraxBpLiquidatorVaults.busd.address,
-                        convexFraxBpLiquidatorVaults.susd.address,
-                        convexFraxBpLiquidatorVaults.alusd.address,
-                    ])
-                })
-                it("swap rewards for tokens to donate", async () => {
-                    // Given that all underlying vaults are setup to donate USDC
-                    // Swap CRV, CVX for USDC and evaluate balances on liquidator
-                    await assertLiquidatorSwap()
-                })
-                it("donate purchased tokens", async () => {
-                    // When tokens are donated
-                    await assertLiquidatorDonateTokens(
-                        [usdcToken, usdcToken, usdcToken, usdcToken],
-                        [busdConvexVault.address, susdConvexVault.address, alusdConvexVault.address],
-                    )
-                })
-            })
             describe("after settlement", () => {
                 it("partial withdraw", async () => {
                     await assertVaultWithdraw(usdcWhale, usdcToken, usdcMetaVault, simpleToExactAmount(60000, USDC.decimals))
@@ -1458,6 +1437,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                 })
                 it("total redeem", async () => {
                     await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter)
+                    await periodicAllocationPerfFeeMetaVault.connect(vaultManager.signer).updateAssetPerShare()
                     await assertVaultRedeem(fraxWhale, fraxToken, fraxMetaVault, dataEmitter)
 
                     // 4626
