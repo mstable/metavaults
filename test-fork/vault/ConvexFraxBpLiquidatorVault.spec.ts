@@ -19,12 +19,13 @@ import {
     Nexus__factory,
 } from "types/generated"
 
-import { behaveLikeConvexFraxBpVault, snapVault } from "./shared/ConvexFraxBp.behaviour"
+import { behaveLikeConvexFraxBpVault, ConvexFraxBpCalculatorLibrary, snapVault } from "./shared/ConvexFraxBp.behaviour"
 
 import type { Account } from "types/common"
 import type { ConvexFraxBpLiquidatorVault, DataEmitter, IConvexRewardsPool, ICurveFraxBP, ICurveMetapool, IERC20 } from "types/generated"
 
 import type { ConvexFraxBpContext } from "./shared/ConvexFraxBp.behaviour"
+import { assertDepositWithDonation, assertDonation } from "./shared/Convex3CrvLiquidatorVault.asserts"
 
 const keeperAddress = resolveAddress("OperationsSigner")
 const governorAddress = resolveAddress("Governor")
@@ -55,6 +56,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
     let metaPool: ICurveMetapool
     let baseRewardsPool: IConvexRewardsPool
     let dataEmitter: DataEmitter
+    let convexFraxBpCalculatorLibrary: ConvexFraxBpCalculatorLibrary
     const { network } = hre
 
     const donationFee = 10000 // 1%
@@ -111,7 +113,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             "contracts/peripheral/Curve/CurveFraxBpMetapoolCalculatorLibrary.sol:CurveFraxBpMetapoolCalculatorLibrary":
                 calculatorLibrary.address,
         }
-
+        convexFraxBpCalculatorLibrary = calculatorLibrary
         busdFraxConvexVault = await new ConvexFraxBpLiquidatorVault__factory(libraryAddresses, keeper.signer).deploy(
             nexusAddress,
             crvFRAX.address,
@@ -221,6 +223,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
                 metapool: metaPool,
                 baseRewardsPool,
                 dataEmitter,
+                convexFraxBpCalculatorLibrary,
                 amounts: {
                     initialDeposit,
                     deposit: initialDeposit.div(4),
@@ -270,11 +273,23 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             await busdFraxConvexVault.collectRewards()
         })
         it("donate USDC tokens back to vault", async () => {
-            const usdcAmount = simpleToExactAmount(1000, USDC.decimals)
-            await usdcToken.connect(mockLiquidator.signer).approve(busdFraxConvexVault.address, usdcAmount)
-            const tx = await busdFraxConvexVault.connect(mockLiquidator.signer).donate(USDC.address, usdcAmount)
-            // Deposit events
-            await expect(tx).to.not.emit(busdFraxConvexVault, "Deposit")
+            const donateAmount = simpleToExactAmount(1000, USDC.decimals)
+            await assertDonation({
+                sender: mockLiquidator,
+                asset: crvFraxToken,
+                donatedToken: usdcToken,
+                vault: busdFraxConvexVault,
+                amount: donateAmount,
+            })
+        })
+        it("deposit assets and any previously donated assets", async () => {
+            await assertDepositWithDonation({
+                sender: staker1,
+                receiver: staker1,
+                asset: crvFraxToken,
+                vault: busdFraxConvexVault,
+                amount: depositAmount,
+            })
         })
     })
     describe("set donate token", () => {

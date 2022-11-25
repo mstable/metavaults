@@ -617,11 +617,16 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
         }
     }
 
-    const assertConvexFraxBpVaultConfiguration = async (convexFraxBpVault: ConvexFraxBpLiquidatorVault, convexFraxBpPool: ConvexFraxBpPool) => {
+    const assertConvexFraxBpVaultConfiguration = async (
+        convexFraxBpVault: ConvexFraxBpLiquidatorVault,
+        convexFraxBpPool: ConvexFraxBpPool,
+    ) => {
         const rewardTokens = await convexFraxBpVault.rewardTokens()
         expect(await convexFraxBpVault.nexus(), "nexus").eq(nexus.address)
         expect((await convexFraxBpVault.metapool()).toLowerCase(), "curve Metapool").to.equal(convexFraxBpPool.curveMetapool.toLowerCase())
-        expect((await convexFraxBpVault.metapoolToken()).toLowerCase(), "metapool token").to.equal(convexFraxBpPool.curveMetapoolToken.toLowerCase())
+        expect((await convexFraxBpVault.metapoolToken()).toLowerCase(), "metapool token").to.equal(
+            convexFraxBpPool.curveMetapoolToken.toLowerCase(),
+        )
         expect(await convexFraxBpVault.basePool(), "FraxBp pool").to.equal(curveFraxBpAddress)
         expect(await convexFraxBpVault.booster(), "booster").to.equal(convexBoosterAddress)
         expect(await convexFraxBpVault.convexPoolId(), "convex Pool Id").to.equal(convexFraxBpPool.convexPoolId)
@@ -1117,9 +1122,16 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     const liqDataBefore = await snapLiquidator()
                     expect(liqDataBefore.purchaseTokenBalance, "liquidator usdc balance").to.be.gt(0)
                     // The fee receiver has 0 shares up to now as no donations have been triggered yet
-                    expect(vaultsDataBefore.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.eq(0)
-                    expect(vaultsDataBefore.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance, "susd vault feeReceiverBalance").to.be.eq(0)
-                    expect(vaultsDataBefore.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance, "alusd vault feeReceiverBalance").to.be.eq(0)
+                    expect(vaultsDataBefore.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.eq(
+                        0,
+                    )
+                    expect(vaultsDataBefore.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance, "susd vault feeReceiverBalance").to.be.eq(
+                        0,
+                    )
+                    expect(
+                        vaultsDataBefore.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance,
+                        "alusd vault feeReceiverBalance",
+                    ).to.be.eq(0)
                     // When tokens are donated
                     await assertLiquidatorDonateTokens(
                         [usdcToken, usdcToken, usdcToken],
@@ -1132,12 +1144,83 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                         curveFraxBpBasicMetaVaults,
                         crvFraxWhale1,
                     )
-                    //  Then fee receiver must change
-                    expect(liqDataAfter.purchaseTokenBalance, "liquidator usdc balance decreased").to.be.lt(liqDataBefore.purchaseTokenBalance)
-                    // The fee receiver gets some shares after donation.
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.gt(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance, "susd vault feeReceiverBalance").to.be.gt(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance, "alusd vault feeReceiverBalance").to.be.gt(0)
+                    //  Then fee receiver must not change
+                    expect(liqDataAfter.purchaseTokenBalance, "liquidator usdc balance decreased").to.be.lt(
+                        liqDataBefore.purchaseTokenBalance,
+                    )
+                    // The fee receiver shares does not change yet.
+                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.eq(
+                        vaultsDataBefore.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance,
+                    )
+                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance, "susd vault feeReceiverBalance").to.be.eq(
+                        vaultsDataBefore.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance,
+                    )
+                    expect(
+                        vaultsDataAfter.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance,
+                        "alusd vault feeReceiverBalance",
+                    ).to.be.eq(vaultsDataBefore.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance)
+                })
+                it("settles to underlying vaults deposits + donations", async () => {
+                    // When settlement it also deposits and stakes all underlying vaults balances.
+                    await assertVaultDeposit(
+                        crvFraxWhale1,
+                        crvFraxToken,
+                        periodicAllocationPerfFeeMetaVault,
+                        simpleToExactAmount(50000, crvFRAX.decimals),
+                    )
+                    const totalAssets = await crvFraxToken.balanceOf(periodicAllocationPerfFeeMetaVault.address)
+                    const settleAssets = totalAssets.div(3)
+                    const remainingAssets = totalAssets.sub(settleAssets.mul(2))
+                    // Settle evenly to underlying assets
+                    log(`Total assets in Meta Vault ${usdFormatter(totalAssets, 18, 14, 18)}`)
+                    log(`${usdFormatter(totalAssets.div(3), 18, 14, 18)} assets to each underlying vault`)
+
+                    const busdSettlement = { vaultIndex: BN.from(0), assets: totalAssets.div(3) }
+                    const susdSettlement = { vaultIndex: BN.from(1), assets: totalAssets.div(3) }
+                    const alusdSettlement = { vaultIndex: BN.from(2), assets: totalAssets.div(3) }
+                    const settlements = { busd: busdSettlement, susd: susdSettlement, alusd: alusdSettlement }
+
+                    await assertVaultSettle(
+                        vaultManager,
+                        convexFraxBpLiquidatorVaults,
+                        periodicAllocationPerfFeeMetaVault,
+                        curveFraxBpBasicMetaVaults,
+                        settlements,
+                        crvFraxWhale1,
+                    )
+                    const vaultsDataAfter = await snapshotVaults(
+                        convexFraxBpLiquidatorVaults,
+                        periodicAllocationPerfFeeMetaVault,
+                        curveFraxBpBasicMetaVaults,
+                        crvFraxWhale1,
+                    )
+                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.busd.feeReceiverBalance, "busd vault feeReceiverBalance").to.be.gt(
+                        0,
+                    )
+                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.susd.feeReceiverBalance, "susd vault feeReceiverBalance").to.be.gt(
+                        0,
+                    )
+                    expect(
+                        vaultsDataAfter.convexFraxBpLiquidatorVaults.alusd.feeReceiverBalance,
+                        "alusd vault feeReceiverBalance",
+                    ).to.be.gt(0)
+                })
+                it("update assets per shares", async () => {
+                    const assetsPerShareBefore = await periodicAllocationPerfFeeMetaVault.assetsPerShare()
+                    const tx = await periodicAllocationPerfFeeMetaVault.connect(vaultManager.signer).updateAssetPerShare()
+                    await expect(tx).to.emit(periodicAllocationPerfFeeMetaVault, "AssetsPerShareUpdated")
+
+                    const assetsPerShareAfter = await periodicAllocationPerfFeeMetaVault.assetsPerShare()
+                    expect(assetsPerShareAfter).to.gt(assetsPerShareBefore)
+                })
+                it("charge performance fee", async () => {
+                    const perfAssetsPerShareBefore = await periodicAllocationPerfFeeMetaVault.perfFeesAssetPerShare()
+
+                    const tx = await periodicAllocationPerfFeeMetaVault.connect(vaultManager.signer).chargePerformanceFee()
+
+                    await expect(tx).not.to.emit(periodicAllocationPerfFeeMetaVault, "PerformanceFee")
+                    const perfAssetsPerShareAfter = await periodicAllocationPerfFeeMetaVault.perfFeesAssetPerShare()
+                    expect(perfAssetsPerShareAfter).to.lt(perfAssetsPerShareBefore)
                 })
             })
             describe("after settlement and burning vault shares", () => {

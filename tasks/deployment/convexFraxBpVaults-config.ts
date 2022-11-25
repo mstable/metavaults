@@ -1,4 +1,4 @@
-import { CRV, CVX, crvFRAX, USDC, FRAX } from "@tasks/utils"
+import { CRV, crvFRAX, CVX, FRAX, USDC } from "@tasks/utils"
 import { ONE_DAY } from "@utils/constants"
 import { simpleToExactAmount } from "@utils/math"
 

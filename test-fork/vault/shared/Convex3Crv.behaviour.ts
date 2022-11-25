@@ -28,6 +28,7 @@ const log = logger("test:Convex3CrvVault")
 
 export type Convex3CrvVault = Convex3CrvBasicVault | Convex3CrvLiquidatorVault
 export type Convex3CrvCalculatorLibrary = Curve3CrvMetapoolCalculatorLibrary | Curve3CrvFactoryMetapoolCalculatorLibrary
+const isConvex3CrvLiquidatorVault = (vault: Convex3CrvVault): boolean => "donate" in vault
 
 export interface VaultData {
     address: string
@@ -130,7 +131,6 @@ export interface Convex3CrvContext {
         redeem: BigNumber
     }
 }
-const isConvex3CrvLiquidatorVault = (vault: Convex3CrvVault): boolean => "donate" in vault
 
 export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void => {
     const getAssetsFromTokens = async (tokens: BN): Promise<BN> => {
@@ -346,7 +346,6 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const baseVirtualPriceAfter = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
             expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
         })
-
         it("user deposits 3Crv assets to vault", async () => {
             const { amounts, threeCrvToken, owner, vault } = ctx()
 
@@ -396,9 +395,7 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const totalAssetsAfter = await vault.totalAssets()
             const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore).sub(donatedAssetsBefore)
             const donatedAssetsAfter = await threeCrvToken.balanceOf(vault.address)
-
             const assetsSlippage = basisPointDiff(amounts.initialDeposit, totalAssetsDiff)
-
             expect(assetsSlippage, "total assets diff to deposit amount").lte(50).gte(-50)
 
             // Add checks for donations

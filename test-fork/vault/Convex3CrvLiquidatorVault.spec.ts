@@ -3,10 +3,11 @@ import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
-import { BN, simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
-import { getAddress, keccak256, toUtf8Bytes } from "ethers/lib/utils"
+import { keccak256, toUtf8Bytes } from "ethers/lib/utils"
+
 import * as hre from "hardhat"
 import {
     Convex3CrvLiquidatorVault__factory,
@@ -21,7 +22,7 @@ import {
 } from "types/generated"
 
 import { behaveLikeConvex3CrvVault, snapVault } from "./shared/Convex3Crv.behaviour"
-
+import { assertDepositWithDonation, assertDonation } from "./shared/Convex3CrvLiquidatorVault.asserts"
 import type { Account } from "types/common"
 import type {
     Convex3CrvLiquidatorVault,
@@ -33,7 +34,6 @@ import type {
     IERC20,
     MockERC20,
 } from "types/generated"
-
 import type { Convex3CrvContext } from "./shared/Convex3Crv.behaviour"
 
 const governorAddress = resolveAddress("Governor")
@@ -277,7 +277,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             await threeCrvToken.connect(staker2.signer).approve(musdConvexVault.address, mintAmount)
             await musdConvexVault.connect(staker2.signer).mint(mintAmount, staker2.address)
         }
-        beforeEach(async () => {
+        before(async () => {
             await loadOrExecFixture(liquidationSetup)
         })
         it("collect rewards for batch", async () => {
@@ -286,11 +286,13 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         })
         it("donate DAI tokens back to vault", async () => {
             const donateAmount = simpleToExactAmount(1000, DAI.decimals)
-            await daiToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
-            const tx = await musdConvexVault.connect(mockLiquidator.signer).donate(DAI.address, donateAmount)
-
-            // Deposit events
-            await expect(tx).to.not.emit(musdConvexVault, "Deposit")
+            await assertDonation({
+                sender: mockLiquidator,
+                asset: threeCrvToken,
+                donatedToken: daiToken,
+                vault: musdConvexVault,
+                amount: donateAmount,
+            })
         })
         it("donate USDC tokens back to vault", async () => {
             const donateAmount = simpleToExactAmount(2000, USDC.decimals)
@@ -313,6 +315,15 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             await crvToken.connect(mockLiquidator.signer).approve(musdConvexVault.address, donateAmount)
             const tx = musdConvexVault.connect(mockLiquidator.signer).donate(CRV.address, donateAmount)
             await expect(tx).to.rejectedWith("token not in 3Pool")
+        })
+        it("deposit assets and any previously donated assets", async () => {
+            await assertDepositWithDonation({
+                sender: staker1,
+                receiver: staker1,
+                asset: threeCrvToken,
+                vault: musdConvexVault,
+                amount: depositAmount,
+            })
         })
     })
     describe("set donate token", () => {

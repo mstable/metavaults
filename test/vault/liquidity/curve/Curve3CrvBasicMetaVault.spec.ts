@@ -3,8 +3,9 @@ import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { Curve3CrvBasicMetaVault__factory, Curve3PoolCalculatorLibrary__factory } from "types/generated"
-import type { MockERC20, MockNexus, Curve3CrvBasicMetaVault } from "types/generated"
-import { Curve3CrvBasicMetaVaultLibraryAddresses } from "types/generated/factories/contracts/vault/liquidity/curve/Curve3CrvBasicMetaVault__factory"
+
+import type { Curve3CrvBasicMetaVault, MockERC20, MockNexus } from "types/generated"
+import type { Curve3CrvBasicMetaVaultLibraryAddresses } from "types/generated/factories/contracts/vault/liquidity/curve/Curve3CrvBasicMetaVault__factory"
 
 describe("Curve3CrvBasicMetaVault", () => {
     /* -- Declare shared variables -- */

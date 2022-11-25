@@ -11,10 +11,7 @@ import { StandardAccounts } from "@utils/machines"
 import { BN } from "@utils/math"
 import { CowSwapDex__factory, ERC20__factory, OneInchDexSwap__factory } from "types"
 
-import {
-    deployConvexFraxBpLiquidatorVault,
-    deployCurveFraxBpMetapoolCalculatorLibrary,
-} from "../convexFraxBpVault"
+import { deployConvexFraxBpLiquidatorVault, deployCurveFraxBpMetapoolCalculatorLibrary } from "../convexFraxBpVault"
 import { config } from "./convexFraxBpVaults-config"
 
 import type { CurveFraxBpMetaVaultsDeployed } from "@tasks/curveFraxBpVault"
@@ -25,8 +22,8 @@ import type {
     ConvexFraxBpPool,
     ConvexFraxBpVault,
     CowSwapDex,
-    CurveFraxBpMetapoolCalculatorLibrary,
     CurveFraxBpCalculatorLibrary,
+    CurveFraxBpMetapoolCalculatorLibrary,
     DelayedProxyAdmin,
     InstantProxyAdmin,
     Liquidator,

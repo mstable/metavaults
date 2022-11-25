@@ -15,6 +15,8 @@ import type {
     ConvexFraxBpBasicVault,
     ConvexFraxBpLiquidatorVault,
     DataEmitter,
+    Curve3CrvFactoryMetapoolCalculatorLibrary,
+    CurveFraxBpMetapoolCalculatorLibrary,
     IConvexRewardsPool,
     ICurveFraxBP,
     ICurveMetapool,
@@ -25,6 +27,7 @@ import { assertBNClose } from "@utils/assertions"
 const log = logger("test:ConvexFraxBpVault")
 
 export type ConvexFraxBpVault = ConvexFraxBpBasicVault | ConvexFraxBpLiquidatorVault
+export type ConvexFraxBpCalculatorLibrary = CurveFraxBpMetapoolCalculatorLibrary | Curve3CrvFactoryMetapoolCalculatorLibrary
 const isConvexFraxBpLiquidatorVault = (vault: ConvexFraxBpVault): boolean => "donate" in vault
 
 export interface VaultData {
@@ -119,6 +122,7 @@ export interface ConvexFraxBpContext {
     metapool: ICurveMetapool
     baseRewardsPool: IConvexRewardsPool
     dataEmitter: DataEmitter
+    convexFraxBpCalculatorLibrary: ConvexFraxBpCalculatorLibrary
     amounts: {
         initialDeposit: BigNumber
         deposit: BigNumber
@@ -204,6 +208,14 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
     const standardAssetsAmount = simpleToExactAmount(100000, 18)
     const standardSharesAmount = simpleToExactAmount(100000, 18)
 
+    // 1.- deployment checks (configurations, constructor, initialize)
+    //     proxies
+    //     liquidatorVaults (Convex)
+    //     periodicAllocationPerfFeeMetaVault ()
+    // 2.- behaviors
+    // 3.- PeriodicAllocationPerfFeeMetaVault
+    // 4.- Curve3CrvBasicMetaVault
+    // 5.- Convex3CrvLiquidatorVault
     describe("EIP-4626 view functions", () => {
         it("asset()", async () => {
             const { owner, vault } = ctx()
@@ -325,6 +337,7 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
         })
     })
     describe("EIP-4626 operations", () => {
+        let baseVirtualPriceBefore = BN.from(0)
         before(async () => {
             // Stop automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [false])
@@ -332,6 +345,13 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
         after(async () => {
             // Restore automine a new block with every transaction
             await ethers.provider.send("evm_setAutomine", [true])
+        })
+        beforeEach(async () => {
+            baseVirtualPriceBefore = await ctx().convexFraxBpCalculatorLibrary["getBaseVirtualPrice()"]()
+        })
+        afterEach(async () => {
+            const baseVirtualPriceAfter = await ctx().convexFraxBpCalculatorLibrary["getBaseVirtualPrice()"]()
+            expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
         })
         it("user deposits crvFrax assets to vault", async () => {
             const { amounts, crvFraxToken, owner, vault } = ctx()
@@ -379,10 +399,11 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
 
             // Total assets
             const totalAssetsAfter = await vault.totalAssets()
-            const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore)
+            const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore).sub(donatedAssetsBefore)
             const donatedAssetsAfter = await crvFraxToken.balanceOf(vault.address)
             const assetsSlippage = basisPointDiff(amounts.initialDeposit, totalAssetsDiff)
             expect(assetsSlippage, "total assets diff to deposit amount").lte(50).gte(-50)
+
             // Add checks for donations
             if (isConvexFraxBpLiquidatorVault(vault)) {
                 const vaultL = vault as ConvexFraxBpLiquidatorVault
