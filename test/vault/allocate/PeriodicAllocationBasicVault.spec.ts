@@ -1172,6 +1172,23 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
             })
+            it("after removal of underlying vault", async () => {
+                // transfer some assets to bVault1
+                await asset.transfer(bVault1.address, transferAmount)
+
+                // validate pre-removal assetPerShare
+                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
+
+                // Remove underlying vault
+                const tx = pabVault.connect(sa.governor.signer).removeVault(0)
+
+                // calculate updatedAssetPerShare
+                updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+
+                // validate post-removal properties and event
+                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
+                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
+            })
         })
         describe("vault params modify", async () => {
             context("singleVaultSharesThreshold", async () => {

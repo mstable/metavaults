@@ -1,7 +1,8 @@
+import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers"
 import { logger } from "@tasks/utils/logger"
 import { assertBNClose } from "@utils/assertions"
 import { DEAD_ADDRESS } from "@utils/constants"
-import { impersonate, loadOrExecFixture, stopImpersonate } from "@utils/fork"
+import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
@@ -215,7 +216,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             const vaultSigner = await impersonate(vault.address, true)
             await bVault0.connect(vaultSigner).deposit(assetsAmount, vault.address)
             if (network.name == "anvil") {
-                await stopImpersonate(vault.address)
+                await stopImpersonatingAccount(vault.address)
             }
         })
         it("totalAssets", async () => {
@@ -523,7 +524,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const vaultSigner = await impersonate(vault.address, true)
                     await bVault0.connect(vaultSigner).deposit(amounts.initialDeposit, vault.address)
                     if (network.name == "anvil") {
-                        await stopImpersonate(vault.address)
+                        await stopImpersonatingAccount(vault.address)
                     }
 
                     const bVault0MaxWithdrawAfter = await bVault0.maxWithdraw(vault.address)

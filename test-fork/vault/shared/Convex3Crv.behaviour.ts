@@ -1,7 +1,7 @@
 import { usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { ThreeCRV } from "@tasks/utils/tokens"
-import { ONE_DAY, SAFE_INFINITY } from "@utils/constants"
+import { ONE_DAY, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
@@ -22,11 +22,13 @@ import type {
     ICurveMetapool,
     IERC20,
 } from "types/generated"
+import { assertBNClose } from "@utils/assertions"
 
 const log = logger("test:Convex3CrvVault")
 
 export type Convex3CrvVault = Convex3CrvBasicVault | Convex3CrvLiquidatorVault
 export type Convex3CrvCalculatorLibrary = Curve3CrvMetapoolCalculatorLibrary | Curve3CrvFactoryMetapoolCalculatorLibrary
+const isConvex3CrvLiquidatorVault = (vault: Convex3CrvVault): boolean => "donate" in vault
 
 export interface VaultData {
     address: string
@@ -129,6 +131,7 @@ export interface Convex3CrvContext {
         redeem: BigNumber
     }
 }
+
 export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void => {
     const getAssetsFromTokens = async (tokens: BN): Promise<BN> => {
         const { threePool, metapool } = ctx()
@@ -343,13 +346,23 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             const baseVirtualPriceAfter = await ctx().convex3CrvCalculatorLibrary["getBaseVirtualPrice()"]()
             expect(baseVirtualPriceBefore, "virtual price should not change").to.be.eq(baseVirtualPriceAfter)
         })
-
         it("user deposits 3Crv assets to vault", async () => {
             const { amounts, threeCrvToken, owner, vault } = ctx()
+
+            let feeReceiver = ZERO_ADDRESS
+            let streamedSharesBefore = ZERO
+            if (isConvex3CrvLiquidatorVault(vault)) {
+                const vaultL = vault as Convex3CrvLiquidatorVault
+                feeReceiver = await vaultL.feeReceiver()
+                streamedSharesBefore = await vaultL.streamedShares()
+            }
 
             const receiver = Wallet.createRandom().address
             const ownerAssetsBefore = await threeCrvToken.balanceOf(owner.address)
             const totalAssetsBefore = await vault.totalAssets()
+            const receiverSharesBefore = await vault.balanceOf(receiver)
+            const feeReceiverSharesBefore = await vault.balanceOf(feeReceiver)
+            const donatedAssetsBefore = await threeCrvToken.balanceOf(vault.address)
 
             // Enough assets for deposit
             log(`owner's 3Crv balance ${usdFormatter(ownerAssetsBefore)}`)
@@ -374,14 +387,44 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
             expect(await threeCrvToken.balanceOf(owner.address), "owner assets").eq(ownerAssetsBefore.sub(amounts.initialDeposit))
             // Shares
             const totalSharesAfter = await vault.totalSupply({ blockTag: txDeposit.blockNumber })
-            const sharesMinted = totalSharesAfter.sub(totalSharesBefore)
-            expect(sharesMinted, "minted shares == preview shares").eq(previewShares)
-            expect(await vault.balanceOf(receiver), "receiver shares").eq(sharesMinted)
+            const receiverSharesAfter = await vault.balanceOf(receiver)
+            const receiverSharesMinted = receiverSharesAfter.sub(receiverSharesBefore)
+            expect(receiverSharesMinted, "minted shares == preview shares").eq(previewShares)
+
             // Total assets
             const totalAssetsAfter = await vault.totalAssets()
-            const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore)
+            const totalAssetsDiff = totalAssetsAfter.sub(totalAssetsBefore).sub(donatedAssetsBefore)
+            const donatedAssetsAfter = await threeCrvToken.balanceOf(vault.address)
             const assetsSlippage = basisPointDiff(amounts.initialDeposit, totalAssetsDiff)
             expect(assetsSlippage, "total assets diff to deposit amount").lte(50).gte(-50)
+
+            // Add checks for donations
+            if (isConvex3CrvLiquidatorVault(vault)) {
+                const vaultL = vault as Convex3CrvLiquidatorVault
+
+                const feeReceiverSharesAfter = await vaultL.balanceOf(feeReceiver)
+                const streamedSharesAfter = await vaultL.streamedShares()
+
+                const feeReceiverSharesMinted = feeReceiverSharesAfter.sub(feeReceiverSharesBefore)
+                const streamedSharesMinted = streamedSharesAfter.sub(streamedSharesBefore)
+                const sharesMinted = totalSharesAfter.sub(totalSharesBefore)
+                const donatedSharesMinted = sharesMinted.sub(receiverSharesMinted)
+
+                const donationFee = await vaultL.donationFee()
+                const feeScale = await vaultL.FEE_SCALE()
+                const feeReceiverSharesExpected = donatedSharesMinted.mul(donationFee).div(feeScale)
+                const streamedSharesExpected = donatedSharesMinted.sub(feeReceiverSharesExpected)
+
+                assertBNClose(
+                    sharesMinted,
+                    receiverSharesMinted.add(feeReceiverSharesMinted).add(streamedSharesMinted),
+                    BN.from(10),
+                    "total shares minted",
+                )
+                assertBNClose(feeReceiverSharesMinted, feeReceiverSharesExpected, BN.from(10), "fee receiver shares minted")
+                assertBNClose(streamedSharesMinted, streamedSharesExpected, BN.from(10), "shares to streamed minted")
+                expect(donatedAssetsAfter, "donated assets after").eq(ZERO)
+            }
         })
         it("user redeems some shares from vault", async () => {
             const { amounts, threeCrvToken, owner, vault } = ctx()

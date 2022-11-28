@@ -43,6 +43,10 @@ Find the [official Announcement here](https://medium.com/mstable/erc-4626-meta-v
 
 The first set of mStable meta vaults are for staking 3Pool-based (3Crv) Curve Metapool liquidity provider (LP) tokens in Convex. See [3Crv Convex Vaults](./3CrvConvexVaults.md) for more details.
 
+# FRAX-based Convex Vaults
+
+The second set of mStable meta vaults are for staking FRAX based [Curve](https://curve.fi/) Metapool liquidity provider (LP) tokens in [Convex](https://www.convexfinance.com/). That is, Metapools that include the FRAX+USDC (crvFRAX) LP token which is also referred to as the Frax base pool (FraxBP). See [FRAX-based Convex Vaults](./FraxBPConvexVaults.md) for more details.
+
 # Developer Notes
 
 ## Prerequisites
@@ -197,9 +201,16 @@ Unfortunately the generated markdown will not include inherited classes. These n
 -   https://github.com/mstable/mStable-data
 -   https://github.com/mstable/mStable-process-docs/tree/main/vaults
 
+## Meta Vaults links
+
+-   https://yield.mstable.org Meta Vault user Interface
+-   https://docs.mstable.org User documentation
+-   https://developers.mstable.org Developer documentation
+-   https://immunefi.com/bounty/mstable/ Bug bounty
+
 ## mStable version 1 app and documentation.
 
 -   https://mstable.org
 -   https://app.mstable.org
+-   https://staking.mstable.app
 -   https://github.com/mstable/mStable-contracts
--   https://docs.mstable.org

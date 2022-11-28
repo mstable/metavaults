@@ -27,14 +27,14 @@ const governorAddress = resolveAddress("Governor")
 const nexusAddress = resolveAddress("Nexus")
 const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const daiUserAddress = "0x075e72a5edf65f0a5f44699c7654c1a76941ddc8" // 250M at block 14810528
-const usdcUserAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
+const usdcUserAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // Maker: PSM-USDC-A
 const usdtUserAddress = "0x5754284f345afc66a98fbb0a0afe71e0f007b949" // Tether Treasury
 
 const normalBlock = 14810528
 
 const slippageData = {
     redeem: 101,
-    deposit: 99,
+    deposit: 10,
     withdraw: 11,
     mint: 10,
 }

@@ -111,32 +111,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
      */
     function donate(address token, uint256 amount) external virtual override streamRewards {
         (uint256 newShares, uint256 newAssets) = _convertTokens(token, amount);
-
-        StreamData memory stream = shareStream;
-        uint256 remainingStreamShares = _streamedShares(stream);
-
-        if (newShares > 0) {
-            // Not all shares have to be streamed. Some may be used as a fee.
-            (uint256 newStreamShares, uint256 streamAssets) = _beforeStreamShare(
-                newShares,
-                newAssets
-            );
-
-            uint256 sharesPerSecond = ((remainingStreamShares + newStreamShares) *
-                STREAM_PER_SECOND_SCALE) / STREAM_DURATION;
-
-            // Store updated stream data
-            shareStream = StreamData(
-                SafeCast.toUint32(block.timestamp),
-                SafeCast.toUint32(block.timestamp + STREAM_DURATION),
-                SafeCast.toUint128(sharesPerSecond)
-            );
-
-            // Mint new shares that will be burnt over time.
-            _mint(address(this), newStreamShares);
-
-            emit Deposit(msg.sender, address(this), streamAssets, newStreamShares);
-        }
+        _streamNewShares(newShares, newAssets);
     }
 
     /**
@@ -199,6 +174,45 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
             uint256 secondsSinceLast = stream.end - stream.last;
 
             remainingShares = (secondsSinceLast * stream.sharesPerSecond) / STREAM_PER_SECOND_SCALE;
+        }
+    }
+
+    /**
+     * @notice Mints shares so the assets per share does not increase initially,
+     * and then burns the new shares over a period of time
+     * so the assets per share gradually increases.
+     * For example, if 1,000 DAI is being donated is worth 800 vault shares and the donation fee is 16%. 128 (800 * 16%)
+     * of the new vault shares are minted to the fee receiver. The remaining 672 vault shares are minted to the vault so
+     * the assets per shares of the shareholders does not increase. Over the next week the new vault shares will be burnt
+     * which will increase the assets per share to the shareholders.
+     *
+     * @param newShares The amount of shares to stream.
+     * @param newAssets The amount of assets to stream.
+     */
+    function _streamNewShares(uint256 newShares, uint256 newAssets) internal virtual {
+        if (newShares > 0) {
+            StreamData memory stream = shareStream;
+            uint256 remainingStreamShares = _streamedShares(stream);
+            // Not all shares have to be streamed. Some may be used as a fee.
+            (uint256 newStreamShares, uint256 streamAssets) = _beforeStreamShare(
+                newShares,
+                newAssets
+            );
+
+            uint256 sharesPerSecond = ((remainingStreamShares + newStreamShares) *
+                STREAM_PER_SECOND_SCALE) / STREAM_DURATION;
+
+            // Store updated stream data
+            shareStream = StreamData(
+                SafeCast.toUint32(block.timestamp),
+                SafeCast.toUint32(block.timestamp + STREAM_DURATION),
+                SafeCast.toUint128(sharesPerSecond)
+            );
+
+            // Mint new shares that will be burnt over time.
+            _mint(address(this), newStreamShares);
+
+            emit Deposit(msg.sender, address(this), streamAssets, newStreamShares);
         }
     }
 
