@@ -1,6 +1,6 @@
 {
     "name": "@mstable/metavaults",
-    "version": "0.0.6",
+    "version": "0.0.7-dev",
     "description": "mStable EIP-4626 Tokenized Vaults",
     "author": "mStable <info@mstable.org>",
     "license": "AGPL-3.0-or-later",

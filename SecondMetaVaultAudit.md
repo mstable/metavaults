@@ -14,7 +14,7 @@ More detailed documentation of the Meta Vault can be found in the [README](./con
 
 # Code
 
-All code is in the [metavaults](https://github.com/mstable/metavaults) repository with tag ??? and commit hash ??? on the [fraxBP](https://github.com/mstable/metavaults/tree/fraxBP) branch.
+All code is in the [metavaults](https://github.com/mstable/metavaults) repository with tag [0.0.7-dev](https://github.com/mstable/metavaults/releases/tag/v0.0.7-dev) and commit hash [1657b7ed2f8b964783487a0d68f973c70036bdfb](https://github.com/mstable/metavaults/commit/1657b7ed2f8b964783487a0d68f973c70036bdfb) on the [develop](https://github.com/mstable/metavaults/tree/develop) branch.
 
 # Contract scope
 
