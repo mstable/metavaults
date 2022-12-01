@@ -32,6 +32,7 @@ interface IConvexBooster {
             address stash,
             bool shutdown
         );
+    function earmarkRewards(uint256 _pid) external returns (bool);
 
     function rewardClaimed(
         uint256 _pid,

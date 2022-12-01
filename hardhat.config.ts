@@ -9,6 +9,7 @@ import "@nomiclabs/hardhat-etherscan"
 import "ts-node/register"
 import "tsconfig-paths/register"
 import "solidity-docgen"
+import "hardhat-tracer";
 
 import { config as dotenvConfig } from "dotenv"
 import { resolve } from "path"

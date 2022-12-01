@@ -382,6 +382,11 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
         console.log(
             `Collected fees  : ${formatUnits(feeShares)} shares, ${formatUnits(feeAssets, assetToken.decimals)} ${assetToken.symbol}`,
         )
+        const earnedRewards = await vaultContract.earnedRewards({ blockTag: blk.blockNumber })
+
+        earnedRewards.rewardTokens_.forEach((rewardToken, i) => {
+            console.log(`Earned rewards  : ${rewardToken}, earned ${formatUnits(earnedRewards.rewards[i]).padStart(21)}`)
+        })
     })
 
 task("convex-3crv-snap").setAction(async (_, __, runSuper) => {

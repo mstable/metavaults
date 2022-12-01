@@ -367,4 +367,16 @@ contract ConvexFraxBpLiquidatorVault is
     function setDonateToken(address __donateToken) external onlyKeeperOrGovernor {
         _setDonateToken(__donateToken);
     }
+
+    /**
+     * @dev This implementation has the following assumtions:
+     *  - The cvx minter mints the same amount of crv earned rewards 1:1.
+     *  - There are not extra rewards to be claimed.
+     *
+     * @param rewards The amount of reward tokens earned.
+     */
+
+    function _earnedRewards(address) internal view override returns (uint256 rewards) {
+        rewards = baseRewardPool.earned(address(this));
+    }
 }

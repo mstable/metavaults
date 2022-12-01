@@ -91,6 +91,27 @@ task("liq-vault-collect-rewards").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
+subtask("liq-vault-earned-rewards", "Queries amount of reward tokens earned liquidator vault")
+    .addParam("vault", "Symbol or address of the vault.", undefined, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { speed, vault } = taskArgs
+
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const vaultAddress = await resolveAddress(vault, chain)
+        const liquidatorVault = ILiquidatorVault__factory.connect(vaultAddress, signer)
+
+        const earnedRewards = await liquidatorVault.earnedRewards()
+
+        earnedRewards.rewardTokens.forEach((rewardToken, i) => {
+            console.log(`Reward ${rewardToken}, earned ${formatUnits(earnedRewards.rewards[i]).padStart(21)}`)
+        })
+    })
+task("liq-vault-earned-rewards").setAction(async (_, __, runSuper) => {
+    await runSuper()
+})
 subtask("liq-vault-donate", "Donated tokens to a liquidator vault")
     .addParam("vault", "Symbol or address of the vault.", undefined, types.string)
     .addParam("token", "Symbol or address of the donated token.", undefined, types.string)

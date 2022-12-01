@@ -20,6 +20,10 @@ import { InitializableToken } from "../../../tokens/InitializableToken.sol";
 import { ICurve3Pool } from "../../../peripheral/Curve/ICurve3Pool.sol";
 import { ICurveMetapool } from "../../../peripheral/Curve/ICurveMetapool.sol";
 import { Curve3CrvMetapoolCalculatorLibrary } from "../../../peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol";
+import { IConvexRewardsPool } from "../../../peripheral/Convex/IConvexRewardsPool.sol";
+import { ConvexMintCalculatorLibrary } from "../../../peripheral/Convex/ConvexMintCalculatorLibrary.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @title   Convex Vault for #Pool (3Crv) based Curve Metapools that liquidates CRV and CVX rewards.
@@ -137,9 +141,40 @@ contract Convex3CrvLiquidatorVault is
     function _beforeCollectRewards() internal virtual override {
         // claim CRV and CVX from Convex
         // also claim any additional rewards if any.
+        console.log("sol: _beforeCollectRewards 0 rewardTokens_ 0xD533a949740bb3306d119CC777fa900bA034cd52, rewards %s",IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52).balanceOf(address(this)));
+        console.log("sol: _beforeCollectRewards 0 rewardTokens_ 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B, rewards %s",IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B).balanceOf(address(this)));
+
         baseRewardPool.getReward(address(this), true);
+        console.log("sol: _beforeCollectRewards");
+        console.log("sol: _beforeCollectRewards 1 rewardTokens_ 0xD533a949740bb3306d119CC777fa900bA034cd52, rewards %s",IERC20(0xD533a949740bb3306d119CC777fa900bA034cd52).balanceOf(address(this)));
+        console.log("sol: _beforeCollectRewards 1 rewardTokens_ 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B, rewards %s",IERC20(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B).balanceOf(address(this)));
     }
 
+    // function earnedRewards()
+    //     external
+    //     view
+    //     virtual
+    //     returns (address[] memory rewardTokens_, uint256[] memory rewards)
+    // {
+    //     // do nothing
+    // }
+
+    /**
+     * @dev This implementation has the following assumtions:
+     *  - The cvx minter mints the same amount of crv earned rewards 1:1.
+     *  - There are not extra rewards to be claimed.
+     *
+     * @param rewards The amount of reward tokens earned.
+     */
+
+    function _earnedRewards(address _rewardToken) internal view override returns (uint256 rewards) {
+        rewards = baseRewardPool.earned(address(this));
+        // CVX
+        if(_rewardToken == rewardToken[1]){
+            rewards = ConvexMintCalculatorLibrary.calcMint(rewards);
+        }
+        console.log("sol: _earnedRewards earned %s _rewardToken %s, balanceOf %s",rewards,_rewardToken, baseRewardPool.balanceOf(address(this)));
+    }
     /**
      * @dev Converts donated tokens (DAI, USDC or USDT) to vault assets (3Crv) and shares.
      * Transfers token from donor to vault.
@@ -427,4 +462,6 @@ contract Convex3CrvLiquidatorVault is
     function setDonateToken(address __donateToken) external onlyKeeperOrGovernor {
         _setDonateToken(__donateToken);
     }
+
+
 }

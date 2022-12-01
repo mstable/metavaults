@@ -154,4 +154,13 @@ contract Mock3CrvReverseLiquidatorVault is ILiquidatorVault, ImmutableModule {
     function setDonateToken(address _donateToken) external onlyKeeperOrGovernor {
         _setDonateToken(_donateToken);
     }
+
+    function earnedRewards()
+        external
+        view
+        virtual
+        returns (address[] memory rewardTokens_, uint256[] memory rewards)
+    {
+        // do nothing
+    }
 }

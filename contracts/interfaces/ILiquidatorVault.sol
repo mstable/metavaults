@@ -27,6 +27,19 @@ interface ILiquidatorVault {
         );
 
     /**
+     * @notice Calculates the rewards from underlying platforms or vaults to this vault and
+     * reports to the caller the amount of reward tokens than can be claimed by the vault.
+     *
+     *
+     * @param rewardTokens Array of reward tokens earned.
+     * @param rewards The amount of reward tokens earned.
+     */
+    function earnedRewards()
+        external
+        view
+        returns (address[] memory rewardTokens, uint256[] memory rewards);
+
+    /**
      * @notice Adds assets to a vault which decides what to do with the extra tokens.
      * If the tokens are the vault's asset, the simplest is for the vault to just add
      * to the other assets without minting any shares.

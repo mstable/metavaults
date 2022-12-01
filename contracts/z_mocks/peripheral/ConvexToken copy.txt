@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.17;
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
+interface IStaker{
+    function deposit(address, address) external;
+    function withdraw(address) external;
+    function withdraw(address, address, uint256) external;
+    function withdrawAll(address, address) external;
+    function createLock(uint256, uint256) external;
+    function increaseAmount(uint256) external;
+    function increaseTime(uint256) external;
+    function release() external;
+    function claimCrv(address) external returns (uint256);
+    function claimRewards(address) external;
+    function claimFees(address,address) external;
+    function setStashAccess(address, bool) external;
+    function vote(uint256,address,bool) external;
+    function voteGaugeWeight(address,uint256) external;
+    function balanceOfPool(address) external view returns (uint256);
+    function operator() external view returns (address);
+    function execute(address _to, uint256 _value, bytes calldata _data) external returns (bool, bytes memory);
+}
+
+contract ConvexToken is ERC20{
+    using SafeERC20 for IERC20;
+    using Address for address;
+
+    // address public operator;
+    address public constant cvx = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
+// 
+    uint256 public constant maxSupply = 100 * 1000000 * 1e18; //100mil
+    uint256 public constant totalCliffs = 1000;
+    uint256 public constant reductionPerCliff = 100000000000000000000000;
+
+    constructor(address _proxy)ERC20("Convex Token","CVX")
+    {
+        // operator = msg.sender;
+        // vecrvProxy = _proxy;
+        // reductionPerCliff = maxSupply / totalCliffs;
+    }
+
+    // //get current operator off proxy incase there was a change
+    // function updateOperator() public {
+    //     operator = IStaker(vecrvProxy).operator();
+    // }
+    
+    function calcMint(uint256 _amount) external view returns (uint256 amount_) {
+
+
+        uint256 supply = IERC20(cvx).totalSupply();
+        if(supply == 0){
+            return amount_;
+        }
+        
+        //use current supply to gauge cliff
+        //this will cause a bit of overflow into the next cliff range
+        //but should be within reasonable levels.
+        //requires a max supply check though
+        uint256 cliff = supply / reductionPerCliff;
+        //mint if below total cliffs
+        if(cliff < totalCliffs){
+            //for reduction% take inverse of current cliff
+            uint256 reduction = totalCliffs - cliff;
+            //reduce
+            _amount = _amount * reduction / totalCliffs;
+
+            //supply cap check
+            uint256 amtTillMax = maxSupply - supply;
+            if(_amount > amtTillMax){
+                _amount = amtTillMax;
+            }
+        }
+    }
+
+}

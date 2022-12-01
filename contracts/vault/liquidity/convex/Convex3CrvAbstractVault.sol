@@ -14,6 +14,7 @@ import { IConvexRewardsPool } from "../../../peripheral/Convex/IConvexRewardsPoo
 import { ICurveMetapool } from "../../../peripheral/Curve/ICurveMetapool.sol";
 import { ICurve3Pool } from "../../../peripheral/Curve/ICurve3Pool.sol";
 import { Curve3CrvMetapoolCalculatorLibrary } from "../../../peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol";
+import "hardhat/console.sol";
 
 /**
  * @title   Abstract ERC-4626 vault with a Curve.fi 3pool (3Crv) asset invested in a Curve metapool,
@@ -568,6 +569,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
 
         // Deposit Curve.fi Metapool LP token, eg musd3CRV, in Convex pool, eg cvxmusd3CRV, and stake.
         booster.deposit(convexPoolId, metapoolTokens_, true);
+        console.log("sol: _depositAndStake metapoolTokens_ %s, _assets %s", metapoolTokens_, _assets);
     }
 
     /// @dev Utility function to convert Curve Metapool LP tokens, eg musd3Crv, to expected 3Pool LP tokens (3Crv).

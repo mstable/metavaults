@@ -7,6 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 // Libs
 import { ILiquidatorVault } from "../../interfaces/ILiquidatorVault.sol";
 import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
+import "hardhat/console.sol";
 
 /**
  * @title   Vaults must implement this if they integrate to the Liquidator.
@@ -15,6 +16,7 @@ import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
  *          DATE:    2022-05-11
  *
  * Implementations must implement the `collectRewards` function.
+ * Implementations must implement the `earnedRewards` function.
  *
  * The following functions have to be called by implementing contract.
  * - constructor
@@ -58,6 +60,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
             address[] memory donateTokens
         )
     {
+        console.log("sol: collectRewards()");
         _beforeCollectRewards();
 
         uint256 rewardLen = rewardToken.length;
@@ -71,8 +74,37 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
             // Get reward token balance for this vault.
             rewards[i] = IERC20(rewardTokenMem).balanceOf(address(this));
             donateTokens[i] = _donateToken(rewardTokenMem);
+            console.log("sol: collectRewards rewardTokens_ %s, rewards %s, donateTokens %s",rewardTokens_[i],rewards[i],donateTokens[i]);
             unchecked {
                 ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Calculates the rewards from underlying platforms or vaults to this vault and
+     * reports to the caller the amount of reward tokens than can be claimed by the vault.
+     *
+     *
+     * @param rewardTokens_ Array of reward tokens earned.
+     * @param rewards The amount of reward tokens earned.
+     */
+    function earnedRewards()
+        external
+        view
+        virtual
+        returns (address[] memory rewardTokens_, uint256[] memory rewards)
+    {
+        uint256 rewardLen = rewardToken.length;
+        if (rewardLen > 0) {
+            rewardTokens_ = new address[](rewardLen);
+            rewards = new uint256[](rewardLen);
+            for (uint256 i = 0; i < rewardLen; ) {
+                rewardTokens_[i] = rewardToken[i];
+                rewards[i] = _earnedRewards(rewardToken[i]);
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
@@ -91,6 +123,15 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
      * @param reward Reward token that is being sold by the Liquidator.
      */
     function _donateToken(address reward) internal view virtual returns (address token);
+
+    /**
+     * @dev Return the amount of rewards earned of the given 'reward' token.
+     * This can be overridden to get rewards from underlying platforms or vaults.
+     * @param reward Reward token that is being earned.
+     */
+    function _earnedRewards(address reward) internal view virtual returns (uint256 rewards) {
+        // do nothing
+    }
 
     /**
      * @notice Adds new reward tokens to the vault so the liquidator module can transfer them from the vault.
