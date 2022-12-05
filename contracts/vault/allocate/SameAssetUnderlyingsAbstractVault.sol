@@ -247,8 +247,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @param vaultIndex Index of the underlying vault starting from 0.
      */
     function removeVault(uint256 vaultIndex) external onlyGovernor {
-        uint256 newUnderlyingVaultsLen = _activeUnderlyingVaults.length - 1;
-        require(vaultIndex <= newUnderlyingVaultsLen, "Invalid from vault index");
+        require(vaultIndex <= vaultIndexMap.indexes() - 1, "Invalid from vault index");
 
         // Resolve the external vault index to the index in the internal active underlying vaults.
         uint256 vaultIndexMapMem = vaultIndexMap;
@@ -269,6 +268,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
 
         address underlyingVault = address(_activeUnderlyingVaults[underlyingVaultIndex]);
 
+        uint256 newUnderlyingVaultsLen = _activeUnderlyingVaults.length - 1;
         // move all vaults to the left after the vault being removed
         for (uint256 i = underlyingVaultIndex; i < newUnderlyingVaultsLen; ) {
             _activeUnderlyingVaults[i] = _activeUnderlyingVaults[i + 1];
