@@ -214,3 +214,26 @@ Unfortunately the generated markdown will not include inherited classes. These n
 -   https://app.mstable.org
 -   https://staking.mstable.app
 -   https://github.com/mstable/mStable-contracts
+
+
+# Deployments
+
+
+## Convex 3Crv Vaults
+### Ethereum Mainnet
+
+| Contract                        | Address                                                                                                               | Repo Version|
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |-------| 
+| CowSwapDex    | [0xB305372B12Fd5d736EcB6BF903eaA844f2a23112](https://etherscan.io/address/0xB305372B12Fd5d736EcB6BF903eaA844f2a23112)  | [v0.0.5](https://github.com/mstable/metavaults/releases/tag/v0.0.5)|
+| Liquidator 	| [0xD298291059aed77686037aEfFCf497A321A4569e](https://etherscan.io/address/0xD298291059aed77686037aEfFCf497A321A4569e)  | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| Curve3CrvMetapoolCalculatorLibrary | [0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56](https://etherscan.io/address/0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| Curve3CrvFactoryMetapoolCalculatorLibrary | [0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9](https://etherscan.io/address/0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| Curve3CrvCalculatorLibrary | [0x092C1b41163c85054F008A486BA72347B919aFa7](https://etherscan.io/address/0x092C1b41163c85054F008A486BA72347B919aFa7)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| mUSD Convex Vault | [0xB9B47E72819934d7A5d60Bf08cD2C78072383EBb](https://etherscan.io/address/0xB9B47E72819934d7A5d60Bf08cD2C78072383EBb) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| FRAX Convex Vault | [0x98c5910823C2E67d54e4e0C03de44043DbfA7ca8](https://etherscan.io/address/0x98c5910823C2E67d54e4e0C03de44043DbfA7ca8) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| BUSD Convex Vault | [0x87Ed92648fAE3b3930577c92c8A247b127ED8949](https://etherscan.io/address/0x87Ed92648fAE3b3930577c92c8A247b127ED8949) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| 3Crv Meta Vault | [0x9614a4C61E45575b56c7e0251f63DCDe797d93C5](https://etherscan.io/address/0x9614a4C61E45575b56c7e0251f63DCDe797d93C5)   | [v0.0.6](https://github.com/mstable/metavaults/releases/tag/v0.0.6)|
+| USDC 3CRV Convex Meta Vault | [0x455fB969dC06c4Aa77e7db3f0686CC05164436d2](https://etherscan.io/address/0x455fB969dC06c4Aa77e7db3f0686CC05164436d2)   | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+
+
+
