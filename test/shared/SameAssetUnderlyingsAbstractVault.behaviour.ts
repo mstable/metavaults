@@ -196,14 +196,14 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
         alice = sa.alice
         ctx().variances = { ...defaultVariances, ...ctx().variances }
     })
-    describe("store values", async () => {
+    xdescribe("store values", async () => {
         it("should properly store valid arguments", async () => {
             const { vault } = ctx()
             expect(await vault.activeUnderlyingVaults(), "active underlying vaults").to.gt(0)
             expect(await vault.totalUnderlyingVaults(), "total underlying vaults").to.gt(0)
         })
     })
-    describe("read only functions", async () => {
+    xdescribe("read only functions", async () => {
         before("initial deposits", async () => {
             const { vault, asset, amounts } = ctx()
             const assetsAmount = amounts.initialDeposit
@@ -232,7 +232,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
         })
     })
     describe("vault management", async () => {
-        describe("rebalance", async () => {
+        xdescribe("rebalance", async () => {
             it("should fail if callee is not vaultManager", async () => {
                 const { vault, sa } = ctx()
                 const swap = {
@@ -339,7 +339,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 })
             })
         })
-        describe("add vault", async () => {
+        xdescribe("add vault", async () => {
             it("should fail if callee is not vault manger", async () => {
                 const { vault, sa } = ctx()
                 const tx = vault.connect(sa.alice.signer).addVault(DEAD_ADDRESS)
@@ -433,12 +433,12 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             })
         })
         describe("remove vault", async () => {
-            it("should fail if callee is not governor", async () => {
+            xit("should fail if callee is not governor", async () => {
                 const { vault, sa } = ctx()
                 const tx = vault.connect(sa.alice.signer).removeVault(0)
                 await expect(tx).to.be.revertedWith("Only governor can execute")
             })
-            it("should fail if index is out of range", async () => {
+            xit("should fail if index is out of range", async () => {
                 const { vault, sa } = ctx()
                 const activeUnderlyingVaults = await vault.activeUnderlyingVaults()
                 const tx = vault.connect(sa.governor.signer).removeVault(activeUnderlyingVaults)
@@ -466,7 +466,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     expect(await vault.resolveVaultIndex(1), "#1 vault before").to.eq(bVault1.address)
                     expect(await vault.resolveVaultIndex(totalUnderlyingVaultsBefore - 1), "#2 vault before").to.eq(bVaultNew.address)
                 })
-                it("should be able to remove first vault with zero balance", async () => {
+                xit("should be able to remove first vault with zero balance", async () => {
                     const { vault, sa } = ctx()
 
                     const tx = vault.connect(sa.governor.signer).removeVault(0)
@@ -480,7 +480,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     expect(await vault.activeUnderlyingVaults(), "# active vaults after").to.eq(activeUnderlyingVaultsBefore - 1)
                     expect(await vault.totalUnderlyingVaults(), "# total vaults after").to.eq(totalUnderlyingVaultsBefore)
                 })
-                it("should be able to remove second vault with zero balance", async () => {
+                xit("should be able to remove second vault with zero balance", async () => {
                     const { vault, sa } = ctx()
 
                     const tx = vault.connect(sa.governor.signer).removeVault(1)
@@ -494,7 +494,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     expect(await vault.activeUnderlyingVaults(), "# active vaults after").to.eq(activeUnderlyingVaultsBefore - 1)
                     expect(await vault.totalUnderlyingVaults(), "# total vaults after").to.eq(totalUnderlyingVaultsBefore)
                 })
-                it("should be able to remove last vault with zero balance", async () => {
+                xit("should be able to remove last vault with zero balance", async () => {
                     const { vault, sa } = ctx()
 
                     const tx = vault.connect(sa.governor.signer).removeVault(activeUnderlyingVaultsBefore - 1)
@@ -512,7 +512,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     expect(await vault.activeUnderlyingVaults(), "# active vaults after").to.eq(activeUnderlyingVaultsBefore - 1)
                     expect(await vault.totalUnderlyingVaults(), "# total vaults after").to.eq(totalUnderlyingVaultsBefore)
                 })
-                it("should be able to remove first vault with balance", async () => {
+                xit("should be able to remove first vault with balance", async () => {
                     const { amounts, asset, vault, sa, variances } = ctx()
                     const bVault0MaxWithdrawBefore = await bVault0.maxWithdraw(vault.address)
                     const assetBalanceOfVaultBefore = await asset.balanceOf(vault.address)
@@ -557,6 +557,41 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                         variances.totalAssets,
                         "meta vault asset balance after",
                     )
+                })
+                it("should be able to correctly remove neth vault when some of < n indexed vaults are removed", async () => {
+                    const { vault, sa, asset } = ctx()
+                    const nexus = mocks.nexus
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+                    console.log("activeVaults beforeRemove: ", (await vault.activeUnderlyingVaults()).toNumber())
+                    // Added 5 underlying active vaults
+                    // Map will look like this
+                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF43210
+
+
+                    await vault.connect(sa.governor.signer).removeVault(2)
+                    await vault.connect(sa.governor.signer).removeVault(3)
+                    console.log("activeVaults afterRemove: ", (await vault.activeUnderlyingVaults()).toNumber())
+                    // Map is now updated to:
+                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF2FFF10
+
+                    // Following fn will revert as expected because the corresponding index on the map is 0xF
+                    // "Inactive vault"
+                    const tx = vault.connect(sa.governor.signer).removeVault(2)
+                    await expect(tx).to.be.revertedWith("Inactive vault")
+                    console.log("activeVaults again: ", (await vault.activeUnderlyingVaults()).toNumber())
+
+                    // Should correctly remove nth vault
+                    const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(4)
+                    await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(4, await vault.resolveVaultIndex(4))
                 })
             })
         })
