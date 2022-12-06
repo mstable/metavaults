@@ -571,14 +571,12 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
 
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
-                    expect(await vault.activeUnderlyingVaults()).to.eq(5)
                     // Added 5 underlying active vaults
                     // Map will look like this
                     // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF43210
 
                     await vault.connect(sa.governor.signer).removeVault(2)
                     await vault.connect(sa.governor.signer).removeVault(3)
-                    expect(await vault.activeUnderlyingVaults()).to.eq(3)
                     // Map is now updated to:
                     // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF2FFF10
 
@@ -586,13 +584,11 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     // "Inactive vault"
                     const tx = vault.connect(sa.governor.signer).removeVault(2)
                     await expect(tx).to.be.revertedWith("Inactive vault")
-                    expect(await vault.activeUnderlyingVaults()).to.eq(3)
 
                     // Should correctly remove nth vault
                     const nVaultAddress = await vault.resolveVaultIndex(4)
                     const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(4)
                     await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(4, nVaultAddress)
-                    expect(await vault.activeUnderlyingVaults()).to.eq(2)
                 })
             })
         })
