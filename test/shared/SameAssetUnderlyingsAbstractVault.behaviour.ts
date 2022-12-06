@@ -558,6 +558,38 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                         "meta vault asset balance after",
                     )
                 })
+                it("should be able to correctly remove neth vault when some of < n indexed vaults are removed", async () => {
+                    const { vault, sa, asset } = ctx()
+                    const nexus = mocks.nexus
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+                    // Added 5 underlying active vaults
+                    // Map will look like this
+                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF43210
+
+                    await vault.connect(sa.governor.signer).removeVault(2)
+                    await vault.connect(sa.governor.signer).removeVault(3)
+                    // Map is now updated to:
+                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF2FFF10
+
+                    // Following fn will revert as expected because the corresponding index on the map is 0xF
+                    // "Inactive vault"
+                    const tx = vault.connect(sa.governor.signer).removeVault(2)
+                    await expect(tx).to.be.revertedWith("Inactive vault")
+
+                    // Should correctly remove nth vault
+                    const nVaultAddress = await vault.resolveVaultIndex(4)
+                    const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(4)
+                    await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(4, nVaultAddress)
+                })
             })
         })
     })
