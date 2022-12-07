@@ -498,6 +498,60 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                         await expect(redeemTx).to.be.revertedWith("not enough assets")
                     })
+                    it("redeem should recalculate assets amount when assetsPerShareThreshold is breached", async () => {
+                        // assets amount calculated by redeem before assetsPerShare update
+                        const assetsAmountBefore = await pabVault.previewRedeem(aboveThresholdAmount)
+                        const userAssetsBefore = await asset.balanceOf(user.address)
+
+                        const transferAmount = oneMil.mul(2)
+                        // Send some assets to bVault1 to change assetPerShare
+                        await asset.transfer(bVault1.address, transferAmount)
+
+                        // Calculate updatedAssetsPerShare
+                        const updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+                        expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
+
+                        // Calculate assets to be received by user
+                        const assetsAmountAfter = aboveThresholdAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+
+                        const redeemTx = pabVault.connect(user.signer).redeem(aboveThresholdAmount, user.address, user.address)
+
+                        // assetsPerShare updated by redeem tx
+                        await expect(redeemTx).to.emit(pabVault, "AssetsPerShareUpdated")
+                        expect(await pabVault.assetsPerShare()).to.eq(updatedAssetPerShare)
+
+                        // assets amount after assetsPerShare update
+                        const userAssetsReceived = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
+                        expect(userAssetsReceived).to.gt(assetsAmountBefore)
+                        expect(userAssetsReceived).to.eq(assetsAmountAfter)
+                    })
+                    it("mint should recalculate assets amount when assetsPerShareThreshold is breached", async () => {
+                        // assets amount calculated by mint before assetsPerShare update
+                        const assetsAmountBefore = await pabVault.previewMint(aboveThresholdAmount)
+                        const userAssetsBefore = await asset.balanceOf(user.address)
+
+                        const transferAmount = oneMil.mul(2)
+                        // Send some assets to bVault1 to change assetPerShare
+                        await asset.transfer(bVault1.address, transferAmount)
+
+                        // Calculate updatedAssetsPerShare
+                        const updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+                        expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
+
+                        // Calculate assets transferred from user
+                        const assetsAmountAfter = aboveThresholdAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+
+                        const mintTx = pabVault.connect(user.signer).mint(aboveThresholdAmount, user.address)
+
+                        // assetsPerShare updated by mint tx
+                        await expect(mintTx).to.emit(pabVault, "AssetsPerShareUpdated")
+                        expect(await pabVault.assetsPerShare()).to.eq(updatedAssetPerShare)
+
+                        // assets amount after assetsPerShare update
+                        const userAssetsConsumed = (userAssetsBefore).sub(await asset.balanceOf(user.address))
+                        expect(userAssetsConsumed).to.gt(assetsAmountBefore)
+                        expect(userAssetsConsumed).to.eq(assetsAmountAfter)
+                    })
                     context("it should correctly source assets with", async () => {
                         it("sharesRedeemed > singleVaultShareThreshold", async () => {
                             const userSharesBefore = await pabVault.balanceOf(user.address)
