@@ -281,6 +281,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         // Remove the underlying vault from the vault index map.
         vaultIndexMap = vaultIndexMapMem.removeValue(underlyingVaultIndex);
 
+        // reset allowance
+        _asset.safeApprove(underlyingVault, 0);
+
         // Call _afterRemoveVault
         _afterRemoveVault();
 
