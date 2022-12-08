@@ -590,6 +590,19 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(4)
                     await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(4, nVaultAddress)
                 })
+                it("should be able to remove and re-add vault", async () => {
+                    const { vault, sa } = ctx()
+
+                    expect( await vault.resolveVaultIndex(0)).to.equal(bVault0.address);
+                    // Remove underlying vault
+                    const removeTx = vault.connect(sa.governor.signer).removeVault(0)
+                    await expect(removeTx).to.emit(vault, "RemovedVault").withArgs(0, bVault0.address)
+
+                    // Add it again
+                    totalUnderlyingVaultsBefore = (await vault.totalUnderlyingVaults()).toNumber()
+                    const addTx = vault.connect(sa.governor.signer).addVault(bVault0.address)
+                    await expect(addTx).to.emit(vault, "AddedVault").withArgs(totalUnderlyingVaultsBefore, bVault0.address)
+                })
             })
         })
     })
