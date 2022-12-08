@@ -128,7 +128,11 @@ abstract contract PeriodicAllocationAbstractVault is
         returns (uint256 assets)
     {
         assets = _previewMint(shares);
-        _checkAndUpdateAssetPerShare(assets);
+        if(_checkAndUpdateAssetPerShare(assets)) {
+            // if assetsPerShare updated recalculate assets amount
+            assets = _previewMint(shares);
+        }
+
         _transferAndMint(assets, shares, receiver, false);
     }
 
@@ -177,7 +181,10 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 assets) {
         assets = _previewRedeem(shares);
-        _checkAndUpdateAssetPerShare(assets);
+        if(_checkAndUpdateAssetPerShare(assets)) {
+            // if assetsPerShare updated recalculate assets amount
+            assets = _previewRedeem(shares);
+        }
 
         uint256 availableAssets = _sourceAssets(assets, shares);
         require(availableAssets >= assets, "not enough assets");
@@ -298,14 +305,16 @@ abstract contract PeriodicAllocationAbstractVault is
 
     /// @dev Checks whether assetPerShare needs to be updated and updates it.
     /// @param _assets Amount of assets requested for transfer to/from the vault.
-    function _checkAndUpdateAssetPerShare(uint256 _assets) internal {
+    function _checkAndUpdateAssetPerShare(uint256 _assets) internal returns (bool isUpdated) {
         // 0 threshold means update before each transfer
         if (assetPerShareUpdateThreshold == 0) {
             _updateAssetPerShare();
+            isUpdated = true;
         } else {
             // if the transferred amount including this transfer is above threshold
             if (assetsTransferred + _assets >= assetPerShareUpdateThreshold) {
                 _updateAssetPerShare();
+                isUpdated = true;
 
                 // reset assetsTransferred
                 assetsTransferred = 0;
