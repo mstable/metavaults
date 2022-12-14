@@ -47,7 +47,7 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         override
         returns (uint256 shares)
     {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, false);
     }
 
     /**
@@ -55,7 +55,7 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
      * Use the assets per share value from the last settlement
      */
     function _previewMint(uint256 shares) internal view virtual override returns (uint256 assets) {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, true);
     }
 
     /**
@@ -69,7 +69,7 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         override
         returns (uint256 shares)
     {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, true);
     }
 
     /**
@@ -83,7 +83,7 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         override
         returns (uint256 assets)
     {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -91,7 +91,7 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev uses the stored `assetsPerShare` to convert shares to assets.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
@@ -99,10 +99,14 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         returns (uint256 assets)
     {
         assets = (shares * assetsPerShare) / ASSETS_PER_SHARE_SCALE;
+
+        if (isRoundUp && mulmod(shares, assetsPerShare, ASSETS_PER_SHARE_SCALE) > 0) {
+            assets += 1;
+        }
     }
 
     /// @dev uses the stored `assetsPerShare` to convert assets to shares.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
@@ -110,6 +114,10 @@ abstract contract AssetPerShareAbstractVault is AbstractVault {
         returns (uint256 shares)
     {
         shares = (assets * ASSETS_PER_SHARE_SCALE) / assetsPerShare;
+
+        if (isRoundUp && mulmod(assets, ASSETS_PER_SHARE_SCALE, assetsPerShare) > 0) {
+            shares += 1;
+        }
     }
 
     /// @dev Updates assetPerShare of this vault to be expanted by the child contract to charge perf fees every assetPerShare update.

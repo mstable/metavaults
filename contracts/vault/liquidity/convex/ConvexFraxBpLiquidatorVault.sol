@@ -316,24 +316,24 @@ contract ConvexFraxBpLiquidatorVault is
         LiquidatorStreamAbstractVault._streamNewShares(newShares, newAssets);
     }
 
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, ConvexFraxBpAbstractVault)
         returns (uint256 assets)
     {
-        assets = ConvexFraxBpAbstractVault._convertToAssets(shares);
+        assets = ConvexFraxBpAbstractVault._convertToAssets(shares, isRoundUp);
     }
 
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, ConvexFraxBpAbstractVault)
         returns (uint256 shares)
     {
-        shares = ConvexFraxBpAbstractVault._convertToShares(assets);
+        shares = ConvexFraxBpAbstractVault._convertToShares(assets, isRoundUp);
     }
 
      /***************************************

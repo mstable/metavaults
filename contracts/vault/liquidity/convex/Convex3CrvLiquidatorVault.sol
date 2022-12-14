@@ -374,25 +374,25 @@ contract Convex3CrvLiquidatorVault is
     ****************************************/
 
     /// @dev use Convex3CrvAbstractVault implementation.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, Convex3CrvAbstractVault)
         returns (uint256 assets)
     {
-        assets = Convex3CrvAbstractVault._convertToAssets(shares);
+        assets = Convex3CrvAbstractVault._convertToAssets(shares, isRoundUp);
     }
 
     /// @dev use Convex3CrvAbstractVault implementation.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, Convex3CrvAbstractVault)
         returns (uint256 shares)
     {
-        shares = Convex3CrvAbstractVault._convertToShares(assets);
+        shares = Convex3CrvAbstractVault._convertToShares(assets, isRoundUp);
     }
 
     /***************************************

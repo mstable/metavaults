@@ -67,7 +67,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _previewDeposit(uint256 assets) internal view virtual returns (uint256 shares) {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, false);
     }
 
     function maxDeposit(address caller) external view override returns (uint256 maxAssets) {
@@ -102,7 +102,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _previewMint(uint256 shares) internal view virtual returns (uint256 assets) {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, true);
     }
 
     function maxMint(address owner) external view override returns (uint256 maxShares) {
@@ -162,7 +162,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _previewWithdraw(uint256 assets) internal view virtual returns (uint256 shares) {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, true);
     }
 
     function maxWithdraw(address owner) external view override returns (uint256 maxAssets) {
@@ -199,7 +199,7 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     }
 
     function _previewRedeem(uint256 shares) internal view virtual returns (uint256 assets) {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, false);
     }
 
     function maxRedeem(address owner) external view override returns (uint256 maxShares) {
@@ -266,16 +266,22 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         override
         returns (uint256 assets)
     {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, false);
     }
 
-    function _convertToAssets(uint256 shares) internal view virtual returns (uint256 assets) {
+    function _convertToAssets(uint256 shares, bool isRoundUp) internal view virtual returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
         if (totalShares == 0) {
             assets = shares; // 1:1 value of shares and assets
         } else {
-            assets = (shares * totalAssets()) / totalShares;
+            uint256 totalAssetsMem = totalAssets();
+            assets = (shares * totalAssetsMem) / totalShares;
+
+            // Round Up if needed
+            if(isRoundUp && mulmod(shares, totalAssetsMem, totalShares) > 0) {
+                assets += 1;
+            }
         }
     }
 
@@ -286,16 +292,22 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         override
         returns (uint256 shares)
     {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, false);
     }
 
-    function _convertToShares(uint256 assets) internal view virtual returns (uint256 shares) {
+    function _convertToShares(uint256 assets, bool isRoundUp) internal view virtual returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
         if (totalShares == 0) {
             shares = assets; // 1:1 value of shares and assets
         } else {
-            shares = (assets * totalShares) / totalAssets();
+            uint256 totalAssetsMem = totalAssets();
+            shares = (assets * totalShares) / totalAssetsMem;
+
+            // Round Up if needed
+            if (isRoundUp && mulmod(assets, totalShares, totalAssetsMem) > 0) {
+                shares += 1;
+            }
         }
     }
 

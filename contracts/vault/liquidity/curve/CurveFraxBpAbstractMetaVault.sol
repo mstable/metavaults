@@ -168,7 +168,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         shares = _getSharesFromMetaVaultShares(
             metaVaultSharesReceived,
             metaVaultSharesBefore,
-            totalSupply()
+            totalSupply(),
+            false
         );
 
         _mint(_receiver, shares);
@@ -205,7 +206,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
                 totalMetaVaultShares,
-                totalSupply()
+                totalSupply(),
+                false
             );
         }
     }
@@ -236,7 +238,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         uint256 requiredMetaVaultShares = _getMetaVaultSharesFromShares(
             shares,
             totalMetaVaultShares,
-            totalSupply()
+            totalSupply(),
+            true
         );
 
         // Calculate crvFrax needed to mint the required Meta Vault shares
@@ -287,7 +290,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             uint256 requiredMetaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
                 totalMetaVaultShares,
-                totalSupply()
+                totalSupply(),
+                true
             );
 
             // Calculate crvFrax needed to mint the required Meta Vault shares
@@ -341,7 +345,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
                 totalMetaVaultSharesBefore,
-                totalSupply()
+                totalSupply(),
+                true
             );
 
             // If caller is not the owner of the shares
@@ -413,7 +418,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
                 totalMetaVaultShares,
-                totalSupply()
+                totalSupply(),
+                true
             );
         }
     }
@@ -491,7 +497,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             uint256 metaVaultShares = _getMetaVaultSharesFromShares(
                 _shares,
                 totalMetaVaultShares,
-                totalSupply()
+                totalSupply(),
+                false
             );
 
             // Burn underlying meta vault shares and receive FraxBp LP tokens (crvFrax).
@@ -556,7 +563,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             uint256 metaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
                 totalMetaVaultShares,
-                totalSupply()
+                totalSupply(),
+                false
             );
 
             // Convert underlying meta vault shares to FraxBp LP tokens (crvFrax).
@@ -596,7 +604,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             metaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
                 totalMetaVaultShares,
-                totalShares
+                totalShares,
+                false
             );
         }
 
@@ -637,7 +646,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
                 totalMetaVaultShares,
-                totalShares
+                totalShares,
+                false
             );
         }
     }
@@ -716,24 +726,32 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
     function _getSharesFromMetaVaultShares(
         uint256 _metaVaultShares,
         uint256 _totalMetaVaultShares,
-        uint256 _totalShares
+        uint256 _totalShares,
+        bool isRoundUp
     ) internal pure returns (uint256 shares) {
         if (_totalMetaVaultShares == 0) {
             shares = _metaVaultShares;
         } else {
             shares = (_metaVaultShares * _totalShares) / _totalMetaVaultShares;
+            if (isRoundUp && mulmod(_metaVaultShares, _totalShares, _totalMetaVaultShares) > 0) {
+                shares += 1;
+            }
         }
     }
 
     function _getMetaVaultSharesFromShares(
         uint256 _shares,
         uint256 _totalMetaVaultShares,
-        uint256 _totalShares
+        uint256 _totalShares,
+        bool isRoundUp
     ) internal pure returns (uint256 metaVaultShares) {
         if (_totalShares == 0) {
             metaVaultShares = _shares;
         } else {
             metaVaultShares = (_shares * _totalMetaVaultShares) / _totalShares;
+            if (isRoundUp && mulmod(_shares, _totalMetaVaultShares, _totalShares) > 0) {
+                metaVaultShares += 1;
+            }
         }
     }
 
