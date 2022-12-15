@@ -110,3 +110,5 @@ export const sqrt = (value: BN | number): BN => {
 export const sum = (a: BN, b: BN): BN => a.add(b)
 
 export const basisPointDiff = (a: BN, b: BN): BN => ((a.sub(b).mul(10000))).div(a)
+
+export const roundUp = (a: BN, b: BN): BN => (a.mod(b).gt(0) ? a.div(b).add(1) : a.div(b))
