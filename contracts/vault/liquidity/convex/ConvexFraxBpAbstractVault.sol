@@ -253,7 +253,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             shares,
             baseRewardPool.balanceOf(address(this)),
             totalSupply(),
-            true
+            false
         );
         uint256 requiredMetapoolTokens = metapoolTokens + donatedMetapoolTokens;
 
@@ -319,7 +319,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
                 shares,
                 baseRewardPool.balanceOf(address(this)),
                 totalSupply(),
-                true
+                false
             );
             (uint256 assetsToDeposit, , , ) = CurveFraxBpMetapoolCalculatorLibrary.calcMint(
                 metapool,

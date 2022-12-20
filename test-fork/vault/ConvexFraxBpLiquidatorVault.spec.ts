@@ -255,6 +255,26 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             behaveLikeConvexFraxBpVault(() => ctx)
         })
     })
+    describe("withdraw should round up", async () => {
+        before(async () => {
+            await setup(normalBlock)
+            await deployVault()
+
+            await crvFraxToken.connect(staker1.signer).approve(busdFraxConvexVault.address, SAFE_INFINITY)
+        })
+        it("withdrawing assets should round up", async () => {
+            // vault asset/share ratio is 11:10 after the following 2 transactions
+            await busdFraxConvexVault.connect(staker1.signer)["deposit(uint256,address)"](10, staker1.address)
+            await crvFraxToken.connect(staker1.signer).transfer(busdFraxConvexVault.address, 1)
+
+            const userSharesBefore = await busdFraxConvexVault.balanceOf(staker1.address)
+            // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+            // According to erc4626 it should round up, thus burning 3 shares
+            await busdFraxConvexVault.connect(staker1.signer).withdraw(3, staker1.address, staker1.address)
+            const userSharesAfter = await busdFraxConvexVault.balanceOf(staker1.address)
+            expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+        })
+    })
     describe("reward liquidations", () => {
         before(async () => {
             await setup(normalBlock)
