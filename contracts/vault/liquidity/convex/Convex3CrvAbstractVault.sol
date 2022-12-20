@@ -252,7 +252,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             shares,
             baseRewardPool.balanceOf(address(this)),
             totalSupply(),
-            true
+            false
         );
         uint256 requiredMetapoolTokens = metapoolTokens + donatedMetapoolTokens;
 
@@ -317,7 +317,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
                 shares,
                 baseRewardPool.balanceOf(address(this)),
                 totalSupply(),
-                true
+                false
             );
             (uint256 assetsToDeposit, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcMint(
                 metapool,

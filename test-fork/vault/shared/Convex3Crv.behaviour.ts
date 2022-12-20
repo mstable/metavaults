@@ -2,7 +2,7 @@ import { usdFormatter } from "@tasks/utils"
 import { logger } from "@tasks/utils/logger"
 import { ThreeCRV } from "@tasks/utils/tokens"
 import { ONE_DAY, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
-import { basisPointDiff, BN, simpleToExactAmount } from "@utils/math"
+import { basisPointDiff, BN, simpleToExactAmount, roundUp } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
 import { Wallet } from "ethers"
@@ -23,6 +23,7 @@ import type {
     IERC20,
 } from "types/generated"
 import { assertBNClose } from "@utils/assertions"
+import { vault } from "types/generated/contracts"
 
 const log = logger("test:Convex3CrvVault")
 
@@ -145,24 +146,24 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
         const metapoolVP = await metapool.get_virtual_price()
         return threePoolVP.mul(assets).div(metapoolVP)
     }
-    const getSharesFromTokens = async (tokens: BN): Promise<BN> => {
+    const getSharesFromTokens = async (tokens: BN, isRoundUp: boolean): Promise<BN> => {
         const { baseRewardsPool, vault } = ctx()
         const totalTokens = await baseRewardsPool.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
         if (totalTokens.eq(0)) {
             return tokens
         } else {
-            return tokens.mul(totalShares).div(totalTokens)
+            return isRoundUp ? roundUp(tokens.mul(totalShares), totalTokens) : tokens.mul(totalShares).div(totalTokens)
         }
     }
-    const getTokensFromShares = async (shares: BN): Promise<BN> => {
+    const getTokensFromShares = async (shares: BN, isRoundUp: boolean): Promise<BN> => {
         const { baseRewardsPool, vault } = ctx()
         const totalTokens = await baseRewardsPool.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
         if (totalShares.eq(0)) {
             return shares
         } else {
-            return shares.mul(totalTokens).div(totalShares)
+            return isRoundUp ? roundUp(shares.mul(totalTokens), totalShares) : shares.mul(totalTokens).div(totalShares)
         }
     }
     const sendStaticTxs = async (
@@ -226,7 +227,7 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
         it("convertToAssets()", async () => {
             const { owner, vault } = ctx()
 
-            const expectedAssets = await getAssetsFromTokens(await getTokensFromShares(standardSharesAmount))
+            const expectedAssets = await getAssetsFromTokens(await getTokensFromShares(standardSharesAmount, false))
             expect(await vault.convertToAssets(standardSharesAmount), "convertToAssets").gte(expectedAssets)
 
             await owner.signer.sendTransaction(await vault.populateTransaction.convertToAssets(standardSharesAmount))
@@ -234,7 +235,7 @@ export const behaveLikeConvex3CrvVault = (ctx: () => Convex3CrvContext): void =>
         it("convertToShares()", async () => {
             const { owner, vault } = ctx()
 
-            const expectedShares = await getSharesFromTokens(await getTokensFromAssets(standardAssetsAmount))
+            const expectedShares = await getSharesFromTokens(await getTokensFromAssets(standardAssetsAmount), false)
             expect(await vault.convertToShares(standardAssetsAmount), "convertToShares").lte(expectedShares)
 
             await owner.signer.sendTransaction(await vault.populateTransaction.convertToShares(standardAssetsAmount))
