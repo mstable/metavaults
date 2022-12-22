@@ -99,6 +99,7 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
 
         const receipt = await tx.wait()
         const events = receipt.events?.find((e) => e.event === "CollectedRewards")
+        const totalRewards = {};
 
         let i = 0
         for (const rewards of events?.args?.rewards) {
@@ -107,9 +108,14 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
                 const vaultToken = await resolveAssetToken(signer, chain, vaultsAddress[i])
                 const rewardToken = await resolveAssetToken(signer, chain, events?.args?.rewardTokens[i][j])
                 log(`Collected ${formatUnits(reward, rewardToken.decimals)} ${rewardToken.symbol} rewards from vault ${vaultToken.symbol}`)
+                totalRewards[rewardToken.symbol]= totalRewards[rewardToken.symbol] ? totalRewards[rewardToken.symbol].add(reward): reward;
                 j++
             }
             i++
+        }
+        for (const symbol in totalRewards) {
+            const rewardToken = await resolveAssetToken(signer, chain, symbol)
+            log(`Total Collected ${formatUnits(totalRewards[symbol], rewardToken.decimals)} ${symbol}`)
         }
     })
 task("liq-collect-rewards").setAction(async (_, __, runSuper) => {
@@ -207,7 +213,7 @@ subtask("liq-settle-swap", "Settle CoW Swap swap")
         }
         const fromAssetAddress = order.sellToken
         const toAssetAddress = order.buyToken
-        const toAssetAmount = order.sellAmount
+        const toAssetAmount = order.buyAmount
 
         // Settle the order
         const tx = await liquidatorContract.settleSwap(fromAssetAddress, toAssetAddress, toAssetAmount, [])
