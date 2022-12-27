@@ -176,17 +176,7 @@ contract Convex3CrvLiquidatorVault is
             basePoolAmounts,
             0 // slippage protection will be done on the second deposit into the Metapool
         );
-
-        // Slippage and flash loan protection
-        // Convert DAI, USDC or USDT to Metapool LP tokens, eg musd3CRV.
-        // This method uses the Metapool's virtual price which can not be manipulated with a flash loan.
-        uint256 minMetapoolTokens = Curve3CrvMetapoolCalculatorLibrary.convertUsdToMetaLp(
-            metapool,
-            scaledUsdAmount
-        );
-        // Then reduce the metapol LP tokens amount by the slippage. eg 10 basis points = 0.1%
-        minMetapoolTokens = (minMetapoolTokens * (BASIS_SCALE - depositSlippage)) / BASIS_SCALE;
-
+        
         // Get vault's asset (3Crv) balance after adding token to Curve's 3Pool.
         assets_ = _asset.balanceOf(address(this));
 
