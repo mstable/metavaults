@@ -148,8 +148,10 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
         const { baseRewardsPool, vault } = ctx()
         const totalTokens = await baseRewardsPool.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
+        const assetScale = await vault.ASSET_SCALE()
+        const metapoolTokenScale = await vault.metapoolTokenScale()
         if (totalTokens.eq(0)) {
-            return tokens
+            return tokens.mul(assetScale).div(metapoolTokenScale)
         } else {
             return isRoundUp ? roundUp(tokens.mul(totalShares), totalTokens) : tokens.mul(totalShares).div(totalTokens)
         }
@@ -158,8 +160,10 @@ export const behaveLikeConvexFraxBpVault = (ctx: () => ConvexFraxBpContext): voi
         const { baseRewardsPool, vault } = ctx()
         const totalTokens = await baseRewardsPool.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
+        const assetScale = await vault.ASSET_SCALE()
+        const metapoolTokenScale = await vault.metapoolTokenScale()
         if (totalShares.eq(0)) {
-            return shares
+            return shares.mul(metapoolTokenScale).div(assetScale)
         } else {
             return isRoundUp ? roundUp(shares.mul(totalTokens), totalShares) : shares.mul(totalTokens).div(totalShares)
         }

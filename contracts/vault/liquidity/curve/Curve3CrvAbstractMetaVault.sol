@@ -39,6 +39,8 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
 
     /// @notice Scale of one asset. eg 1e18 if asset has 18 decimal places.
     uint256 public immutable assetScale;
+    /// @notice Scale of underlying metavult shares. eg 1e18 if metaVaultShare has 18 decimal places.
+    uint256 public immutable metaVaultScale;
     /// @notice Converts USD value with 18 decimals back down to asset/vault scale.
     /// For example, convert 18 decimal USD value back down to USDC which only has 6 decimal places.
     /// Will be 1 for DAI, 1e12 for USDC and USDT.
@@ -57,6 +59,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
     constructor(address _asset, address _metaVault) {
         require(_metaVault != address(0), "Invalid Vault");
         metaVault = IERC4626Vault(_metaVault);
+
+        // Set metavault share scales
+        uint256 _mvdecimals = IERC20Metadata(_metaVault).decimals();
+        metaVaultScale = 10**_mvdecimals;
 
         // Set underlying asset scales
         uint256 _decimals = IERC20Metadata(_asset).decimals();
@@ -241,7 +247,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             shares,
             totalMetaVaultShares,
             totalSupply(),
-            true
+            false
         );
 
         // Calculate 3Crv needed to mint the required Meta Vault shares
@@ -293,7 +299,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
                 shares,
                 totalMetaVaultShares,
                 totalSupply(),
-                true
+                false
             );
 
             // Calculate 3Crv needed to mint the required Meta Vault shares
@@ -594,22 +600,13 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         override
         returns (uint256 assets)
     {
-        uint256 metaVaultShares;
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // start with 1:1 value of shares to underlying meta vault shares
-            metaVaultShares = shares;
-        } else {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
-            // Convert this vault's shares to underlying meta vault shares.
-            metaVaultShares = _getMetaVaultSharesFromShares(
-                shares,
-                totalMetaVaultShares,
-                totalShares,
-                false
-            );
-        }
+        // Convert this vault's shares to underlying meta vault shares.
+        uint256 metaVaultShares = _getMetaVaultSharesFromShares(
+            shares,
+            metaVault.balanceOf(address(this)),
+            totalSupply(),
+            false
+        );
 
         // Convert underlying meta vault shares to 3Crv
         // This uses the Metapool and 3Pool virtual prices
@@ -638,20 +635,12 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         // This uses the Metapool and 3Pool virtual prices.
         uint256 metaVaultShares = metaVault.convertToShares(threeCrvTokens);
 
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // start with 1:1 value of shares to underlying meta vault shares
-            shares = metaVaultShares;
-        } else {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
-            shares = _getSharesFromMetaVaultShares(
-                metaVaultShares,
-                totalMetaVaultShares,
-                totalShares,
-                false
-            );
-        }
+        shares = _getSharesFromMetaVaultShares(
+            metaVaultShares,
+            metaVault.balanceOf(address(this)),
+            totalSupply(),
+            false
+        );
     }
 
     /***************************************
@@ -730,9 +719,9 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 _totalMetaVaultShares,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 shares) {
+    ) internal view returns (uint256 shares) {
         if (_totalMetaVaultShares == 0) {
-            shares = _metaVaultShares;
+            shares = (_metaVaultShares * assetScale) / metaVaultScale;
         } else {
             shares = (_metaVaultShares * _totalShares) / _totalMetaVaultShares;
             if (isRoundUp && mulmod(_metaVaultShares, _totalShares, _totalMetaVaultShares) > 0) {
@@ -746,9 +735,9 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         uint256 _totalMetaVaultShares,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 metaVaultShares) {
+    ) internal view returns (uint256 metaVaultShares) {
         if (_totalShares == 0) {
-            metaVaultShares = _shares;
+            metaVaultShares = (_shares * metaVaultScale) / assetScale;
         } else {
             metaVaultShares = (_shares * _totalMetaVaultShares) / _totalShares;
             if (isRoundUp && mulmod(_shares, _totalMetaVaultShares, _totalShares) > 0) {

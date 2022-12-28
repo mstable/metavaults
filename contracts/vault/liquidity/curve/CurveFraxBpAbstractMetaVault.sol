@@ -39,6 +39,8 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
 
     /// @notice Scale of one asset. eg 1e18 if asset has 18 decimal places.
     uint256 public immutable assetScale;
+    /// @notice Scale of underlying metavult shares. eg 1e18 if metaVaultShare has 18 decimal places.
+    uint256 public immutable metaVaultScale;
     /// @notice Converts USD value with 18 decimals back down to asset/vault scale.
     /// For example, convert 18 decimal USD value back down to USDC which only has 6 decimal places.
     /// Will 1e12 for USDC, and 1 for FRAX
@@ -57,6 +59,10 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
     constructor(address _asset, address _metaVault) {
         require(_metaVault != address(0), "Invalid Vault");
         metaVault = IERC4626Vault(_metaVault);
+
+        // Set metavault share scales
+        uint256 _mvdecimals = IERC20Metadata(_metaVault).decimals();
+        metaVaultScale = 10**_mvdecimals;
 
         // Set underlying asset scales
         uint256 _decimals = IERC20Metadata(_asset).decimals();
@@ -200,12 +206,10 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             // Calculate underlying meta vault shares received for Meta Vault assets (crvFrax)
             uint256 metaVaultShares = metaVault.previewDeposit(crvFraxTokens);
 
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             // Calculate the proportion of shares to mint based on the amount of underlying meta vault shares.
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
-                totalMetaVaultShares,
+                metaVault.balanceOf(address(this)),
                 totalSupply(),
                 false
             );
@@ -232,14 +236,12 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         whenNotPaused
         returns (uint256 assets)
     {
-        // Get the total underlying Meta Vault shares held by this vault.
-        uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
         // Convert this vault's required shares to required underlying meta vault shares.
         uint256 requiredMetaVaultShares = _getMetaVaultSharesFromShares(
             shares,
-            totalMetaVaultShares,
+            metaVault.balanceOf(address(this)),
             totalSupply(),
-            true
+            false
         );
 
         // Calculate crvFrax needed to mint the required Meta Vault shares
@@ -284,14 +286,12 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
      */
     function previewMint(uint256 shares) external view virtual override returns (uint256 assets) {
         if (shares > 0) {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             // Convert this vault's required shares to required underlying meta vault shares.
             uint256 requiredMetaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
-                totalMetaVaultShares,
+                metaVault.balanceOf(address(this)),
                 totalSupply(),
-                true
+                false
             );
 
             // Calculate crvFrax needed to mint the required Meta Vault shares
@@ -412,12 +412,10 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
             // Calculate underlying meta vault shares received for FraxBp LP tokens (crvFrax)
             uint256 metaVaultShares = metaVault.previewWithdraw(crvFraxTokens);
 
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             // Calculate the proportion of shares to burn based on the amount of underlying meta vault shares.
             shares = _getSharesFromMetaVaultShares(
                 metaVaultShares,
-                totalMetaVaultShares,
+                metaVault.balanceOf(address(this)),
                 totalSupply(),
                 true
             );
@@ -491,22 +489,16 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
                 _approve(_owner, msg.sender, allowed - _shares);
             }
 
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
             // Convert this vault's shares to underlying meta vault shares.
             uint256 metaVaultShares = _getMetaVaultSharesFromShares(
                 _shares,
-                totalMetaVaultShares,
+                metaVault.balanceOf(address(this)),
                 totalSupply(),
                 false
             );
 
             // Burn underlying meta vault shares and receive FraxBp LP tokens (crvFrax).
-            uint256 crvFraxTokens = metaVault.redeem(
-                metaVaultShares,
-                address(this),
-                address(this)
-            );
+            uint256 crvFraxTokens = metaVault.redeem(metaVaultShares, address(this), address(this));
 
             // Protect against sandwich and flash loan attacks where the balance of the FraxBp can be manipulated.
             // Get virtual price of Curve FraxBp LP tokens (crvFrax) in USD.
@@ -556,13 +548,10 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
 
     function _previewRedeem(uint256 shares) internal view virtual returns (uint256 assets) {
         if (shares > 0) {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
-
             // Convert this vault's shares to underlying meta vault shares.
             uint256 metaVaultShares = _getMetaVaultSharesFromShares(
                 shares,
-                totalMetaVaultShares,
+                metaVault.balanceOf(address(this)),
                 totalSupply(),
                 false
             );
@@ -592,22 +581,13 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         override
         returns (uint256 assets)
     {
-        uint256 metaVaultShares;
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // start with 1:1 value of shares to underlying meta vault shares
-            metaVaultShares = shares;
-        } else {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
-            // Convert this vault's shares to underlying meta vault shares.
-            metaVaultShares = _getMetaVaultSharesFromShares(
-                shares,
-                totalMetaVaultShares,
-                totalShares,
-                false
-            );
-        }
+        // Convert this vault's shares to underlying meta vault shares.
+        uint256 metaVaultShares = _getMetaVaultSharesFromShares(
+            shares,
+            metaVault.balanceOf(address(this)),
+            totalSupply(),
+            false
+        );
 
         // Convert underlying meta vault shares to crvFrax
         // This uses the Metapool and FraxBp virtual prices
@@ -636,20 +616,12 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         // This uses the Metapool and FraxBp virtual prices.
         uint256 metaVaultShares = metaVault.convertToShares(crvFraxTokens);
 
-        uint256 totalShares = totalSupply();
-        if (totalShares == 0) {
-            // start with 1:1 value of shares to underlying meta vault shares
-            shares = metaVaultShares;
-        } else {
-            // Get the total underlying Meta Vault shares held by this vault.
-            uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
-            shares = _getSharesFromMetaVaultShares(
-                metaVaultShares,
-                totalMetaVaultShares,
-                totalShares,
-                false
-            );
-        }
+        shares = _getSharesFromMetaVaultShares(
+            metaVaultShares,
+            metaVault.balanceOf(address(this)),
+            totalSupply(),
+            false
+        );
     }
 
     /***************************************
@@ -728,9 +700,9 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         uint256 _totalMetaVaultShares,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 shares) {
+    ) internal view returns (uint256 shares) {
         if (_totalMetaVaultShares == 0) {
-            shares = _metaVaultShares;
+            shares = (_metaVaultShares * assetScale) / metaVaultScale;
         } else {
             shares = (_metaVaultShares * _totalShares) / _totalMetaVaultShares;
             if (isRoundUp && mulmod(_metaVaultShares, _totalShares, _totalMetaVaultShares) > 0) {
@@ -744,9 +716,9 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
         uint256 _totalMetaVaultShares,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 metaVaultShares) {
+    ) internal view returns (uint256 metaVaultShares) {
         if (_totalShares == 0) {
-            metaVaultShares = _shares;
+            metaVaultShares = (_shares * metaVaultScale) / assetScale;
         } else {
             metaVaultShares = (_shares * _totalMetaVaultShares) / _totalShares;
             if (isRoundUp && mulmod(_shares, _totalMetaVaultShares, _totalShares) > 0) {
@@ -794,7 +766,7 @@ abstract contract CurveFraxBpAbstractMetaVault is AbstractSlippage, LightAbstrac
     function _resetAllowances() internal {
         _asset.safeApprove(address(CurveFraxBpCalculatorLibrary.FRAXBP_POOL), 0);
         IERC20(CurveFraxBpCalculatorLibrary.LP_TOKEN).safeApprove(address(metaVault), 0);
-        
+
         _asset.safeApprove(address(CurveFraxBpCalculatorLibrary.FRAXBP_POOL), type(uint256).max);
         IERC20(CurveFraxBpCalculatorLibrary.LP_TOKEN).safeApprove(
             address(metaVault),

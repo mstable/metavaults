@@ -125,45 +125,95 @@ describe("Curve FraxBp Basic Vault", async () => {
     }
     const ctx = <CurveFraxBpContext>{}
     describe("FRAX FraxBP Vault", () => {
-        before(() => {
-            // Anonymous functions cannot be used as fixtures so can't use arrow function
-            ctx.fixture = async function fixture() {
-                await commonSetup(normalBlock)
+        describe("should behave like Curve FraxBp Vault", async () => {
+            before(() => {
+                // Anonymous functions cannot be used as fixtures so can't use arrow function
+                ctx.fixture = async function fixture() {
+                    await commonSetup(normalBlock)
 
-                // Reset ctx values from commonSetup
-                ctx.fraxBasePool = fraxBasePool
-                ctx.metaVault = metaVault
+                    // Reset ctx values from commonSetup
+                    ctx.fraxBasePool = fraxBasePool
+                    ctx.metaVault = metaVault
 
-                // Asset specific values
-                ctx.owner = await impersonateAccount(fraxUserAddress)
-                ctx.asset = IERC20__factory.connect(FRAX.address, ctx.owner.signer)
-                ctx.amounts = testAmounts(100000, FRAX.decimals)
+                    // Asset specific values
+                    ctx.owner = await impersonateAccount(fraxUserAddress)
+                    ctx.asset = IERC20__factory.connect(FRAX.address, ctx.owner.signer)
+                    ctx.amounts = testAmounts(100000, FRAX.decimals)
 
-                // Deploy new CurveFraxBpBasicMetaVault
-                ctx.vault = await deployVault(ctx.asset, ctx.owner)
-            }
+                    // Deploy new CurveFraxBpBasicMetaVault
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                }
+            })
+            behaveLikeCurveFraxBpVault(() => ctx)
         })
-        behaveLikeCurveFraxBpVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: CurveFraxBpBasicMetaVault
+            let owner: Account
+            let asset: IERC20
+            before(async () => {
+                await commonSetup(normalBlock)
+                owner = await impersonateAccount(fraxUserAddress)
+                asset = IERC20__factory.connect(FRAX.address, owner.signer)
+                vault = await deployVault(asset, owner)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await asset.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("USDC FraxBP Vault", () => {
-        before(() => {
-            // Anonymous functions cannot be used as fixtures so can't use arrow function
-            ctx.fixture = async function fixture() {
-                await commonSetup(normalBlock)
+        describe("should behave like Curve FraxBp Vault", async () => {
+            before(() => {
+                // Anonymous functions cannot be used as fixtures so can't use arrow function
+                ctx.fixture = async function fixture() {
+                    await commonSetup(normalBlock)
 
-                // Reset ctx values from commonSetup
-                ctx.fraxBasePool = fraxBasePool
-                ctx.metaVault = metaVault
+                    // Reset ctx values from commonSetup
+                    ctx.fraxBasePool = fraxBasePool
+                    ctx.metaVault = metaVault
 
-                // Asset specific values
-                ctx.owner = await impersonateAccount(usdcUserAddress)
-                ctx.asset = IERC20__factory.connect(USDC.address, ctx.owner.signer)
-                ctx.amounts = testAmounts(100000, USDC.decimals)
+                    // Asset specific values
+                    ctx.owner = await impersonateAccount(usdcUserAddress)
+                    ctx.asset = IERC20__factory.connect(USDC.address, ctx.owner.signer)
+                    ctx.amounts = testAmounts(100000, USDC.decimals)
 
-                // Deploy new CurveFraxBpBasicMetaVault
-                ctx.vault = await deployVault(ctx.asset, ctx.owner)
-            }
+                    // Deploy new CurveFraxBpBasicMetaVault
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                }
+            })
+            behaveLikeCurveFraxBpVault(() => ctx)
         })
-        behaveLikeCurveFraxBpVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: CurveFraxBpBasicMetaVault
+            let owner: Account
+            let asset: IERC20
+            before(async () => {
+                await commonSetup(normalBlock)
+                owner = await impersonateAccount(usdcUserAddress)
+                asset = IERC20__factory.connect(USDC.address, owner.signer)
+                vault = await deployVault(asset, owner)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await asset.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
 })

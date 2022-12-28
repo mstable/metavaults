@@ -588,6 +588,7 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
 }
 
 export const testAmounts = (amount: number, assetDecimals = 18, vaultDecimals = 18): Amounts => {
+    vaultDecimals = assetDecimals
     return {
         initialDeposit: simpleToExactAmount(amount, assetDecimals).mul(6),
         deposit: simpleToExactAmount(amount, assetDecimals),

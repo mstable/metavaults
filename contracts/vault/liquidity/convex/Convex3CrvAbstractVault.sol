@@ -625,9 +625,9 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 _totalMetapoolTokens,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 shares) {
+    ) internal view returns (uint256 shares) {
         if (_totalMetapoolTokens == 0) {
-            shares = _metapoolTokens;
+            shares = (_metapoolTokens * ASSET_SCALE) / metapoolTokenScale;
         } else {
             shares = (_metapoolTokens * _totalShares) / _totalMetapoolTokens;
             if (isRoundUp && mulmod(_metapoolTokens, _totalShares, _totalMetapoolTokens) > 0) {
@@ -641,9 +641,9 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 _totalMetapoolTokens,
         uint256 _totalShares,
         bool isRoundUp
-    ) internal pure returns (uint256 metapoolTokens) {
+    ) internal view returns (uint256 metapoolTokens) {
         if (_totalShares == 0) {
-            metapoolTokens = _shares;
+            metapoolTokens = (_shares * metapoolTokenScale) / ASSET_SCALE;
         } else {
             metapoolTokens = (_shares * _totalMetapoolTokens) / _totalShares;
             if (isRoundUp && mulmod(_shares, _totalMetapoolTokens, _totalShares) > 0) {
