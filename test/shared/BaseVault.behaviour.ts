@@ -587,13 +587,13 @@ export function shouldBehaveLikeBaseVault(ctx: () => BaseVaultBehaviourContext):
     })
 }
 
-export const testAmounts = (amount: number, assetDecimals = 18, vaultDecimals = 18): Amounts => {
+export const testAmounts = (amount: number, assetDecimals = 18): Amounts => {
     return {
         initialDeposit: simpleToExactAmount(amount, assetDecimals).mul(6),
         deposit: simpleToExactAmount(amount, assetDecimals),
-        mint: simpleToExactAmount(amount, vaultDecimals),
+        mint: simpleToExactAmount(amount, assetDecimals),
         withdraw: simpleToExactAmount(amount, assetDecimals),
-        redeem: simpleToExactAmount(amount, vaultDecimals),
+        redeem: simpleToExactAmount(amount, assetDecimals),
     }
 }
 

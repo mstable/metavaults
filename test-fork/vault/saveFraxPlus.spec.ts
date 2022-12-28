@@ -1261,6 +1261,44 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                 })
             })
         })
+        describe("mint and withdraw should round up", () => {
+            it("minting shares should round up", async () => {
+                await loadOrExecFixture(setup)
+                let owner = crvFraxWhale1
+                let vault = periodicAllocationPerfFeeMetaVault
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer).deposit(10, owner.address)
+                await crvFraxToken.transfer(vault.address, 1)
+
+                await vault.connect(sa.vaultManager.signer).updateAssetPerShare()
+            
+                const userAssetsBefore = await crvFraxToken.balanceOf(owner.address)
+                console.log("userAssetsBefore: ", userAssetsBefore.toString())
+                // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
+                // According to erc4626 it should round up, thus it should transfer 4 assets
+                await vault.connect(owner.signer).mint(3, owner.address)
+                const userAssetsAfter = await crvFraxToken.balanceOf(owner.address)
+                console.log("userAssetsAfter: ", userAssetsAfter.toString())
+                expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
+            })
+            it("withdrawing assets should round up", async () => {
+                await loadOrExecFixture(setup)
+                let owner = crvFraxWhale1
+                let vault = periodicAllocationPerfFeeMetaVault
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await crvFraxToken.connect(owner.signer).transfer(vault.address, 1)
+
+                await vault.connect(sa.vaultManager.signer).updateAssetPerShare()
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     context("CurveFraxBpBasicMetaVault", async () => {
         let vaultsDataBefore
@@ -1304,8 +1342,8 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
             })
             it("mint shares", async () => {
                 // When mint via 4626MetaVault
-                await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, crvFRAX.decimals))
-                await assertVaultMint(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(70000, crvFRAX.decimals))
+                await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, USDC.decimals))
+                await assertVaultMint(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(70000, FRAX.decimals))
 
                 const vaultsDataAfter = await snapshotVaults(
                     convexFraxBpLiquidatorVaults,
@@ -1355,8 +1393,8 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                 // no change on underlying vaults
             })
             it("partial redeem", async () => {
-                await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, crvFRAX.decimals))
-                await assertVaultRedeem(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(7000, crvFRAX.decimals))
+                await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, USDC.decimals))
+                await assertVaultRedeem(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(7000, FRAX.decimals))
 
                 const vaultsDataAfter = await snapshotVaults(
                     convexFraxBpLiquidatorVaults,
@@ -1404,8 +1442,8 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     await assertVaultDeposit(fraxWhale, fraxToken, fraxMetaVault, simpleToExactAmount(50000, FRAX.decimals))
                 })
                 it("mint shares", async () => {
-                    await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, crvFRAX.decimals))
-                    await assertVaultMint(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(70000, crvFRAX.decimals))
+                    await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, USDC.decimals))
+                    await assertVaultMint(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(70000, FRAX.decimals))
                 })
                 it("settles to underlying vaults", async () => {
                     const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
@@ -1432,8 +1470,8 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     await assertVaultWithdraw(fraxWhale, fraxToken, fraxMetaVault, simpleToExactAmount(60000, FRAX.decimals))
                 })
                 it("partial redeem", async () => {
-                    await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, crvFRAX.decimals))
-                    await assertVaultRedeem(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(7000, crvFRAX.decimals))
+                    await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, USDC.decimals))
+                    await assertVaultRedeem(fraxWhale, fraxToken, fraxMetaVault, dataEmitter, simpleToExactAmount(7000, FRAX.decimals))
                 })
                 it("total redeem", async () => {
                     await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter)

@@ -369,25 +369,25 @@ abstract contract PeriodicAllocationAbstractVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Uses AssetPerShareAbstractVault logic.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
         override(AssetPerShareAbstractVault, AbstractVault)
         returns (uint256 assets)
     {
-        return AssetPerShareAbstractVault._convertToAssets(shares);
+        return AssetPerShareAbstractVault._convertToAssets(shares, isRoundUp);
     }
 
     /// @dev Uses AssetPerShareAbstractVault logic.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
         override(AssetPerShareAbstractVault, AbstractVault)
         returns (uint256 shares)
     {
-        return AssetPerShareAbstractVault._convertToShares(assets);
+        return AssetPerShareAbstractVault._convertToShares(assets, isRoundUp);
     }
 
     /***************************************

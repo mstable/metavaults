@@ -1320,6 +1320,40 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 })
             })
         })
+        describe("mint and withdraw should round up", () => {
+            it("minting shares should round up", async () => {
+                let owner = threeCrvWhale1
+                let vault = periodicAllocationPerfFeeMetaVault
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer).deposit(10, owner.address)
+                await threeCrvToken.transfer(vault.address, 1)
+
+                await vault.connect(sa.vaultManager.signer).updateAssetPerShare()
+            
+                const userAssetsBefore = await threeCrvToken.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
+                // According to erc4626 it should round up, thus it should transfer 4 assets
+                await vault.connect(owner.signer).mint(3, owner.address)
+                const userAssetsAfter = await threeCrvToken.balanceOf(owner.address)
+                expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
+            })
+            it("withdrawing assets should round up", async () => {
+                let owner = threeCrvWhale1
+                let vault = periodicAllocationPerfFeeMetaVault
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                await vault.connect(sa.vaultManager.signer).updateAssetPerShare()
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     context("Curve3CrvBasicMetaVault", async () => {
         let vaultsDataBefore
@@ -1365,9 +1399,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
             it("mint shares", async () => {
                 // When mint via 4626MetaVault
-                await assertVaultMint(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
-                await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
-                await assertVaultMint(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
+                await assertVaultMint(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(70000, DAI.decimals))
+                await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, USDC.decimals))
+                await assertVaultMint(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(70000, USDT.decimals))
 
                 const vaultsDataAfter = await snapshotVaults(
                     convex3CrvLiquidatorVaults,
@@ -1424,9 +1458,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 // no change on underlying vaults
             })
             it("partial redeem", async () => {
-                await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
-                await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
-                await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
+                await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(7000, DAI.decimals))
+                await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, USDC.decimals))
+                await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(7000, USDT.decimals))
 
                 const vaultsDataAfter = await snapshotVaults(
                     convex3CrvLiquidatorVaults,
@@ -1483,9 +1517,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     await assertVaultDeposit(usdtWhale, usdtToken, usdtMetaVault, simpleToExactAmount(50000, USDT.decimals))
                 })
                 it("mint shares", async () => {
-                    await assertVaultMint(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
-                    await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
-                    await assertVaultMint(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(70000, ThreeCRV.decimals))
+                    await assertVaultMint(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(70000, DAI.decimals))
+                    await assertVaultMint(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(70000, USDC.decimals))
+                    await assertVaultMint(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(70000, USDT.decimals))
                 })
                 it("settles to underlying vaults", async () => {
                     const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
@@ -1513,9 +1547,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     await assertVaultWithdraw(usdtWhale, usdtToken, usdtMetaVault, simpleToExactAmount(60000, USDT.decimals))
                 })
                 it("partial redeem", async () => {
-                    await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
-                    await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
-                    await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(7000, ThreeCRV.decimals))
+                    await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter, simpleToExactAmount(7000, DAI.decimals))
+                    await assertVaultRedeem(usdcWhale, usdcToken, usdcMetaVault, dataEmitter, simpleToExactAmount(7000, USDC.decimals))
+                    await assertVaultRedeem(usdtWhale, usdtToken, usdtMetaVault, dataEmitter, simpleToExactAmount(7000, USDT.decimals))
                 })
                 it("total redeem", async () => {
                     await assertVaultRedeem(daiWhale, daiToken, daiMetaVault, dataEmitter)

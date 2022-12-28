@@ -4,7 +4,7 @@ import { assertBNClose } from "@utils/assertions"
 import { ZERO_ADDRESS } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
-import { BN, simpleToExactAmount } from "@utils/math"
+import { BN, simpleToExactAmount, roundUp } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, PeriodicAllocationBasicVault__factory } from "types/generated"
@@ -276,6 +276,36 @@ describe("PeriodicAllocationBasicVault", async () => {
         const belowThresholdAmount = singleVaultThresholdAmount.div(2)
         const aboveThresholdAmount = singleVaultThresholdAmount.mul(2)
 
+        describe("mint and withdraw should round up", async () => {
+            it("minting shares should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await pabVault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(pabVault.address, 1)
+            
+                await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+            
+                const userAssetsBefore = await asset.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
+                // According to erc4626 it should round up, thus it should transfer 4 assets
+                await pabVault.connect(user.signer).mint(3, user.address)
+                const userAssetsAfter = await asset.balanceOf(user.address)
+                expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await pabVault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(pabVault.address, 1)
+            
+                await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+            
+                const userSharesBefore = await pabVault.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await pabVault.connect(user.signer).withdraw(3, user.address, user.address)
+                const userSharesAfter = await pabVault.balanceOf(user.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
         describe("before settlement", async () => {
             const redeemAmount = oneMil
             const withdrawAmount = oneMil
@@ -1109,7 +1139,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userSharesConsumed = userSharesBefore.sub(await pabVault.balanceOf(user.address))
-                const expectedSharesConsumed = withdrawAmount.mul(assetsPerShareScale).div(updatedAssetPerShare)
+                const expectedSharesConsumed = roundUp(withdrawAmount.mul(assetsPerShareScale), updatedAssetPerShare)
                 expect(userSharesConsumed, "userSharesConsumed").to.eq(expectedSharesConsumed)
             })
             it("mint", async () => {
@@ -1120,7 +1150,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userAssetsConsumed = userAssetsBefore.sub(await asset.balanceOf(user.address))
-                const expectedAssetsConsumed = mintAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+                const expectedAssetsConsumed = roundUp(mintAmount.mul(updatedAssetPerShare), assetsPerShareScale)
                 expect(userAssetsConsumed, "userAssetsConsumed").to.eq(expectedAssetsConsumed)
             })
         })

@@ -114,6 +114,38 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
                 expect(await vault.convertToShares(testAmount), "convertToShares").to.eq(testAmount)
             })
         })
+        describe("mint and withdraw should round up", async () => {
+            before(async () => {
+                // sets approval
+                await asset.connect(sa.alice.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("minting shares should round up", async () => {
+                let user = sa.alice
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(vault.address, 1)
+            
+                const userAssetsBefore = await asset.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
+                // According to erc4626 it should round up, thus it should transfer 4 assets
+                await vault.connect(user.signer).mint(3, user.address)
+                const userAssetsAfter = await asset.balanceOf(user.address)
+                expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
+            })
+            it("withdrawing assets should round up", async () => {
+                let user = sa.alice
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(vault.address, 1)
+            
+                const userSharesBefore = await vault.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(user.signer).withdraw(3, user.address, user.address)
+                const userSharesAfter = await vault.balanceOf(user.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
 }
 

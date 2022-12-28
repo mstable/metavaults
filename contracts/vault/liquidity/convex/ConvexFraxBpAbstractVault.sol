@@ -183,7 +183,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         uint256 sharesToMint = _getSharesFromMetapoolTokens(
             metapoolTokensReceived,
             totalMetapoolTokensBefore,
-            totalSupply()
+            totalSupply(),
+            false
         );
         // Calculate the proportion of shares to mint to the receiver.
         shares = (sharesToMint * _assets) / assetsToDeposit;
@@ -221,7 +222,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             uint256 sharesToMint = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
             // Calculate the callers portion of shares
             shares = (sharesToMint * assets) / assetsToDeposit;
@@ -250,7 +252,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
         uint256 metapoolTokens = _getMetapoolTokensFromShares(
             shares,
             baseRewardPool.balanceOf(address(this)),
-            totalSupply()
+            totalSupply(),
+            false
         );
         uint256 requiredMetapoolTokens = metapoolTokens + donatedMetapoolTokens;
 
@@ -315,7 +318,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
             (uint256 assetsToDeposit, , , ) = CurveFraxBpMetapoolCalculatorLibrary.calcMint(
                 metapool,
@@ -364,7 +368,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokensRequired,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                true
             );
 
             // If caller is not the owner of the shares
@@ -411,7 +416,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                true
             );
         }
     }
@@ -461,7 +467,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             uint256 requiredMetapoolTokens = _getMetapoolTokensFromShares(
                 _shares,
                 totalMetapoolTokens,
-                totalSupply()
+                totalSupply(),
+                false
             );
 
             // Calculate fair amount of assets (crvFRAX) using virtual prices for metapool LP tokens, eg BUSDFRAXBP3CRV-f
@@ -502,7 +509,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
             (assets, , ) = CurveFraxBpMetapoolCalculatorLibrary.calcRedeem(
                 metapool,
@@ -518,7 +526,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Override `AbstractVault._convertToAssets`.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
@@ -529,7 +537,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                isRoundUp
             );
             assets = CurveFraxBpMetapoolCalculatorLibrary.convertToBaseLp(
                 metapool,
@@ -540,7 +549,7 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     }
 
     /// @dev Override `AbstractVault._convertToShares`.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
@@ -556,7 +565,8 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                isRoundUp
             );
         }
     }
@@ -620,24 +630,32 @@ abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {
     function _getSharesFromMetapoolTokens(
         uint256 _metapoolTokens,
         uint256 _totalMetapoolTokens,
-        uint256 _totalShares
-    ) internal pure returns (uint256 shares) {
+        uint256 _totalShares,
+        bool isRoundUp
+    ) internal view returns (uint256 shares) {
         if (_totalMetapoolTokens == 0) {
-            shares = _metapoolTokens;
+            shares = (_metapoolTokens * ASSET_SCALE) / metapoolTokenScale;
         } else {
             shares = (_metapoolTokens * _totalShares) / _totalMetapoolTokens;
+            if (isRoundUp && mulmod(_metapoolTokens, _totalShares, _totalMetapoolTokens) > 0) {
+                shares += 1;
+            }
         }
     }
 
     function _getMetapoolTokensFromShares(
         uint256 _shares,
         uint256 _totalMetapoolTokens,
-        uint256 _totalShares
-    ) internal pure returns (uint256 metapoolTokens) {
+        uint256 _totalShares,
+        bool isRoundUp
+    ) internal view returns (uint256 metapoolTokens) {
         if (_totalShares == 0) {
-            metapoolTokens = _shares;
+            metapoolTokens = (_shares * metapoolTokenScale) / ASSET_SCALE;
         } else {
             metapoolTokens = (_shares * _totalMetapoolTokens) / _totalShares;
+            if(isRoundUp && mulmod(_shares, _totalMetapoolTokens, _totalShares) > 0) {
+                metapoolTokens += 1;
+            }
         }
     }
 

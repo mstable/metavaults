@@ -66,7 +66,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     }
 
     function _previewDeposit(uint256 assets) internal view virtual returns (uint256 shares) {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, false);
     }
 
     function mint(uint256 shares, address receiver)
@@ -90,7 +90,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     }
 
     function _previewMint(uint256 shares) internal view virtual returns (uint256 assets) {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, true);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -136,7 +136,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     }
 
     function _previewWithdraw(uint256 assets) internal view virtual returns (uint256 shares) {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, true);
     }
 
     function maxWithdraw(address owner) external view override returns (uint256 maxAssets) {
@@ -174,7 +174,7 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     }
 
     function _previewRedeem(uint256 shares) internal view virtual returns (uint256 assets) {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, false);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -220,16 +220,20 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         override
         returns (uint256 assets)
     {
-        assets = _convertToAssets(shares);
+        assets = _convertToAssets(shares, false);
     }
 
-    function _convertToAssets(uint256 shares) internal view virtual returns (uint256 assets) {
+    function _convertToAssets(uint256 shares, bool isRoundUp) internal view virtual returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
         if (totalShares == 0) {
             assets = shares; // 1:1 value of shares and assets
         } else {
-            assets = (shares * totalAssets()) / totalShares;
+            uint256 totalAssetsMem = totalAssets();
+            assets = (shares * totalAssetsMem) / totalShares;
+            if (isRoundUp && mulmod(shares, totalAssetsMem, totalShares) > 0) {
+                assets += 1;
+            }
         }
     }
 
@@ -240,16 +244,20 @@ contract LightBasicVault is LightAbstractVault, Initializable {
         override
         returns (uint256 shares)
     {
-        shares = _convertToShares(assets);
+        shares = _convertToShares(assets, false);
     }
 
-    function _convertToShares(uint256 assets) internal view virtual returns (uint256 shares) {
+    function _convertToShares(uint256 assets, bool isRoundUp) internal view virtual returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
         if (totalShares == 0) {
             shares = assets; // 1:1 value of shares and assets
         } else {
-            shares = (assets * totalShares) / totalAssets();
+            uint256 totalAssetsMem = totalAssets();
+            shares = (assets * totalShares) / totalAssetsMem;
+            if (isRoundUp && mulmod(assets, totalShares, totalAssetsMem) > 0) {
+                shares += 1;
+            }
         }
     }
 }
