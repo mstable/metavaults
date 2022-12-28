@@ -1263,6 +1263,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
         })
         describe("mint and withdraw should round up", () => {
             it("minting shares should round up", async () => {
+                await loadOrExecFixture(setup)
                 let owner = crvFraxWhale1
                 let vault = periodicAllocationPerfFeeMetaVault
                 // vault asset/share ratio is 11:10 after the following 2 transactions
