@@ -756,7 +756,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
     before("reset block number", async () => {
         await loadOrExecFixture(setup)
     })
-    xcontext("deployment check", async () => {
+    context("deployment check", async () => {
         describe("proxy instant admin", async () => {
             it("owner is the multisig governor", async () => {
                 expect(await proxyAdmin.owner(), "owner must be governor").to.be.eq(governorAddress)
@@ -831,7 +831,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    xcontext("behaviors", async () => {
+    context("behaviors", async () => {
         context("should behave like AbstractVault", async () => {
             describe("periodicAllocationPerfFeeMetaVault", async () => {
                 const ctx: Partial<BaseVaultBehaviourContext> = {}
@@ -1040,7 +1040,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 threeCrvWhale1,
             )
         })
-        xdescribe("basic flow", () => {
+        describe("basic flow", () => {
             it("deposit 3Crv", async () => {
                 await assertVaultDeposit(
                     threeCrvWhale1,
@@ -1089,7 +1089,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                 expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets, "meta vault total assets").to.be.eq(0)
             })
         })
-        xdescribe("full flow with settlement", () => {
+        describe("full flow with settlement", () => {
             describe("before settlement", () => {
                 it("deposit 3Crv", async () => {
                     await assertVaultDeposit(
@@ -1355,7 +1355,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    xcontext("Curve3CrvBasicMetaVault", async () => {
+    context("Curve3CrvBasicMetaVault", async () => {
         let vaultsDataBefore
 
         before("reset block number", async () => {
@@ -1587,7 +1587,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    xcontext("Convex3CrvLiquidatorVault", async () => {
+    context("Convex3CrvLiquidatorVault", async () => {
         before("reset block number", async () => {
             await loadOrExecFixture(setup)
         })
