@@ -259,6 +259,11 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
                             CONVERTIONS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice The amount of assets that the Vault would exchange for the amount of shares provided, in an ideal scenario where all the conditions are met.
+     * @param shares The amount of vault shares to be converted to the underlying assets.
+     * @return assets The amount of underlying assets converted from the vault shares.
+     */
     function convertToAssets(uint256 shares)
         external
         view
@@ -269,6 +274,9 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         assets = _convertToAssets(shares, false);
     }
 
+    /// @param shares The amount of vault shares to be converted to the underlying assets.
+    /// @param isRoundUp bool to indicate round up the assets
+    /// @dev isRoundUp is used to round-up the assets amount for mint and previewMint
     function _convertToAssets(uint256 shares, bool isRoundUp) internal view virtual returns (uint256 assets) {
         uint256 totalShares = totalSupply();
 
@@ -285,6 +293,11 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         }
     }
 
+    /**
+     * @notice The amount of shares that the Vault would exchange for the amount of assets provided, in an ideal scenario where all the conditions are met.
+     * @param assets The amount of underlying assets to be convert to vault shares.
+     * @return shares The amount of vault shares converted from the underlying assets.
+     */
     function convertToShares(uint256 assets)
         external
         view
@@ -295,6 +308,9 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
         shares = _convertToShares(assets, false);
     }
 
+    /// @param assets The amount of underlying assets to be convert to vault shares.
+    /// @param isRoundUp bool to indicate round up the shares
+    /// @dev isRoundUp is used to round-up the shares amount for withdraw and previewWithdraw
     function _convertToShares(uint256 assets, bool isRoundUp) internal view virtual returns (uint256 shares) {
         uint256 totalShares = totalSupply();
 
