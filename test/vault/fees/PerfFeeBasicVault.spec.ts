@@ -192,11 +192,21 @@ describe("Performance Fees", async () => {
             expect(await vault.totalSupply(), "total shares").to.eq(0)
             expect(await vault.totalAssets(), "total assets").to.eq(0)
         })
-
         it("fails if initialize is called more than once", async () => {
             await expect(
                 vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee),
             ).to.be.revertedWith("Initializable: contract is already initialized")
+        })
+        it("Should revert if the performance fee is too high", async () => {
+            dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+
+            if (!asset) {
+                await deployFeeVaultDependencies(18)
+            }
+            vault = await new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+            // FEE_SCALE = 1e6
+            const INVALID_FEE_SCALE = 1E8;
+            await expect(vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, INVALID_FEE_SCALE)).to.be.revertedWith("Invalid fee")
         })
     })
     describe("charge performance fees", async () => {

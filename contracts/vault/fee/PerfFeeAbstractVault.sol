@@ -42,6 +42,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
 
     /// @param _performanceFee Performance fee scaled to 6 decimal places.
     function _initialize(uint256 _performanceFee) internal virtual {
+        require(_performanceFee <= FEE_SCALE, "Invalid fee");
         performanceFee = _performanceFee;
         perfFeesAssetPerShare = PERF_ASSETS_PER_SHARE_SCALE;
     }
