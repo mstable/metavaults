@@ -165,16 +165,7 @@ contract ConvexFraxBpLiquidatorVault is
             basePoolAmounts,
             0 // slippage protection will be done on the second deposit into the Metapool
         );
-
-        // Slippage and flash loan protection
-        // Convert FRAX or USDC to Metapool LP tokens, eg BUSDFRAXBP3CRV-f.
-        uint256 minMetapoolTokens = CurveFraxBpMetapoolCalculatorLibrary.convertUsdToMetaLp(
-            metapool,
-            scaledUsdAmount
-        );
-        // Then reduce the metapol LP tokens amount by the slippage. eg 10 basis points = 0.1%
-        minMetapoolTokens = (minMetapoolTokens * (BASIS_SCALE - depositSlippage)) / BASIS_SCALE;
-
+        
         assets_ = _asset.balanceOf(address(this));
         shares_ = 0;
     }

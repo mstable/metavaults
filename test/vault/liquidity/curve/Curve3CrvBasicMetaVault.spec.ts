@@ -14,8 +14,6 @@ describe("Curve3CrvBasicMetaVault", () => {
     let nexus: MockNexus
 
     // Testing contract
-    let vault: Curve3CrvBasicMetaVault
-    let asset: MockERC20
     let curve3PoolCalculatorLibraryAddresses: Curve3CrvBasicMetaVaultLibraryAddresses
 
     /* -- Declare shared functions -- */
@@ -25,7 +23,6 @@ describe("Curve3CrvBasicMetaVault", () => {
 
         mocks = await new ContractMocks().init(sa)
         nexus = mocks.nexus
-        asset = mocks.erc20
 
         const threePoolCalculatorLibrary = await new Curve3PoolCalculatorLibrary__factory(sa.default.signer).deploy()
         curve3PoolCalculatorLibraryAddresses = {
