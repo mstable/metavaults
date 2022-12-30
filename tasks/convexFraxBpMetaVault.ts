@@ -300,7 +300,7 @@ subtask("convex-FraxBp-mv-snap", "Logs Convex FraxBp Meta Vault details")
             })}`,
         )
 
-        //console.log(`\nPerformance fee         : ${fee / 10000}%`)
+        console.log(`\nPerformance fee         : ${fee / 10000}%`)
         const feeReceiver = await vaultContract.feeReceiver({
             blockTag: blk.blockNumber,
         })

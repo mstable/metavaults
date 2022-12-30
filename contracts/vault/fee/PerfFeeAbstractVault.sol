@@ -36,7 +36,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
     uint256 public perfFeesAssetPerShare;
 
     event PerformanceFee(address indexed feeReceiver, uint256 feeShares, uint256 assetsPerShare);
-    event PerformanceFeeUpdated(uint256 performanceFee);
+    event PerformanceFeeUpdated(uint24 performanceFee);
 
     /// @param _performanceFee Performance fee scaled to 6 decimal places.
     function _initialize(uint24 _performanceFee) internal virtual {
