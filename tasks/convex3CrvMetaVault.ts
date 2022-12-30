@@ -317,7 +317,7 @@ subtask("convex-3crv-mv-snap", "Logs Convex 3Crv Meta Vault details")
             })}`,
         )
 
-        console.log(`\nPerformance fee         : ${fee.toNumber() / 10000}%`)
+        //console.log(`\nPerformance fee         : ${fee / 10000}%`)
         const feeReceiver = await vaultContract.feeReceiver({
             blockTag: blk.blockNumber,
         })
