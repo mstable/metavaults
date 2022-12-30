@@ -146,9 +146,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     }
 
     /**
-     * @notice `VaultManager` rebalances the assets in the underlying vaults.
-     * This can be moving assets between underlying vaults, moving assets in underlying
-     * vaults back to this vault, or moving assets in this vault to underlying vaults.
+     * @notice `VaultManager` rebalances the assets by moving assets between underlying vaults
      */
     function rebalance(Swap[] calldata swaps) external virtual onlyVaultManager {
         // For each swap
