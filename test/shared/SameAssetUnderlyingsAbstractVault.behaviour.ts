@@ -340,7 +340,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             })
         })
         describe("add vault", async () => {
-            it("should fail if callee is not vault manger", async () => {
+            it("should fail if callee is not governor", async () => {
                 const { vault, sa } = ctx()
                 const tx = vault.connect(sa.alice.signer).addVault(DEAD_ADDRESS)
                 await expect(tx).to.be.revertedWith("Only governor can execute")
@@ -564,31 +564,24 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
-
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
                     await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
-
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
-                    // Added 5 underlying active vaults
-                    // Map will look like this
-                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF43210
 
-                    await vault.connect(sa.governor.signer).removeVault(2)
-                    await vault.connect(sa.governor.signer).removeVault(3)
-                    // Map is now updated to:
-                    // 5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF2FFF10
+                    await vault.connect(sa.governor.signer).removeVault(1)
+                    await vault.connect(sa.governor.signer).removeVault(4)
 
                     // Following fn will revert as expected because the corresponding index on the map is 0xF
                     // "Inactive vault"
-                    const tx = vault.connect(sa.governor.signer).removeVault(2)
+                    const tx = vault.connect(sa.governor.signer).removeVault(4)
                     await expect(tx).to.be.revertedWith("Inactive vault")
 
                     // Should correctly remove nth vault
-                    const nVaultAddress = await vault.resolveVaultIndex(4)
-                    const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(4)
-                    await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(4, nVaultAddress)
+                    const nVaultAddress = await vault.resolveVaultIndex(5)
+                    const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(5)
+                    await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(5, nVaultAddress)
                 })
                 it("should be able to remove and re-add vault", async () => {
                     const { vault, sa } = ctx()

@@ -28,6 +28,7 @@ import {
     MockGPv2VaultRelayer__factory,
     Nexus__factory,
     PeriodicAllocationPerfFeeMetaVault__factory,
+    BasicVault__factory
 } from "types/generated"
 
 import { buildDonateTokensInput, BUSD, CRV, crvFRAX, CVX, FRAX, logTxDetails, USDC, usdFormatter } from "../../tasks/utils"
@@ -52,6 +53,7 @@ import type {
     InstantProxyAdmin,
     PeriodicAllocationPerfFeeMetaVault,
     SameAssetUnderlyingsAbstractVault,
+    BasicVault
 } from "types/generated"
 
 const log = logger("test:saveFraxPlus")
@@ -941,6 +943,12 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                 before(async () => {
                     ctxSa.fixture = async function fixture() {
                         await loadOrExecFixture(setup)
+
+                        //add a dummy vault and make it singleSourceVaultIndex so that the behavior can freely remove vaults
+                        let dummyVault = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, crvFraxToken.address)
+                        await dummyVault.initialize(`bv1${await crvFraxToken.name()}`, `bv1${await crvFraxToken.symbol()}`, sa.vaultManager.address)
+                        await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).addVault(dummyVault.address)
+                        await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
 
                         ctxSa.vault = periodicAllocationPerfFeeMetaVault as unknown as SameAssetUnderlyingsAbstractVault
                         ctxSa.asset = crvFraxToken
