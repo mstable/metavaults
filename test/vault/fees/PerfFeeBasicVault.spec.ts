@@ -207,7 +207,7 @@ describe("Performance Fees", async () => {
             }
             vault = await new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
             // FEE_SCALE = 1e6
-            const INVALID_FEE_SCALE = 1E8;
+            const INVALID_FEE_SCALE = (await vault.FEE_SCALE()) + 1
             await expect(vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, INVALID_FEE_SCALE)).to.be.revertedWith("Invalid fee")
         })
     })
