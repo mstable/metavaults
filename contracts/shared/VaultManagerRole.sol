@@ -63,7 +63,6 @@ abstract contract VaultManagerRole is Pausable, ImmutableModule {
      * @param _vaultManager Address that will take the `VaultManager` role.
      */
     function setVaultManager(address _vaultManager) external onlyGovernor {
-        require(_vaultManager != address(0), "zero vault manager");
         require(vaultManager != _vaultManager, "already vault manager");
 
         vaultManager = _vaultManager;
