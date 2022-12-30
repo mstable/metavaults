@@ -247,6 +247,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @param vaultIndex Index of the underlying vault starting from 0.
      */
     function removeVault(uint256 vaultIndex) external onlyGovernor {
+        // Call beforeRemoveVault
+        _beforeRemoveVault(vaultIndex);
+
         require(vaultIndex <= vaultIndexMap.indexes() - 1, "Invalid from vault index");
 
         // Resolve the external vault index to the index in the internal active underlying vaults.
@@ -305,4 +308,10 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * For example, assetsPerShare update after removal by PeriodicAllocationAbstractVault
      */
     function _afterRemoveVault() internal virtual {}
+
+    /**
+     * @dev Optional hook to do something before an underlying vault is removed.
+     * For example, check for whether the removal vault is not the "cache" vault before removal by PeriodicAllocationAbstractVault
+     */
+    function _beforeRemoveVault(uint256 vaultIndex) internal virtual {}
 }

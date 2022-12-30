@@ -403,4 +403,11 @@ abstract contract PeriodicAllocationAbstractVault is
     function _afterRemoveVault() internal virtual override {
         _updateAssetPerShare();
     }
+
+    /**
+     * @dev check for whether the removal vault is not the "cache" vault
+     */
+    function _beforeRemoveVault(uint256 vaultIndex) internal virtual override {
+        require(vaultIndex != sourceParams.singleSourceVaultIndex, "Cannot remove cache vault");
+    }
 }

@@ -276,14 +276,21 @@ describe("PeriodicAllocationBasicVault", async () => {
         const belowThresholdAmount = singleVaultThresholdAmount.div(2)
         const aboveThresholdAmount = singleVaultThresholdAmount.mul(2)
 
+        describe("remove vault", async () => {
+            it("cannot remove single source vault", async () => {
+                const cachecVaultIndex = (await pabVault.sourceParams()).singleSourceVaultIndex
+                const tx = pabVault.connect(sa.governor.signer).removeVault(cachecVaultIndex)
+                await expect(tx).to.be.revertedWith("Cannot remove cache vault")
+            })
+        })
         describe("mint and withdraw should round up", async () => {
             it("minting shares should round up", async () => {
                 // vault asset/share ratio is 11:10 after the following 2 transactions
                 await pabVault.connect(user.signer).deposit(10, user.address)
                 await asset.transfer(pabVault.address, 1)
-            
+
                 await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
-            
+
                 const userAssetsBefore = await asset.balanceOf(user.address)
                 // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
                 // According to erc4626 it should round up, thus it should transfer 4 assets
@@ -295,9 +302,9 @@ describe("PeriodicAllocationBasicVault", async () => {
                 // vault asset/share ratio is 11:10 after the following 2 transactions
                 await pabVault.connect(user.signer).deposit(10, user.address)
                 await asset.transfer(pabVault.address, 1)
-            
+
                 await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
-            
+
                 const userSharesBefore = await pabVault.balanceOf(user.address)
                 // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
                 // According to erc4626 it should round up, thus burning 3 shares
@@ -1244,6 +1251,10 @@ describe("PeriodicAllocationBasicVault", async () => {
                 // validate pre-removal assetPerShare
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
 
+                // change singleSourceVaultIndex to enable removal
+                await pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(1)
+                expect((await pabVault.sourceParams()).singleSourceVaultIndex).to.be.eq(1)
+
                 // Remove underlying vault
                 const tx = pabVault.connect(sa.governor.signer).removeVault(0)
 
@@ -1254,23 +1265,6 @@ describe("PeriodicAllocationBasicVault", async () => {
                 await expect(tx)
                     .to.emit(pabVault, "AssetsPerShareUpdated")
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
-                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
-            })
-            it("after removal of underlying vault", async () => {
-                // transfer some assets to bVault1
-                await asset.transfer(bVault1.address, transferAmount)
-
-                // validate pre-removal assetPerShare
-                expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
-
-                // Remove underlying vault
-                const tx = pabVault.connect(sa.governor.signer).removeVault(0)
-
-                // calculate updatedAssetPerShare
-                updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
-
-                // validate post-removal properties and event
-                await expect(tx).to.emit(pabVault, "AssetsPerShareUpdated").withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(updatedAssetPerShare)
             })
         })
