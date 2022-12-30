@@ -56,8 +56,8 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
             ? (totalAssets * PERF_ASSETS_PER_SHARE_SCALE) / totalShares
             : perfFeesAssetPerShare;
 
-        // Only charge a performance fee if assets per share has increased.
-        if (currentAssetsPerShare > perfFeesAssetPerShare) {
+        // Only charge a performance fee if assets per share has increased and performace fees > 0
+        if (currentAssetsPerShare > perfFeesAssetPerShare && performanceFee > 0) {
             // Calculate the amount of shares to mint as a fee.
             // performance fee *
             // total shares *

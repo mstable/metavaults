@@ -24,6 +24,7 @@ interface CheckData {
     totalShares: BigNumberish
     totalAssets: BigNumberish
     perfFeesAssetsPerShare?: BigNumberish
+    performanceFee?: BigNumberish
 }
 
 describe("Performance Fees", async () => {
@@ -61,8 +62,9 @@ describe("Performance Fees", async () => {
     const calculateFeeShares = (data: CheckData, assetsPerShareAfter: BN): BN => {
         checkAndSetDefaultAssetPerShare(data)
         const assetPerShareDiff = assetsPerShareAfter.sub(data.perfFeesAssetsPerShare)
+        let currentPerformanceFee = data.performanceFee ?? performanceFee
         return assetPerShareDiff.gt(0)
-            ? performanceFee.mul(data.totalShares).mul(assetPerShareDiff).div(feeScale.mul(data.perfFeesAssetsPerShare))
+            ? assetPerShareDiff.mul(data.totalShares).mul(currentPerformanceFee).div(feeScale.mul(data.perfFeesAssetsPerShare))
             : BN.from(0)
     }
 
@@ -272,6 +274,26 @@ describe("Performance Fees", async () => {
                     stakerShares: depositAmt,
                     totalShares: depositAmt,
                     totalAssets: totalAssets,
+                }
+                await assertChargeFee(data)
+            })
+            it("when performace fee = 0", async () => {
+                // set performace fees to 0
+                await vault.connect(sa.governor.signer).setPerformanceFee(0)
+
+                await vault.connect(user.signer).deposit(depositAmt, user.address)
+                const transferAmt = depositAmt.div(10)
+                const totalAssets = depositAmt.add(transferAmt)
+
+                // send 10% more assets to vault directly
+                await asset.transfer(vault.address, transferAmt)
+
+                const data = {
+                    staker: user.address,
+                    stakerShares: depositAmt,
+                    totalShares: depositAmt,
+                    totalAssets: totalAssets,
+                    performanceFee: 0
                 }
                 await assertChargeFee(data)
             })
