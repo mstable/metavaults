@@ -3,8 +3,6 @@ pragma solidity 0.8.17;
 
 // Libs
 import { FeeAdminAbstractVault } from "./FeeAdminAbstractVault.sol";
-import { AbstractVault } from "../AbstractVault.sol";
-import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
 
 /**
  * @notice   Abstract ERC-4626 vault that calculates a performance fee since the last time the performance fee was charged.
