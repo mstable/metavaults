@@ -48,7 +48,7 @@ contract PeriodicAllocationPerfFeeMetaVault is
         string calldata _name,
         string calldata _symbol,
         address _vaultManager,
-        uint256 _performanceFee,
+        uint24 _performanceFee,
         address _feeReceiver,
         address[] memory _underlyingVaults,
         AssetSourcingParams memory _sourceParams,
