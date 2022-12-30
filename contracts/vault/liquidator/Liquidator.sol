@@ -220,7 +220,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         uint256 donations = 0;
 
         // For each input index
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             rewardToken = rewardTokens[i];
             vault = vaults[i];
             purchaseToken = purchaseTokens[i];
@@ -502,7 +502,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         batchs = new uint256[](len);
         rewards = new uint256[](len);
 
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             (batchs[i], rewards[i]) = _initiateSwap(rewardTokens[i], assetTokens[i], datas[i]);
             unchecked {
                 ++i;
@@ -577,7 +577,7 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         batchs = new uint256[](len);
         rewards = new uint256[](len);
 
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             (batchs[i], rewards[i]) = _settleSwap(
                 rewardTokens[i],
                 assetTokens[i],

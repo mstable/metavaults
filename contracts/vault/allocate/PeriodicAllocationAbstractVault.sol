@@ -80,7 +80,7 @@ abstract contract PeriodicAllocationAbstractVault is
     function settle(Settlement[] calldata settlements) external virtual onlyVaultManager {
         Settlement memory settlement;
 
-        for (uint256 i = 0; i < settlements.length; ) {
+        for (uint256 i; i < settlements.length; ) {
             settlement = settlements[i];
 
             if (settlement.assets > 0) {
@@ -255,7 +255,7 @@ abstract contract PeriodicAllocationAbstractVault is
                 uint256[] memory underlyingVaultAssets = new uint256[](len);
 
                 // Compute max assets held by each underlying vault and total for the Meta Vault.
-                for (i = 0; i < len; ) {
+                for (; i < len; ) {
                     underlyingVaultAssets[i] = _activeUnderlyingVaults[i].maxWithdraw(
                         address(this)
                     );

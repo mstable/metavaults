@@ -65,7 +65,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
         rewards = new uint256[](rewardLen);
         donateTokens = new address[](rewardLen);
 
-        for (uint256 i = 0; i < rewardLen; ) {
+        for (uint256 i; i < rewardLen; ) {
             address rewardTokenMem = rewardToken[i];
             rewardTokens_[i] = rewardTokenMem;
             // Get reward token balance for this vault.
@@ -109,7 +109,7 @@ abstract contract LiquidatorAbstractVault is ILiquidatorVault, VaultManagerRole 
 
         // For reward token
         uint256 len = _rewardTokens.length;
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             address newReward = _rewardTokens[i];
             rewardToken.push(newReward);
             IERC20(newReward).safeApprove(liquidator, type(uint256).max);

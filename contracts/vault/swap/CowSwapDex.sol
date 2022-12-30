@@ -106,7 +106,7 @@ contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
      */
     function initiateSwaps(DexSwapData[] calldata swapsData) external onlyKeeperOrLiquidator {
         uint256 len = swapsData.length;
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             _initiateSwap(swapsData[i]);
             // Increment index with low gas consumption, no need to check for overflow.
             unchecked {
@@ -141,7 +141,7 @@ contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
      */
     function cancelSwaps(bytes[] calldata orderUids) external onlyKeeperOrLiquidator {
         uint256 len = orderUids.length;
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             SETTLEMENT.setPreSignature(orderUids[i], false);
             // Increment index with low gas consumption, no need to check for overflow.
             unchecked {
