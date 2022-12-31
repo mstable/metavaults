@@ -38,13 +38,6 @@ export function shouldBehaveLikeVaultManagerRole(ctx: () => VaultManagerRoleBeha
                     "fails due to ",
                 ).to.be.revertedWith("already vault manager")
             })
-            it("fails if address is zero", async () => {
-                const { sa, vaultManagerRole } = ctx()
-                await expect(
-                    vaultManagerRole.connect(sa.governor.signer).setVaultManager(ZERO_ADDRESS),
-                    "fails due to ",
-                ).to.be.revertedWith("zero vault manager")
-            })
             it("fails if caller is not governor", async () => {
                 const { sa, vaultManagerRole } = ctx()
                 await expect(

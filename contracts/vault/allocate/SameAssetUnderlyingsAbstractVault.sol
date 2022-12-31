@@ -66,7 +66,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         uint256 vaultIndexMapMem = SingleSlotMapper.initialize();
 
         // For each underlying vault
-        for (uint256 i = 0; i < vaultsLen; ) {
+        for (uint256 i; i < vaultsLen; ) {
             vaultIndexMapMem = _addVault(_underlyingVaults[i], vaultIndexMapMem);
             unchecked {
                 ++i;
@@ -96,7 +96,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         // Get the assets held by this vault in each of in the active underlying vaults
         uint256 len = _activeUnderlyingVaults.length;
 
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             totalUnderlyingAssets += _activeUnderlyingVaults[i].maxWithdraw(address(this));
             unchecked {
                 ++i;
@@ -146,9 +146,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     }
 
     /**
-     * @notice `VaultManager` rebalances the assets in the underlying vaults.
-     * This can be moving assets between underlying vaults, moving assets in underlying
-     * vaults back to this vault, or moving assets in this vault to underlying vaults.
+     * @notice `VaultManager` rebalances the assets by moving assets between underlying vaults
      */
     function rebalance(Swap[] calldata swaps) external virtual onlyVaultManager {
         // For each swap
@@ -156,7 +154,7 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
         uint256 vaultIndexMapMem = vaultIndexMap;
         uint256 fromVaultIndex;
         uint256 toVaultIndex;
-        for (uint256 i = 0; i < swaps.length; ) {
+        for (uint256 i; i < swaps.length; ) {
             swap = swaps[i];
 
             // Map the external vault index to the internal active underlying vaults.
@@ -247,6 +245,9 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * @param vaultIndex Index of the underlying vault starting from 0.
      */
     function removeVault(uint256 vaultIndex) external onlyGovernor {
+        // Call beforeRemoveVault
+        _beforeRemoveVault(vaultIndex);
+
         require(vaultIndex <= vaultIndexMap.indexes() - 1, "Invalid from vault index");
 
         // Resolve the external vault index to the index in the internal active underlying vaults.
@@ -305,4 +306,10 @@ abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
      * For example, assetsPerShare update after removal by PeriodicAllocationAbstractVault
      */
     function _afterRemoveVault() internal virtual {}
+
+    /**
+     * @dev Optional hook to do something before an underlying vault is removed.
+     * For example, check for whether the removal vault is not the "cache" vault before removal by PeriodicAllocationAbstractVault
+     */
+    function _beforeRemoveVault(uint256 vaultIndex) internal virtual {}
 }

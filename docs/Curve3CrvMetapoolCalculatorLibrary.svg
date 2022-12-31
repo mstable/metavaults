@@ -9,16 +9,16 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 533)">
 <title>UmlClassDiagram</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-533 1188.41,-533 1188.41,4 -4,4"/>
-<!-- 88 -->
+<!-- 37 -->
 <g id="node1" class="node">
-<title>88</title>
+<title>37</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-0.5 0,-528.5 1184.41,-528.5 1184.41,-0.5 0,-0.5"/>
 <text text-anchor="middle" x="592.21" y="-511.9" font-family="Times,serif" font-size="14.00">&lt;&lt;Library&gt;&gt;</text>
 <text text-anchor="middle" x="592.21" y="-495.1" font-family="Times,serif" font-size="14.00">Curve3CrvMetapoolCalculatorLibrary</text>
-<text text-anchor="middle" x="592.21" y="-478.3" font-family="Times,serif" font-size="14.00">../contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol</text>
+<text text-anchor="middle" x="592.21" y="-478.3" font-family="Times,serif" font-size="14.00">..contractsperipheralCurveCurve3CrvMetapoolCalculatorLibrary.sol</text>
 <polyline fill="none" stroke="black" points="0,-470.1 1184.41,-470.1 "/>
 <text text-anchor="start" x="8" y="-453.5" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="8" y="-436.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;BASE_POOL: ICurve3Pool</text>
+<text text-anchor="start" x="8" y="-436.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;BASE_POOL: address</text>
 <text text-anchor="start" x="8" y="-419.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;N_COINS: uint256</text>
 <text text-anchor="start" x="8" y="-403.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;VIRTUAL_PRICE_SCALE: uint256</text>
 <text text-anchor="start" x="8" y="-386.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;CURVE_FEE_SCALE: uint256</text>

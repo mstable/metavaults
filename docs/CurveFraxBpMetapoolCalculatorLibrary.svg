@@ -9,9 +9,9 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 432.2)">
 <title>UmlClassDiagram</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-432.2 1188.41,-432.2 1188.41,4 -4,4"/>
-<!-- 44 -->
+<!-- 40 -->
 <g id="node1" class="node">
-<title>44</title>
+<title>40</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-0.5 0,-427.7 1184.41,-427.7 1184.41,-0.5 0,-0.5"/>
 <text text-anchor="middle" x="592.21" y="-411.1" font-family="Times,serif" font-size="14.00">&lt;&lt;Library&gt;&gt;</text>
 <text text-anchor="middle" x="592.21" y="-394.3" font-family="Times,serif" font-size="14.00">CurveFraxBpMetapoolCalculatorLibrary</text>

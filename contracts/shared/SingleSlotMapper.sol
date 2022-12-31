@@ -96,7 +96,7 @@ library SingleSlotMapper {
         bool found = false;
 
         // For each index
-        for (uint256 i = 0; i < indexCount; ) {
+        for (uint256 i; i < indexCount; ) {
             uint256 offset = i * 4;
 
             // Read the mapped value

@@ -9,13 +9,13 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 751.4)">
 <title>UmlClassDiagram</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-751.4 603.56,-751.4 603.56,4 -4,4"/>
-<!-- 30 -->
+<!-- 27 -->
 <g id="node1" class="node">
-<title>30</title>
+<title>27</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-0.5 0,-746.9 599.56,-746.9 599.56,-0.5 0,-0.5"/>
 <text text-anchor="middle" x="299.78" y="-730.3" font-family="Times,serif" font-size="14.00">&lt;&lt;Abstract&gt;&gt;</text>
 <text text-anchor="middle" x="299.78" y="-713.5" font-family="Times,serif" font-size="14.00">AbstractVault</text>
-<text text-anchor="middle" x="299.78" y="-696.7" font-family="Times,serif" font-size="14.00">../contracts/vault/AbstractVault.sol</text>
+<text text-anchor="middle" x="299.78" y="-696.7" font-family="Times,serif" font-size="14.00">..contractsvaultAbstractVault.sol</text>
 <polyline fill="none" stroke="black" points="0,-688.5 599.56,-688.5 "/>
 <text text-anchor="start" x="8" y="-671.9" font-family="Times,serif" font-size="14.00">Internal:</text>
 <text text-anchor="start" x="8" y="-655.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;_asset: IERC20</text>
@@ -35,8 +35,8 @@
 <text text-anchor="start" x="8" y="-428.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_previewRedeem(shares: uint256): (assets: uint256)</text>
 <text text-anchor="start" x="8" y="-411.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_maxRedeem(owner: address): (maxShares: uint256)</text>
 <text text-anchor="start" x="8" y="-395.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_burnTransfer(assets: uint256, shares: uint256, receiver: address, owner: address, fromRedeem: bool)</text>
-<text text-anchor="start" x="8" y="-378.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_convertToAssets(shares: uint256): (assets: uint256)</text>
-<text text-anchor="start" x="8" y="-361.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_convertToShares(assets: uint256): (shares: uint256)</text>
+<text text-anchor="start" x="8" y="-378.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_convertToAssets(shares: uint256, isRoundUp: bool): (assets: uint256)</text>
+<text text-anchor="start" x="8" y="-361.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_convertToShares(assets: uint256, isRoundUp: bool): (shares: uint256)</text>
 <text text-anchor="start" x="8" y="-344.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_afterDepositHook(assets: uint256, shares: uint256, receiver: address, fromDeposit: bool)</text>
 <text text-anchor="start" x="8" y="-327.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_beforeWithdrawHook(assets: uint256, shares: uint256, owner: address, fromRedeem: bool)</text>
 <text text-anchor="start" x="8" y="-311.1" font-family="Times,serif" font-size="14.00">External:</text>
