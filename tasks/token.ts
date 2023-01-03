@@ -4,6 +4,7 @@ import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import { ERC20__factory, MockERC20__factory } from "types/generated"
 
+import { getBlock } from "./utils/blocks"
 import { deployContract, logTxDetails } from "./utils/deploy-utils"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
@@ -106,19 +107,23 @@ subtask("token-allowance", "Logs the amount of tokens a spender can transfer fro
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
     .addParam("spender", "Address or contract name that can transferFrom.", undefined, types.string)
     .addOptionalParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
     .setAction(async (taskArgs, hre) => {
-        const { owner, spender, token } = taskArgs
+        const { block, owner, spender, token } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre)
+
+        const blk = await getBlock(hre.ethers, block)
 
         const tokenConfig = await resolveAssetToken(signer, chain, token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
-        log(`Owner ${ownerAddress}`)
         const spenderAddress = resolveAddress(spender, chain)
 
-        const amount = await tokenContract.allowance(ownerAddress, spenderAddress)
+        const amount = await tokenContract.allowance(ownerAddress, spenderAddress, {
+            blockTag: blk.blockNumber,
+        })
 
         log(
             `Spender ${spenderAddress} can transfer ${formatUnits(amount, tokenConfig.decimals)} ${
@@ -133,17 +138,22 @@ task("token-allowance").setAction(async (_, __, runSuper) => {
 subtask("token-balance", "Logs the token balance of an owner")
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
     .addOptionalParam("owner", "Address or contract name where the tokens are held.", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
     .setAction(async (taskArgs, hre) => {
-        const { owner, token } = taskArgs
+        const { block, owner, token } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre)
+
+        const blk = await getBlock(hre.ethers, block)
 
         const tokenConfig = await resolveAssetToken(signer, chain, token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         const ownerAddress = owner ? resolveAddress(owner, chain) : await signer.getAddress()
 
-        const amount = await tokenContract.balanceOf(ownerAddress)
+        const amount = await tokenContract.balanceOf(ownerAddress, {
+            blockTag: blk.blockNumber,
+        })
 
         log(`Balance of ${ownerAddress} is ${formatUnits(amount, tokenConfig.decimals)} ${tokenConfig.symbol}`)
     })
@@ -153,17 +163,28 @@ task("token-balance").setAction(async (_, __, runSuper) => {
 
 subtask("token-snap", "Logs the token balance of an owner")
     .addParam("token", "Token symbol or address. eg mUSD, MTA, BUSD, 3Crv, mvDAI-3PCV or vcx3CRV-FRAX", undefined, types.string)
+    .addOptionalParam("block", "Block number. (default: current block)", 0, types.int)
     .setAction(async (taskArgs, hre) => {
+        const { block, token } = taskArgs
         const chain = getChain(hre)
         const signer = await getSigner(hre)
 
-        const tokenConfig = await resolveAssetToken(signer, chain, taskArgs.token)
+        const blk = await getBlock(hre.ethers, block)
+
+        const tokenConfig = await resolveAssetToken(signer, chain, token)
         const tokenContract = ERC20__factory.connect(tokenConfig.address, signer)
 
         log(`Symbol      : ${tokenConfig.symbol}`)
         log(`Name        : ${await tokenContract.name()}`)
         log(`Decimals    : ${tokenConfig.decimals}`)
-        log(`Total Supply: ${formatUnits(await tokenContract.totalSupply(), tokenConfig.decimals)}`)
+        log(
+            `Total Supply: ${formatUnits(
+                await tokenContract.totalSupply({
+                    blockTag: blk.blockNumber,
+                }),
+                tokenConfig.decimals,
+            )}`,
+        )
     })
 task("token-snap").setAction(async (_, __, runSuper) => {
     await runSuper()
