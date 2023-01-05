@@ -12,6 +12,14 @@ import { IERC4626Vault } from "../../interfaces/IERC4626Vault.sol";
  * @author  mStable
  * @dev     VERSION: 1.0
  *          DATE:    2022-06-27
+ *
+ * The `initialize` function of implementing contracts need to call the following:
+ * - InitializableToken._initialize(_name, _symbol, decimals)
+ * - VaultManagerRole._initialize(_vaultManager)
+ * - SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults)
+ * - AssetPerShareAbstractVault._initialize()
+ * - AbstractVault._initialize(_assetToBurn)
+ * - PeriodicAllocationAbstractVault._initialize(_sourceParams, _assetPerShareUpdateThreshold)
  */
 abstract contract PeriodicAllocationAbstractVault is
     SameAssetUnderlyingsAbstractVault,
@@ -47,12 +55,10 @@ abstract contract PeriodicAllocationAbstractVault is
     event AssetPerShareUpdateThresholdUpdated(uint256 assetPerShareUpdateThreshold);
 
     /**
-     * @param _underlyingVaults  The underlying vaults address to invest into.
      * @param _sourceParams Params related to sourcing of assets.
      * @param _assetPerShareUpdateThreshold Threshold amount of transfers to/from for `assetPerShareUpdate`.
      */
     function _initialize(
-        address[] memory _underlyingVaults,
         AssetSourcingParams memory _sourceParams,
         uint256 _assetPerShareUpdateThreshold
     ) internal virtual {
@@ -60,13 +66,6 @@ abstract contract PeriodicAllocationAbstractVault is
             _sourceParams.singleVaultSharesThreshold <= BASIS_SCALE,
             "Invalid shares threshold"
         );
-        require(
-            _sourceParams.singleSourceVaultIndex < _underlyingVaults.length,
-            "Invalid source vault index"
-        );
-
-        SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults);
-        AssetPerShareAbstractVault._initialize();
 
         sourceParams = _sourceParams;
         assetPerShareUpdateThreshold = _assetPerShareUpdateThreshold;
@@ -128,7 +127,7 @@ abstract contract PeriodicAllocationAbstractVault is
         returns (uint256 assets)
     {
         assets = _previewMint(shares);
-        if(_checkAndUpdateAssetPerShare(assets)) {
+        if (_checkAndUpdateAssetPerShare(assets)) {
             // if assetsPerShare updated recalculate assets amount
             assets = _previewMint(shares);
         }
@@ -181,7 +180,7 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 assets) {
         assets = _previewRedeem(shares);
-        if(_checkAndUpdateAssetPerShare(assets)) {
+        if (_checkAndUpdateAssetPerShare(assets)) {
             // if assetsPerShare updated recalculate assets amount
             assets = _previewRedeem(shares);
         }
