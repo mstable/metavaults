@@ -4,6 +4,8 @@ pragma solidity 0.8.17;
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 //Libs
+import { SameAssetUnderlyingsAbstractVault } from "../allocate/SameAssetUnderlyingsAbstractVault.sol";
+import { AssetPerShareAbstractVault } from "../allocate/AssetPerShareAbstractVault.sol";
 import { PeriodicAllocationAbstractVault } from "../allocate/PeriodicAllocationAbstractVault.sol";
 import { PerfFeeAbstractVault } from "../fee/PerfFeeAbstractVault.sol";
 import { FeeAdminAbstractVault } from "../fee/FeeAdminAbstractVault.sol";
@@ -43,6 +45,7 @@ contract PeriodicAllocationPerfFeeMetaVault is
      * @param _underlyingVaults  The underlying vaults address to invest into.
      * @param _sourceParams Params related to sourcing of assets
      * @param _assetPerShareUpdateThreshold threshold amount of transfers to/from for assetPerShareUpdate
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
      */
     function initialize(
         string calldata _name,
@@ -52,7 +55,8 @@ contract PeriodicAllocationPerfFeeMetaVault is
         address _feeReceiver,
         address[] memory _underlyingVaults,
         AssetSourcingParams memory _sourceParams,
-        uint256 _assetPerShareUpdateThreshold
+        uint256 _assetPerShareUpdateThreshold,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 decimals_ = InitializableToken(address(_asset)).decimals();
@@ -61,12 +65,11 @@ contract PeriodicAllocationPerfFeeMetaVault is
         // Initialize contracts
         VaultManagerRole._initialize(_vaultManager);
         PerfFeeAbstractVault._initialize(_performanceFee);
-        PeriodicAllocationAbstractVault._initialize(
-            _underlyingVaults,
-            _sourceParams,
-            _assetPerShareUpdateThreshold
-        );
+        SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults);
+        AssetPerShareAbstractVault._initialize();
+        PeriodicAllocationAbstractVault._initialize(_sourceParams, _assetPerShareUpdateThreshold);
         FeeAdminAbstractVault._initialize(_feeReceiver);
+        AbstractVault._initialize(_assetToBurn);
     }
 
     /*///////////////////////////////////////////////////////////////

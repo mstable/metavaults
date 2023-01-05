@@ -41,7 +41,8 @@ contract LiquidatorStreamFeeBasicVault is LiquidatorStreamFeeAbstractVault, Init
         address _vaultManager,
         address[] memory _rewardTokens,
         address _feeReceiver,
-        uint256 _donationFee
+        uint256 _donationFee,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
@@ -50,6 +51,7 @@ contract LiquidatorStreamFeeBasicVault is LiquidatorStreamFeeAbstractVault, Init
         VaultManagerRole._initialize(_vaultManager);
         LiquidatorAbstractVault._initialize(_rewardTokens);
         LiquidatorStreamFeeAbstractVault._initialize(_feeReceiver, _donationFee);
+        AbstractVault._initialize(_assetToBurn);
     }
 
     function totalAssets() public view override returns (uint256 totalManagedAssets) {

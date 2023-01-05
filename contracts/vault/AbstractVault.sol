@@ -27,6 +27,7 @@ import { InitializableToken } from "../tokens/InitializableToken.sol";
  * The `initialize` function of implementing contracts need to call the following:
  * - InitializableToken._initialize(_name, _symbol, decimals)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  */
 abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManagerRole {
     using SafeERC20 for IERC20;
@@ -40,6 +41,17 @@ abstract contract AbstractVault is IERC4626Vault, InitializableToken, VaultManag
     constructor(address _assetArg) {
         require(_assetArg != address(0), "Asset is zero");
         _asset = IERC20(_assetArg);
+    }
+
+    /**
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
+     * @dev This is to prevent against loss of precision and frontrunning the user deposits by sandwitch attack. Should be a non-trivial amount
+     */
+    function _initialize(uint256 _assetToBurn) internal virtual {
+        if (_assetToBurn > 0) {
+            // deposit the assets and transfer shares to the vault to lock permanently
+            _deposit(_assetToBurn, address(this));
+        }
     }
 
     /*///////////////////////////////////////////////////////////////
