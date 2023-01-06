@@ -33,6 +33,7 @@ export interface SameAssetUnderlyingsAbstractVaultBehaviourContext {
     fixture: () => Promise<void>
     amounts: Amounts
     variances?: Variances
+    assetToBurn: BN
 }
 
 // --------
@@ -346,12 +347,12 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 await expect(tx).to.be.revertedWith("Only governor can execute")
             })
             it("should fail on mismatching asset", async () => {
-                const { vault, sa } = ctx()
+                const { vault, sa, assetToBurn } = ctx()
 
                 const assetNew = mocks.dai
                 const nexus = mocks.nexus
                 const bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, assetNew.address)
-                await bVaultNew.initialize(`bv3${await assetNew.name()}`, `bv3${await assetNew.symbol()}`, sa.vaultManager.address)
+                await bVaultNew.initialize(`bv3${await assetNew.name()}`, `bv3${await assetNew.symbol()}`, sa.vaultManager.address, assetToBurn)
 
                 const tx = vault.connect(sa.governor.signer).addVault(bVaultNew.address)
                 await expect(tx).to.be.revertedWith("Invalid vault asset")
@@ -361,7 +362,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 let activeUnderlyingVaultsBefore: number
                 let totalUnderlyingVaultsBefore: number
                 before(async () => {
-                    const { vault, sa, asset } = ctx()
+                    const { vault, sa, asset, assetToBurn } = ctx()
                     const nexus = mocks.nexus
                     activeUnderlyingVaultsBefore = (await vault.activeUnderlyingVaults()).toNumber()
                     totalUnderlyingVaultsBefore = (await vault.totalUnderlyingVaults()).toNumber()
@@ -370,7 +371,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     log(`total vaults ${totalUnderlyingVaultsBefore}`)
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                    await bVaultNew.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
+                    await bVaultNew.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
 
                     const tx = await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
@@ -449,13 +450,13 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                 let activeUnderlyingVaultsBefore: number
                 let totalUnderlyingVaultsBefore: number
                 beforeEach(async () => {
-                    const { asset, fixture, sa, vault } = ctx()
+                    const { asset, fixture, sa, vault, assetToBurn } = ctx()
                     const nexus = mocks.nexus
 
                     await loadOrExecFixture(fixture)
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
 
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
@@ -559,15 +560,15 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     )
                 })
                 it("should be able to correctly remove neth vault when some of < n indexed vaults are removed", async () => {
-                    const { vault, sa, asset } = ctx()
+                    const { vault, sa, asset, assetToBurn } = ctx()
                     const nexus = mocks.nexus
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
                     bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
                     await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
 
                     await vault.connect(sa.governor.signer).removeVault(1)
