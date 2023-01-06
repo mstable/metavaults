@@ -44,6 +44,11 @@ contract PeriodicAllocationBasicVault is Initializable, PeriodicAllocationAbstra
         uint256 _assetPerShareUpdateThreshold,
         uint256 _assetToBurn
     ) external initializer {
+        require(
+            _sourceParams.singleSourceVaultIndex < _underlyingVaults.length,
+            "Invalid source vault index"
+        );
+        
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
         InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
