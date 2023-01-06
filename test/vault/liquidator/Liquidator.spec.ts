@@ -170,7 +170,7 @@ describe("Liquidator", async () => {
     const verifyAsyncSwap = async (swapData: DexSwapData) => {
         // 1.- Initiate Swap
         // liquidator rewards balances is transfer to asyncSwapper
-        const [orderUid] = ethers.utils.defaultAbiCoder.decode(["bytes", "uint256"], swapData.data)
+        const [orderUid, transfer] = ethers.utils.defaultAbiCoder.decode(["bytes", "bool"], swapData.data)
         const reward = MockERC20__factory.connect(swapData.fromAsset, sa.default.signer)
         const asset = MockERC20__factory.connect(swapData.toAsset, sa.default.signer)
 
@@ -180,28 +180,32 @@ describe("Liquidator", async () => {
         const pendingRewardsBefore = await liquidator.pendingRewards(reward.address, asset.address)
         const rewards = pendingRewardsBefore.rewards
         const initiateData = swapData.data
+
         await liquidator.connect(sa.keeper.signer).initiateSwap(reward.address, asset.address, initiateData)
-        expect(await reward.balanceOf(liquidator.address), "rewards transfer from").to.eq(liquidatorRewardBalanceBefore.sub(rewards))
-        expect(await reward.balanceOf(asyncSwapper.address), "rewards transfer to").to.eq(swapperRewardBalanceBefore.add(rewards))
+        if (!transfer) {
+            expect(await reward.allowance(liquidator.address, asyncSwapper.address), "rewards allowance").to.eq(rewards)
+        } else {
+            expect(await reward.balanceOf(liquidator.address), "rewards transfer from").to.eq(liquidatorRewardBalanceBefore.sub(rewards))
+            expect(await reward.balanceOf(asyncSwapper.address), "rewards transfer to").to.eq(swapperRewardBalanceBefore.add(rewards))
+            // Simulate off-chain swap
+            // asyncSwapper assets balances is transfer from relayer
+            await simulateAsyncSwap(swapData, liquidator.address)
 
-        // Simulate off-chain swap
-        // asyncSwapper assets balances is transfer from relayer
-        await simulateAsyncSwap(swapData, liquidator.address)
+            // Settle Swap
+            const assets = swapData.minToAssetAmount
+            // owner of the order is the CowswapDex, the receiver is the liquidator
+            const settleData = encodeSettleSwap(orderUid, await liquidator.asyncSwapper(), liquidator.address)
+            const settleTx = await liquidator.connect(sa.keeper.signer).settleSwap(reward.address, asset.address, assets, settleData)
 
-        // Settle Swap
-        const assets = swapData.minToAssetAmount
-        // owner of the order is the CowswapDex, the receiver is the liquidator
-        const settleData = encodeSettleSwap(orderUid, await liquidator.asyncSwapper(), liquidator.address)
-        const settleTx = await liquidator.connect(sa.keeper.signer).settleSwap(reward.address, asset.address, assets, settleData)
-
-        await expect(settleTx).to.emit(liquidator, "SwapSettled").withArgs(pendingRewardsBefore.batch, rewards, assets)
-        // Verify assets are received
-        expect(await reward.balanceOf(liquidator.address), "liquidator rewards balance decreased").to.equal(
-            liquidatorRewardBalanceBefore.sub(rewards),
-        )
-        expect(await asset.balanceOf(liquidator.address), "liquidator assets balance increased").to.equal(
-            liquidatorAssetsBalanceBefore.add(assets),
-        )
+            await expect(settleTx).to.emit(liquidator, "SwapSettled").withArgs(pendingRewardsBefore.batch, rewards, assets)
+            // Verify assets are received
+            expect(await reward.balanceOf(liquidator.address), "liquidator rewards balance decreased").to.equal(
+                liquidatorRewardBalanceBefore.sub(rewards),
+            )
+            expect(await asset.balanceOf(liquidator.address), "liquidator assets balance increased").to.equal(
+                liquidatorAssetsBalanceBefore.add(assets),
+            )
+        }
     }
     const verifyAsyncSwaps = async (swapsData: DexSwapData[]) => {
         // 1.- Initiate Swap
@@ -708,6 +712,40 @@ describe("Liquidator", async () => {
             }
             const pendingRewardsBefore = await liquidator.pendingRewards(rewards1.address, asset1.address)
             await verifyAsyncSwap(swapFromReward1ToAsset1)
+            const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
+            expect(pending.batch, "batch after").to.eq(pendingRewardsBefore.batch.add(1))
+            expect(pending.rewards, "rewards after").to.eq(0)
+
+            expect(await liquidator.purchasedAssets(0, rewards1.address, asset1.address, vault1.address), "vault1 purchased assets").to.eq(
+                0,
+            )
+            expect(await liquidator.purchasedAssets(0, rewards1.address, asset1.address, vault3.address), "vault3 purchased assets").to.eq(
+                asset1Amount,
+            )
+        })
+        it("retry from single vault with single reward", async () => {
+            await setup()
+            const asset1Amount = vault3reward1.mul(2)
+            await rewards1.transfer(vault3.address, vault3reward1)
+            await liquidator.collectRewards([vault3.address])
+            const swapFromReward1ToAsset1: DexSwapData = {
+                fromAsset: rewards1.address,
+                fromAssetAmount: vault3reward1,
+                toAsset: asset1.address,
+                minToAssetAmount: asset1Amount,
+                data: encodeInitiateSwap("0x3132333431", false),
+            }
+            const pendingRewardsBefore = await liquidator.pendingRewards(rewards1.address, asset1.address)
+            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.eq(0)
+
+            // No transfer , just signing
+            await verifyAsyncSwap(swapFromReward1ToAsset1)
+            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.gt(0)
+
+            // Transfer and simulate swap
+            await verifyAsyncSwap({ ...swapFromReward1ToAsset1, data: encodeInitiateSwap("0x3132333431", true) })
+            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.eq(0)
+
             const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
             expect(pending.batch, "batch after").to.eq(pendingRewardsBefore.batch.add(1))
             expect(pending.rewards, "rewards after").to.eq(0)
@@ -1440,7 +1478,6 @@ describe("Liquidator", async () => {
             await liquidator.collectRewards([vault3.address])
         })
     })
-
     describe("rescueToken", async () => {
         async function verifyRescueToken(signer: Signer, asset: MockERC20, amount: BN) {
             const to = await nexus.governor()
@@ -1452,7 +1489,6 @@ describe("Liquidator", async () => {
             expect(await asset.balanceOf(liquidator.address), "dex assets balance decreased").to.equal(liquidatorBalanceBefore.sub(amount))
             expect(await asset.balanceOf(to), "to assets balance increased").to.equal(toBalanceBefore.add(amount))
         }
-        // await asset1.connect(sa.keeper.signer).transfer(relayer.address, asset1Total)
         it("sends tokens to the liquidator", async () => {
             asset1.transfer(liquidator.address, simpleToExactAmount(100))
             asset2.transfer(liquidator.address, simpleToExactAmount(100))

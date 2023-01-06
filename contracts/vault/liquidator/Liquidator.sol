@@ -437,7 +437,11 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
         bytes memory data
     ) internal returns (uint256 batch, uint256 rewards) {
         (batch, rewards) = _beforeSwapValidation(rewardToken, assetToken);
+        uint256 allowance = IERC20(rewardToken).allowance(address(this), address(asyncSwapper));
 
+        if (allowance > 0) {
+            IERC20(rewardToken).safeApprove(address(asyncSwapper), 0);
+        }
         IERC20(rewardToken).safeIncreaseAllowance(address(asyncSwapper), rewards);
 
         DexSwapData memory swapData = DexSwapData({
