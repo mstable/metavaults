@@ -431,18 +431,13 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
     /***************************************
                 Async Functions
     ****************************************/
+
     function _initiateSwap(
         address rewardToken,
         address assetToken,
         bytes memory data
     ) internal returns (uint256 batch, uint256 rewards) {
         (batch, rewards) = _beforeSwapValidation(rewardToken, assetToken);
-        uint256 allowance = IERC20(rewardToken).allowance(address(this), address(asyncSwapper));
-
-        if (allowance > 0) {
-            IERC20(rewardToken).safeApprove(address(asyncSwapper), 0);
-        }
-        IERC20(rewardToken).safeIncreaseAllowance(address(asyncSwapper), rewards);
 
         DexSwapData memory swapData = DexSwapData({
             fromAsset: rewardToken,
@@ -628,5 +623,22 @@ contract Liquidator is Initializable, ImmutableModule, InitializableReentrancyGu
      */
     function rescueToken(address token, uint256 amount) external onlyGovernor {
         IERC20(token).safeTransfer(_governor(), amount);
+    }
+
+    /**
+     * @notice Approves a token to be sold by the asynchronous swapper.
+     * @param token Address of the token that is to be sold.
+     */
+    function approveAsyncSwapper(address token) external onlyGovernor {
+        IERC20(token).safeApprove(address(asyncSwapper), 0);
+        IERC20(token).safeApprove(address(asyncSwapper), type(uint256).max);
+    }
+
+    /**
+     * @notice Revokes the asynchronous swapper from selling a token.
+     * @param token Address of the token that is to no longer be sold.
+     */
+    function revokeAsyncSwapper(address token) external onlyGovernor {
+        IERC20(token).safeApprove(address(asyncSwapper), 0);
     }
 }

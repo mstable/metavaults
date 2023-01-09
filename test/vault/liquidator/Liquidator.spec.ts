@@ -138,6 +138,9 @@ describe("Liquidator", async () => {
         liquidator = await new Liquidator__factory(sa.default.signer).deploy(nexus.address)
         await liquidator.initialize(syncSwapper.address, asyncSwapper.address)
         liquidator = liquidator.connect(sa.keeper.signer)
+        await liquidator.connect(sa.governor.signer).approveAsyncSwapper(rewards1.address)
+        await liquidator.connect(sa.governor.signer).approveAsyncSwapper(rewards2.address)
+        await liquidator.connect(sa.governor.signer).approveAsyncSwapper(rewards3.address)
         await nexus.setLiquidatorV2(liquidator.address)
 
         // Deploy mock vaults
@@ -183,7 +186,7 @@ describe("Liquidator", async () => {
 
         await liquidator.connect(sa.keeper.signer).initiateSwap(reward.address, asset.address, initiateData)
         if (!transfer) {
-            expect(await reward.allowance(liquidator.address, asyncSwapper.address), "rewards allowance").to.eq(rewards)
+            expect(await reward.allowance(liquidator.address, asyncSwapper.address), "rewards allowance").to.gte(rewards)
         } else {
             expect(await reward.balanceOf(liquidator.address), "rewards transfer from").to.eq(liquidatorRewardBalanceBefore.sub(rewards))
             expect(await reward.balanceOf(asyncSwapper.address), "rewards transfer to").to.eq(swapperRewardBalanceBefore.add(rewards))
@@ -736,15 +739,12 @@ describe("Liquidator", async () => {
                 data: encodeInitiateSwap("0x3132333431", false),
             }
             const pendingRewardsBefore = await liquidator.pendingRewards(rewards1.address, asset1.address)
-            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.eq(0)
 
             // No transfer , just signing
             await verifyAsyncSwap(swapFromReward1ToAsset1)
-            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.gt(0)
 
             // Transfer and simulate swap
             await verifyAsyncSwap({ ...swapFromReward1ToAsset1, data: encodeInitiateSwap("0x3132333431", true) })
-            expect(await rewards1.allowance(liquidator.address, asyncSwapper.address), "allowance ").to.be.eq(0)
 
             const pending = await liquidator.pendingRewards(rewards1.address, asset1.address)
             expect(pending.batch, "batch after").to.eq(pendingRewardsBefore.batch.add(1))
@@ -1476,6 +1476,73 @@ describe("Liquidator", async () => {
 
             await rewards4.transfer(vault1.address, simpleToExactAmount(100, 24))
             await liquidator.collectRewards([vault3.address])
+        })
+    })
+    describe("approve rewards for async swapper", () => {
+        let newRewards: MockERC20
+        beforeEach(async () => {
+            newRewards = await new MockERC20__factory(sa.default.signer).deploy(
+                "New Reward",
+                "R4",
+                18,
+                sa.default.address,
+                simpleToExactAmount(1000000),
+            )
+        })
+        it("governor can approve a new token", async () => {
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(0)
+
+            const tx = await liquidator.connect(sa.governor.signer).approveAsyncSwapper(newRewards.address)
+
+            expect(tx).to.emit(newRewards, "Approval").withArgs(liquidator.address, asyncSwapper.address, ethers.constants.MaxUint256)
+
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(
+                ethers.constants.MaxUint256,
+            )
+        })
+        it("keeper can not approve new token", async () => {
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(0)
+
+            const tx = liquidator.connect(sa.keeper.signer).approveAsyncSwapper(newRewards.address)
+
+            await expect(tx).to.revertedWith(ERROR.ONLY_GOVERNOR)
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(0)
+        })
+    })
+    describe("revoke rewards from async swapper", () => {
+        let newRewards: MockERC20
+        beforeEach(async () => {
+            newRewards = await new MockERC20__factory(sa.default.signer).deploy(
+                "New Reward",
+                "R4",
+                18,
+                sa.default.address,
+                simpleToExactAmount(1000000),
+            )
+            await liquidator.connect(sa.governor.signer).approveAsyncSwapper(newRewards.address)
+        })
+        it("governor can revoke a new token", async () => {
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(
+                ethers.constants.MaxUint256,
+            )
+
+            const tx = await liquidator.connect(sa.governor.signer).revokeAsyncSwapper(newRewards.address)
+
+            expect(tx).to.emit(newRewards, "Approval").withArgs(liquidator.address, asyncSwapper.address, 0)
+
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(0)
+        })
+        it("keeper can not approve new token", async () => {
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(
+                ethers.constants.MaxUint256,
+            )
+
+            const tx = liquidator.connect(sa.keeper.signer).revokeAsyncSwapper(newRewards.address)
+
+            await expect(tx).to.revertedWith(ERROR.ONLY_GOVERNOR)
+            expect(await newRewards.allowance(liquidator.address, asyncSwapper.address), "allowance before").to.eq(
+                ethers.constants.MaxUint256,
+            )
         })
     })
     describe("rescueToken", async () => {
