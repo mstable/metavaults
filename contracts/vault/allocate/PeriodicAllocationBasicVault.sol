@@ -3,6 +3,8 @@ pragma solidity 0.8.17;
 
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
+import { SameAssetUnderlyingsAbstractVault } from "./SameAssetUnderlyingsAbstractVault.sol";
+import { AssetPerShareAbstractVault } from "./AssetPerShareAbstractVault.sol";
 import { PeriodicAllocationAbstractVault } from "./PeriodicAllocationAbstractVault.sol";
 import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
 import { InitializableToken } from "../../tokens/InitializableToken.sol";
@@ -31,6 +33,7 @@ contract PeriodicAllocationBasicVault is Initializable, PeriodicAllocationAbstra
      * @param _underlyingVaults  The underlying vaults address to invest into.
      * @param _sourceParams Params related to sourcing of assets
      * @param _assetPerShareUpdateThreshold threshold amount of transfers to/from for assetPerShareUpdate
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
      */
     function initialize(
         string calldata _nameArg,
@@ -38,17 +41,22 @@ contract PeriodicAllocationBasicVault is Initializable, PeriodicAllocationAbstra
         address _vaultManager,
         address[] memory _underlyingVaults,
         AssetSourcingParams memory _sourceParams,
-        uint256 _assetPerShareUpdateThreshold
+        uint256 _assetPerShareUpdateThreshold,
+        uint256 _assetToBurn
     ) external initializer {
+        require(
+            _sourceParams.singleSourceVaultIndex < _underlyingVaults.length,
+            "Invalid source vault index"
+        );
+        
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
         InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
 
         VaultManagerRole._initialize(_vaultManager);
-        PeriodicAllocationAbstractVault._initialize(
-            _underlyingVaults,
-            _sourceParams,
-            _assetPerShareUpdateThreshold
-        );
+        SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults);
+        AssetPerShareAbstractVault._initialize();
+        PeriodicAllocationAbstractVault._initialize(_sourceParams, _assetPerShareUpdateThreshold);
+        AbstractVault._initialize(_assetToBurn);
     }
 }

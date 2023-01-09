@@ -19,6 +19,7 @@ import { AbstractVault } from "../AbstractVault.sol";
  *   - VaultManagerRole(_nexus)
  * - VaultManagerRole._initialize(_vaultManager)
  * - AssetPerShareAbstractVault._initialize()
+ * - AbstractVault._initialize(_assetToBurn)
  */
 abstract contract AssetPerShareAbstractVault is AbstractVault {
     /// @notice Scale of the assets per share. 1e26 = 26 decimal places

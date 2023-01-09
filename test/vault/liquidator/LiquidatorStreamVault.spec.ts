@@ -41,8 +41,10 @@ describe("Streamed Liquidator Vault", async () => {
     let swapper: BasicDexSwap
     let liquidator: Liquidator
     let vault: LiquidatorStreamBasicVault
+    let assetToBurn: BN
 
     const streamPerSecondScale = simpleToExactAmount(1, 18)
+    const defaultAssetToBurn = simpleToExactAmount(0)
 
     const assertStreamedShares = async (
         tx: TransactionResponse,
@@ -174,14 +176,15 @@ describe("Streamed Liquidator Vault", async () => {
 
     const setup = async (decimals = 18): Promise<LiquidatorStreamBasicVault> => {
         dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
 
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
 
-        await vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address])
-
         // Approve vault to transfer assets from default signer
         await asset.approve(vault.address, ethers.constants.MaxUint256)
+        await vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address], assetToBurn)
+
         // set balance or users for the test.
         const assetBalance = await asset.balanceOf(sa.default.address)
         asset.transfer(sa.alice.address, assetBalance.div(2))
@@ -273,10 +276,17 @@ describe("Streamed Liquidator Vault", async () => {
     describe("calling initialize", async () => {
         before(async () => {
             await deployFeeVaultDependencies(12)
+            assetToBurn = simpleToExactAmount(10 , await asset.decimals())
             vault = await new LiquidatorStreamBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
-            await vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address])
+            await asset.connect(sa.default.signer).approve(vault.address, ethers.constants.MaxUint256)
+            await vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address], assetToBurn)
+        })
+        after(async () => {
+            assetToBurn = defaultAssetToBurn
         })
         it("should properly store valid arguments", async () => {
+            expect(assetToBurn, "assetToBurn").to.gt(0)
+
             const stream = await vault.shareStream()
             expect(stream.last, "stream last").to.eq(0)
             expect(stream.end, "stream end").to.eq(0)
@@ -288,12 +298,15 @@ describe("Streamed Liquidator Vault", async () => {
 
             expect(await vault.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
 
-            expect(await vault.totalSupply(), "total shares").to.eq(0)
-            expect(await vault.totalAssets(), "total assets").to.eq(0)
+            expect(await vault.totalSupply(), "total shares").to.eq(assetToBurn)
+            expect(await vault.totalAssets(), "total assets").to.eq(assetToBurn)
+
+            //locked shares
+            expect((await vault.balanceOf(vault.address)), "locked shares").to.eq(assetToBurn)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(
-                vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address]),
+                vault.initialize("feeVault", "fv", sa.vaultManager.address, [rewards1.address, rewards2.address], assetToBurn),
             ).to.be.revertedWith("Initializable: contract is already initialized")
         })
     })

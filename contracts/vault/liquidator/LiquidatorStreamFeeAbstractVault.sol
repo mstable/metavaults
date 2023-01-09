@@ -30,6 +30,7 @@ import { FeeAdminAbstractVault } from "../fee/FeeAdminAbstractVault.sol";
  *   - VaultManagerRole(_nexus)
  *   - LiquidatorStreamAbstractVault(_streamDuration)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  * - LiquidatorAbstractVault._initialize(_rewardTokens)
  * - LiquidatorStreamFeeAbstractVault._initialize(_feeReceiver, _donationFee)
  */

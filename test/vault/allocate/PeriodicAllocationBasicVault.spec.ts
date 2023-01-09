@@ -43,6 +43,7 @@ const sourceParams = {
     singleVaultSharesThreshold: BN.from(1000),
     singleSourceVaultIndex: BN.from(0),
 }
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 interface Balances {
     assetPerShare: BigNumberish
@@ -68,7 +69,8 @@ describe("PeriodicAllocationBasicVault", async () => {
     let user: Account
     let underlyingVaults: Array<string>
     let assetsPerShareScale: BN
-
+    let assetToBurn: BN
+    
     // Testing contract
     let pabVault: PeriodicAllocationBasicVault
 
@@ -80,17 +82,22 @@ describe("PeriodicAllocationBasicVault", async () => {
         asset = mocks.erc20
         user = sa.dummy1
 
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
+
         // Deploy dependencies of test contract.
         bVault1 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-        await bVault1.initialize(`bv1${await asset.name()}`, `bv1${await asset.symbol()}`, sa.vaultManager.address)
+        await asset.connect(sa.default.signer).approve(bVault1.address, ethers.constants.MaxUint256)
+        await bVault1.initialize(`bv1${await asset.name()}`, `bv1${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
 
         bVault2 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-        await bVault2.initialize(`bv2${await asset.name()}`, `bv2${await asset.symbol()}`, sa.vaultManager.address)
+        await asset.connect(sa.default.signer).approve(bVault2.address, ethers.constants.MaxUint256)
+        await bVault2.initialize(`bv2${await asset.name()}`, `bv2${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
 
         underlyingVaults = [bVault1.address, bVault2.address]
 
         // Deploy test contract.
         pabVault = await new PeriodicAllocationBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+        await asset.connect(sa.default.signer).approve(pabVault.address, ethers.constants.MaxUint256)
         // Initialize test contract.
         await pabVault.initialize(
             `pab${await asset.name()}`,
@@ -99,6 +106,7 @@ describe("PeriodicAllocationBasicVault", async () => {
             underlyingVaults,
             sourceParams,
             assetPerShareUpdateThreshold,
+            assetToBurn
         )
 
         assetsPerShareScale = await pabVault.ASSETS_PER_SHARE_SCALE()
@@ -173,7 +181,16 @@ describe("PeriodicAllocationBasicVault", async () => {
         })
     })
     describe("initialize", async () => {
+        before(async () => {
+            assetToBurn = simpleToExactAmount(10 , await asset.decimals())
+            await setup()
+        })
+        after(async () => {
+            assetToBurn = defaultAssetToBurn
+        })
         it("should properly store valid arguments", async () => {
+            expect(assetToBurn, "assetToBurn").to.gt(0)
+
             // Basic vaults
             expect(await bVault1.symbol(), "bv1 symbol").to.eq("bv1ERC20")
             expect(await bVault2.symbol(), "bv2 symbol").to.eq("bv2ERC20")
@@ -189,13 +206,16 @@ describe("PeriodicAllocationBasicVault", async () => {
 
             expect(await pabVault.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
             expect(await pabVault.assetsPerShare(), "assetsPerShare").to.eq(assetsPerShareScale)
-            expect(await pabVault.totalSupply(), "totalSupply").to.eq(0)
-            expect(await pabVault.totalAssets(), "totalAssets").to.eq(0)
+            expect(await pabVault.totalSupply(), "totalSupply").to.eq(assetToBurn)
+            expect(await pabVault.totalAssets(), "totalAssets").to.eq(assetToBurn)
             expect((await pabVault.sourceParams()).singleVaultSharesThreshold, "singleVaultSharesThreshold").to.eq(1000)
             expect((await pabVault.sourceParams()).singleSourceVaultIndex, "singleSourceVaultIndex").to.eq(0)
 
             expect(await pabVault.resolveVaultIndex(0)).to.eq(bVault1.address)
             expect(await pabVault.resolveVaultIndex(1)).to.eq(bVault2.address)
+
+            //locked shares
+            expect((await pabVault.balanceOf(pabVault.address)), "locked shares").to.eq(assetToBurn)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(
@@ -206,6 +226,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     underlyingVaults,
                     sourceParams,
                     assetPerShareUpdateThreshold,
+                    assetToBurn
                 ),
             ).to.be.revertedWith("Initializable: contract is already initialized")
         })
@@ -215,7 +236,7 @@ describe("PeriodicAllocationBasicVault", async () => {
 
             const sourceParamsTemp = {
                 singleVaultSharesThreshold: (await pabVault.BASIS_SCALE()).add(1),
-                singleSourceVaultIndex: BN.from(10),
+                singleSourceVaultIndex: BN.from(0),
             }
 
             // Initialize test contract.
@@ -226,6 +247,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 underlyingVaults,
                 sourceParamsTemp,
                 assetPerShareUpdateThreshold,
+                assetToBurn
             )
 
             await expect(tx).to.be.revertedWith("Invalid shares threshold")
@@ -249,6 +271,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                 underlyingVaults,
                 sourceParamsTemp,
                 assetPerShareUpdateThreshold,
+                assetToBurn
             )
 
             await expect(tx).to.be.revertedWith("Invalid source vault index")

@@ -77,6 +77,7 @@ contract Convex3CrvLiquidatorVault is
      * @param __donateToken    3Pool token (DAI, USDC or USDT) that CVX and CRV rewards are swapped to by the Liquidator.
      * @param _feeReceiver     Account that receives the performance fee as shares.
      * @param _donationFee     Donation fee scaled to `FEE_SCALE`.
+     * @param _assetToBurn     Amount of assets that will be deposited and corresponding shares locked permanently
      */
     function initialize(
         string calldata _name,
@@ -86,7 +87,8 @@ contract Convex3CrvLiquidatorVault is
         address[] memory _rewardTokens,
         address __donateToken,
         address _feeReceiver,
-        uint256 _donationFee
+        uint256 _donationFee,
+        uint256 _assetToBurn
     ) external initializer {
         // Vault initialization
         VaultManagerRole._initialize(_vaultManager);
@@ -105,6 +107,8 @@ contract Convex3CrvLiquidatorVault is
         IERC20(DAI).safeApprove(address(basePool), type(uint256).max);
         IERC20(USDC).safeApprove(address(basePool), type(uint256).max);
         IERC20(USDT).safeApprove(address(basePool), type(uint256).max);
+
+        AbstractVault._initialize(_assetToBurn);
     }
 
     /**

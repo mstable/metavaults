@@ -20,6 +20,7 @@ import { FeeAdminAbstractVault } from "./FeeAdminAbstractVault.sol";
  *   - AbstractVault(_asset)
  *   - VaultManagerRole(_nexus)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  * - FeeAdminAbstractVault._initialize(_feeReceiver)
  * - PerfFeeAbstractVault._initialize(_performanceFee)
  */

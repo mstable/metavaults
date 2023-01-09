@@ -17,6 +17,7 @@ import type { AbstractVault, DataEmitter, MockERC20ForceBurnable, MockNexus, Per
 const perfAssetsPerShareScale = simpleToExactAmount(1, 26)
 const feeScale = simpleToExactAmount(1, 6)
 const performanceFee = simpleToExactAmount(4, 2)
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 interface CheckData {
     staker: string
@@ -35,6 +36,7 @@ describe("Performance Fees", async () => {
     let asset: MockERC20ForceBurnable
     let vault: PerfFeeBasicVault
     let user: Account
+    let assetToBurn: BN
 
     const checkAndSetDefaultAssetPerShare = (data: CheckData) => {
         if (data.perfFeesAssetsPerShare === undefined) {
@@ -112,16 +114,15 @@ describe("Performance Fees", async () => {
 
     const setup = async (decimals = 18): Promise<PerfFeeBasicVault> => {
         dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
 
         if (!asset) {
             await deployFeeVaultDependencies(decimals)
         }
         vault = await new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-
-        await vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee)
-
-        // Approve vault to transfer assets from default signer
-        await asset.approve(vault.address, ethers.constants.MaxUint256)
+        
+        await asset.connect(sa.default.signer).approve(vault.address, ethers.constants.MaxUint256)
+        await vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee, assetToBurn)
 
         // set balance or users for the test.
         const assetBalance = await asset.balanceOf(sa.default.address)
@@ -177,10 +178,17 @@ describe("Performance Fees", async () => {
     describe("calling initialize", async () => {
         before(async () => {
             await deployFeeVaultDependencies(12)
+            assetToBurn = simpleToExactAmount(10 , await asset.decimals())
             vault = await new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
-            await vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee)
+            await asset.connect(sa.default.signer).approve(vault.address, ethers.constants.MaxUint256)
+            await vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee, assetToBurn)
+        })
+        after(async () => {
+            assetToBurn = defaultAssetToBurn
         })
         it("should properly store valid arguments", async () => {
+            expect(assetToBurn, "assetToBurn").to.gt(0)
+
             expect(await vault.symbol(), "symbol").to.eq("fv")
             expect(await vault.name(), "name").to.eq("feeVault")
             expect(await vault.decimals(), "decimals").to.eq(12)
@@ -191,12 +199,15 @@ describe("Performance Fees", async () => {
             expect(await vault.performanceFee(), "performanceFee").to.eq(performanceFee)
             expect(await vault.perfFeesAssetPerShare(), "assetsPerShare").to.eq(perfAssetsPerShareScale)
 
-            expect(await vault.totalSupply(), "total shares").to.eq(0)
-            expect(await vault.totalAssets(), "total assets").to.eq(0)
+            expect(await vault.totalSupply(), "total shares").to.eq(assetToBurn)
+            expect(await vault.totalAssets(), "total assets").to.eq(assetToBurn)
+            
+            //locked shares
+            expect((await vault.balanceOf(vault.address)), "locked shares").to.eq(assetToBurn)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(
-                vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee),
+                vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, performanceFee, assetToBurn),
             ).to.be.revertedWith("Initializable: contract is already initialized")
         })
         it("Should revert if the performance fee is too high", async () => {
@@ -208,7 +219,7 @@ describe("Performance Fees", async () => {
             vault = await new PerfFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
             // FEE_SCALE = 1e6
             const INVALID_FEE_SCALE = (await vault.FEE_SCALE()) + 1
-            await expect(vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, INVALID_FEE_SCALE)).to.be.revertedWith("Invalid fee")
+            await expect(vault.initialize("feeVault", "fv", sa.vaultManager.address, feeReceiver.address, INVALID_FEE_SCALE, assetToBurn)).to.be.revertedWith("Invalid fee")
         })
     })
     describe("charge performance fees", async () => {

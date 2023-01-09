@@ -37,7 +37,8 @@ contract LiquidatorStreamBasicVault is LiquidatorStreamAbstractVault, Initializa
         string calldata _nameArg,
         string calldata _symbolArg,
         address _vaultManager,
-        address[] memory _rewardTokens
+        address[] memory _rewardTokens,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 decimals = InitializableToken(address(_asset)).decimals();
@@ -45,6 +46,7 @@ contract LiquidatorStreamBasicVault is LiquidatorStreamAbstractVault, Initializa
 
         VaultManagerRole._initialize(_vaultManager);
         LiquidatorAbstractVault._initialize(_rewardTokens);
+        AbstractVault._initialize(_assetToBurn);
     }
 
     function totalAssets() public view override returns (uint256 totalManagedAssets) {

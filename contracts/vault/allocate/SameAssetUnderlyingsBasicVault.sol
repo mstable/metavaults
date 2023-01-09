@@ -26,17 +26,20 @@ contract SameAssetUnderlyingsBasicVault is Initializable, SameAssetUnderlyingsAb
      * @param _symbolArg Symbol of vault token
      * @param _vaultManager Trusted account that can perform vault operations. eg rebalance.
      * @param _underlyingVaults  The underlying vaults address to invest into.
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
      */
     function initialize(
         string calldata _nameArg,
         string calldata _symbolArg,
         address _vaultManager,
-        address[] memory _underlyingVaults
+        address[] memory _underlyingVaults,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
         InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
         VaultManagerRole._initialize(_vaultManager);
         SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults);
+        AbstractVault._initialize(_assetToBurn);
     }
 }

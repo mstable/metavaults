@@ -38,6 +38,7 @@ import { CurveFraxBpMetapoolCalculatorLibrary } from "../../../peripheral/Curve/
  * The `initialize` function of implementing contracts need to call the following:
  * - InitializableToken._initialize(_name, _symbol, decimals)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  * - ConvexFraxBpAbstractVault._initialize()
  */
 abstract contract ConvexFraxBpAbstractVault is AbstractSlippage, AbstractVault {

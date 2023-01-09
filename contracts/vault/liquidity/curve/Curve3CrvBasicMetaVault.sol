@@ -33,11 +33,13 @@ contract Curve3CrvBasicMetaVault is Curve3CrvAbstractMetaVault, Initializable {
     /// @param _symbol        Symbol of vault.
     /// @param _vaultManager  Trusted account that can perform vault operations. eg rebalance.
     /// @param _slippageData  Initial slippage limits.
+    /// @param _assetToBurn   Amount of assets that will be deposited and corresponding shares locked permanently
     function initialize(
         string calldata _name,
         string calldata _symbol,
         address _vaultManager,
-        SlippageData memory _slippageData
+        SlippageData memory _slippageData,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the Metapool LP token (3Crv).
         InitializableToken._initialize(_name, _symbol, 18);
@@ -45,5 +47,17 @@ contract Curve3CrvBasicMetaVault is Curve3CrvAbstractMetaVault, Initializable {
         VaultManagerRole._initialize(_vaultManager);
         AbstractSlippage._initialize(_slippageData);
         Curve3CrvAbstractMetaVault._initialize();
+        _burnOnCreate(_assetToBurn);
+    }
+
+    /**
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
+     * @dev This is to prevent against loss of precision and frontrunning the user deposits by sandwitch attack. Should be a non-trivial amount.
+     */
+    function _burnOnCreate(uint256 _assetToBurn) internal virtual override {
+        if (_assetToBurn > 0) {
+            // deposit the assets and transfer shares to the vault to lock permanently
+            _depositInternal(_assetToBurn, address(this), depositSlippage);
+        }
     }
 }

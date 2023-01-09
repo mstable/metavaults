@@ -28,6 +28,7 @@ struct StreamData {
  *   - AbstractVault(_asset)
  *   - VaultManagerRole(_nexus)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  * - LiquidatorAbstractVault._initialize(_rewardTokens)
  */
 abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbstractVault {
