@@ -63,7 +63,7 @@ contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
     ****************************************/
 
     /**
-     * @notice Initialises a cow swap order.
+     * @notice Initialises a cow swap order by approving the order on-chain.
      * @dev This function is used in order to be compliant with IDexSwap interface.
      * @param swapData The data of the swap {fromAsset, toAsset, fromAssetAmount, fromAssetFeeAmount, data}.
      */
@@ -94,6 +94,11 @@ contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
      * @dev Orders must be created off-chain.
      * In case that an order fails, a new order uid is created there is no need to transfer "fromAsset".
      * @param swapData The data of the swap {fromAsset, toAsset, fromAssetAmount, fromAssetFeeAmount, data}.
+     * The `data` field is ABI encoded data specific for CowSwap and includes:
+     * orderUid - The CowSwap unique identifier of the order. eg 0x6ac90cbb70839ca7829daef9f3d46f30ba4b043682e22a91604bbf9ab14940658e9a9a122f402cd98727128baf3dccaf05189b67634fc052
+     * transfer - A flag to indicate if reward tokens should be transferred from the sender to this CowSwapDex contract.
+     * If a CowSwap order expired, then a new order can be initiated with `transfer` set to `false` as the reward tokens
+     * that are to be sold are already in this CowSwapDex contract.
      */
     function initiateSwap(DexSwapData calldata swapData) external override onlyKeeperOrLiquidator {
         _initiateSwap(swapData);
@@ -116,7 +121,8 @@ contract CowSwapDex is ImmutableModule, IDexAsyncSwap {
     }
 
     /**
-     * @notice It reverts as cowswap allows to provide a "receiver" while creating an order. Therefore
+     * @notice It reverts as cowswap allows to provide a "receiver" while creating an order.
+     * That is, CowSwap will transfer the purchased token back to the Liquidator.
      * @dev  The method is kept to have compatibility with IDexAsyncSwap.
      */
     function settleSwap(DexSwapData memory) external pure {
