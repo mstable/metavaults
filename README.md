@@ -225,7 +225,7 @@ Unfortunately the generated markdown will not include inherited classes. These n
 | Contract                        | Address                                                                                                               | Repo Version|
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |-------| 
 | CowSwapDex    | [0xB305372B12Fd5d736EcB6BF903eaA844f2a23112](https://etherscan.io/address/0xB305372B12Fd5d736EcB6BF903eaA844f2a23112)  | [v0.0.5](https://github.com/mstable/metavaults/releases/tag/v0.0.5)|
-| Liquidator 	| [0xD298291059aed77686037aEfFCf497A321A4569e](https://etherscan.io/address/0xD298291059aed77686037aEfFCf497A321A4569e)  | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| Liquidator 	| [0xD298291059aed77686037aEfFCf497A321A4569e](https://etherscan.io/address/0xD298291059aed77686037aEfFCf497A321A4569e)  | [v0.0.7](https://github.com/mstable/metavaults/releases/tag/v0.0.7)|
 | Curve3CrvMetapoolCalculatorLibrary | [0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56](https://etherscan.io/address/0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
 | Curve3CrvFactoryMetapoolCalculatorLibrary | [0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9](https://etherscan.io/address/0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
 | Curve3CrvCalculatorLibrary | [0x092C1b41163c85054F008A486BA72347B919aFa7](https://etherscan.io/address/0x092C1b41163c85054F008A486BA72347B919aFa7)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
