@@ -96,13 +96,13 @@ describe("Convex 3Crv Basic Vault", async () => {
         const libraryAddresses =
             factoryMetapool === true
                 ? {
-                      "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
-                          factoryMetapoolCalculatorLibrary.address,
-                  }
+                    "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
+                        factoryMetapoolCalculatorLibrary.address,
+                }
                 : {
-                      "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
-                          metapoolCalculatorLibrary.address,
-                  }
+                    "contracts/peripheral/Curve/Curve3CrvMetapoolCalculatorLibrary.sol:Curve3CrvMetapoolCalculatorLibrary":
+                        metapoolCalculatorLibrary.address,
+                }
         const vault = await new Convex3CrvBasicVault__factory(libraryAddresses, deployer).deploy(
             nexusAddress,
             ThreeCRV.address,
@@ -214,6 +214,7 @@ describe("Convex 3Crv Basic Vault", async () => {
         }
         describe("should behave like Convex3Crv Vault", async () => {
             let ctx: Convex3CrvContext
+
             before(async () => {
                 await setup(normalBlock)
 
@@ -252,7 +253,38 @@ describe("Convex 3Crv Basic Vault", async () => {
             })
             behaveLikeConvex3CrvVault(() => ctx)
         })
+        describe("withdraw should round up", async () => {
+            let vault: Convex3CrvBasicVault
+            before(async () => {
+                await setup(normalBlock)
 
+                vault = await deployVault(convexConstructorData)
+                await vault.initialize(
+                    "Vault Convex mUSD/3CRV",
+                    "vcvxmusd3CRV",
+                    vaultManagerAddress,
+                    config.convex3CrvPools.musd.slippageData,
+                )
+
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
         describe("should behave like BaseVault", async () => {
             let baseCtx: Partial<BaseVaultBehaviourContext>
             before(async () => {
@@ -270,42 +302,69 @@ describe("Convex 3Crv Basic Vault", async () => {
     describe("USDP Convex Vault", () => {
         let ctx: Convex3CrvContext
         const initialDeposit = simpleToExactAmount(2000, 18)
-
         const convexConstructorData = {
             metapool: config.convex3CrvPools.usdp.curveMetapool,
             convexPoolId: config.convex3CrvPools.usdp.convexPoolId,
             booster,
         }
-        before(async () => {
-            await setup(15410000)
-            const vault = await deployVault(convexConstructorData)
-            await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
+        describe("should behave like Convex3Crv Vault", async () => {
+            before(async () => {
+                await setup(15410000)
+                const vault = await deployVault(convexConstructorData)
+                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
 
-            threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
-            metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
-            baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
-            await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
-            ctx = {
-                vault: vault.connect(owner.signer),
-                owner,
-                threePool,
-                threeCrvToken,
-                metapool,
-                baseRewardsPool,
-                dataEmitter,
-                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
-                amounts: {
-                    initialDeposit,
-                    deposit: initialDeposit.div(4),
-                    mint: initialDeposit.div(5),
-                    withdraw: initialDeposit.div(3),
-                    redeem: initialDeposit.div(6),
-                },
-            }
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+                await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
+                ctx = {
+                    vault: vault.connect(owner.signer),
+                    owner,
+                    threePool,
+                    threeCrvToken,
+                    metapool,
+                    baseRewardsPool,
+                    dataEmitter,
+                    convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
+                    amounts: {
+                        initialDeposit,
+                        deposit: initialDeposit.div(4),
+                        mint: initialDeposit.div(5),
+                        withdraw: initialDeposit.div(3),
+                        redeem: initialDeposit.div(6),
+                    },
+                }
+            })
+            behaveLikeConvex3CrvVault(() => ctx)
         })
-        behaveLikeConvex3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Convex3CrvBasicVault
+            before(async () => {
+                await setup(15410000)
+                vault = await deployVault(convexConstructorData)
+                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
+
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("FRAX Convex Vault", () => {
         let ctx: Convex3CrvContext
@@ -315,36 +374,64 @@ describe("Convex 3Crv Basic Vault", async () => {
             convexPoolId: config.convex3CrvPools.frax.convexPoolId,
             booster,
         }
-        before(async () => {
-            await setup(15410000)
-            const vault = await deployVault(convexConstructorData, true)
-            await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
+        describe("should behave like Convex3Crv Vault", async () => {
+            before(async () => {
+                await setup(15410000)
+                const vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
 
-            threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
-            metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
-            baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
-            await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
-            ctx = {
-                vault: vault.connect(owner.signer),
-                owner,
-                threePool,
-                threeCrvToken,
-                metapool,
-                baseRewardsPool,
-                dataEmitter,
-                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
-                amounts: {
-                    initialDeposit,
-                    deposit: initialDeposit.div(4),
-                    mint: initialDeposit.div(5),
-                    withdraw: initialDeposit.div(3),
-                    redeem: initialDeposit.div(6),
-                },
-            }
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+                await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
+                ctx = {
+                    vault: vault.connect(owner.signer),
+                    owner,
+                    threePool,
+                    threeCrvToken,
+                    metapool,
+                    baseRewardsPool,
+                    dataEmitter,
+                    convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
+                    amounts: {
+                        initialDeposit,
+                        deposit: initialDeposit.div(4),
+                        mint: initialDeposit.div(5),
+                        withdraw: initialDeposit.div(3),
+                        redeem: initialDeposit.div(6),
+                    },
+                }
+            })
+            behaveLikeConvex3CrvVault(() => ctx)
         })
-        behaveLikeConvex3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Convex3CrvBasicVault
+            before(async () => {
+                await setup(15410000)
+                vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
+
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("BUSD Convex Vault", () => {
         let ctx: Convex3CrvContext
@@ -354,36 +441,64 @@ describe("Convex 3Crv Basic Vault", async () => {
             convexPoolId: config.convex3CrvPools.busd.convexPoolId,
             booster,
         }
-        before(async () => {
-            await setup(15410000)
-            const vault = await deployVault(convexConstructorData, true)
-            await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
+        describe("should behave like Convex3Crv Vault", async () => {
+            before(async () => {
+                await setup(15410000)
+                const vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
 
-            threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
-            metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
-            baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
-            await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
-            ctx = {
-                vault: vault.connect(owner.signer),
-                owner,
-                threePool,
-                threeCrvToken,
-                metapool,
-                baseRewardsPool,
-                dataEmitter,
-                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
-                amounts: {
-                    initialDeposit,
-                    deposit: initialDeposit.div(4),
-                    mint: initialDeposit.div(5),
-                    withdraw: initialDeposit.div(3),
-                    redeem: initialDeposit.div(6),
-                },
-            }
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+                await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
+                ctx = {
+                    vault: vault.connect(owner.signer),
+                    owner,
+                    threePool,
+                    threeCrvToken,
+                    metapool,
+                    baseRewardsPool,
+                    dataEmitter,
+                    convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
+                    amounts: {
+                        initialDeposit,
+                        deposit: initialDeposit.div(4),
+                        mint: initialDeposit.div(5),
+                        withdraw: initialDeposit.div(3),
+                        redeem: initialDeposit.div(6),
+                    },
+                }
+            })
+            behaveLikeConvex3CrvVault(() => ctx)
         })
-        behaveLikeConvex3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Convex3CrvBasicVault
+            before(async () => {
+                await setup(15410000)
+                vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
+
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("LUSD Convex Vault", () => {
         let ctx: Convex3CrvContext
@@ -393,36 +508,64 @@ describe("Convex 3Crv Basic Vault", async () => {
             convexPoolId: config.convex3CrvPools.lusd.convexPoolId,
             booster,
         }
-        before(async () => {
-            await setup(15410000)
-            const vault = await deployVault(convexConstructorData, true)
-            await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
+        describe("should behave like Convex3Crv Vault", async () => {
+            before(async () => {
+                await setup(15410000)
+                const vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
 
-            threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
-            metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
-            baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
 
-            await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
-            await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
-            ctx = {
-                vault: vault.connect(owner.signer),
-                owner,
-                threePool,
-                threeCrvToken,
-                metapool,
-                baseRewardsPool,
-                dataEmitter,
-                convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
-                amounts: {
-                    initialDeposit,
-                    deposit: initialDeposit.div(4),
-                    mint: initialDeposit.div(5),
-                    withdraw: initialDeposit.div(3),
-                    redeem: initialDeposit.div(6),
-                },
-            }
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+                await vault.connect(owner.signer)["deposit(uint256,address)"](initialDeposit, owner.address)
+                ctx = {
+                    vault: vault.connect(owner.signer),
+                    owner,
+                    threePool,
+                    threeCrvToken,
+                    metapool,
+                    baseRewardsPool,
+                    dataEmitter,
+                    convex3CrvCalculatorLibrary: factoryMetapoolCalculatorLibrary,
+                    amounts: {
+                        initialDeposit,
+                        deposit: initialDeposit.div(4),
+                        mint: initialDeposit.div(5),
+                        withdraw: initialDeposit.div(3),
+                        redeem: initialDeposit.div(6),
+                    },
+                }
+            })
+            behaveLikeConvex3CrvVault(() => ctx)
         })
-        behaveLikeConvex3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Convex3CrvBasicVault
+            before(async () => {
+                await setup(15410000)
+                vault = await deployVault(convexConstructorData, true)
+                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
+
+                threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
+                metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
+                baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)
+
+                await threeCrvToken.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await threeCrvToken.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("Curve3CrvFactoryMetapoolCalculatorLibrary", () => {
         let emptyPool: MockERC20

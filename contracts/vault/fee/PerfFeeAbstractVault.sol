@@ -3,8 +3,6 @@ pragma solidity 0.8.17;
 
 // Libs
 import { FeeAdminAbstractVault } from "./FeeAdminAbstractVault.sol";
-import { AbstractVault } from "../AbstractVault.sol";
-import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
 
 /**
  * @notice   Abstract ERC-4626 vault that calculates a performance fee since the last time the performance fee was charged.
@@ -27,21 +25,22 @@ import { VaultManagerRole } from "../../shared/VaultManagerRole.sol";
  */
 abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
     /// @notice Scale of the performance fee. 100% = 1000000, 1% = 10000, 0.01% = 100
-    uint256 public constant FEE_SCALE = 1e6;
+    uint24 public constant FEE_SCALE = 1e6;
     /// @notice Scale of the assets per share used to calculate performance fees. 1e26 = 26 decimal places.
     uint256 public constant PERF_ASSETS_PER_SHARE_SCALE = 1e26;
 
     /// @notice Performance fee scaled to 6 decimal places. 1% = 10000, 0.01% = 100
-    uint256 public performanceFee;
+    uint24 public performanceFee;
 
     /// @notice Assets per shares used to calculate performance fees scaled to 26 decimal places.
     uint256 public perfFeesAssetPerShare;
 
     event PerformanceFee(address indexed feeReceiver, uint256 feeShares, uint256 assetsPerShare);
-    event PerformanceFeeUpdated(uint256 performanceFee);
+    event PerformanceFeeUpdated(uint24 performanceFee);
 
     /// @param _performanceFee Performance fee scaled to 6 decimal places.
-    function _initialize(uint256 _performanceFee) internal virtual {
+    function _initialize(uint24 _performanceFee) internal virtual {
+        require(_performanceFee <= FEE_SCALE, "Invalid fee");
         performanceFee = _performanceFee;
         perfFeesAssetPerShare = PERF_ASSETS_PER_SHARE_SCALE;
     }
@@ -57,8 +56,8 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
             ? (totalAssets * PERF_ASSETS_PER_SHARE_SCALE) / totalShares
             : perfFeesAssetPerShare;
 
-        // Only charge a performance fee if assets per share has increased.
-        if (currentAssetsPerShare > perfFeesAssetPerShare) {
+        // Only charge a performance fee if assets per share has increased and performace fees > 0
+        if (currentAssetsPerShare > perfFeesAssetPerShare && performanceFee > 0) {
             // Calculate the amount of shares to mint as a fee.
             // performance fee *
             // total shares *
@@ -111,7 +110,7 @@ abstract contract PerfFeeAbstractVault is FeeAdminAbstractVault {
      * @notice Sets a new performance fee after charging to now using the old performance fee.
      * @param _performanceFee Performance fee scaled to 6 decimal places. 1% = 10000, 0.01% = 100
      */
-    function setPerformanceFee(uint256 _performanceFee) external onlyGovernor {
+    function setPerformanceFee(uint24 _performanceFee) external onlyGovernor {
         require(_performanceFee <= FEE_SCALE, "Invalid fee");
 
         // Charges a performance fee using the old value.

@@ -46,7 +46,7 @@ contract MockMaliciousDexSwap is IDexSwap, ImmutableModule, Initializable {
 
     function initialize(Exchange[] memory exchanges) external initializer {
         uint256 len = exchanges.length;
-        for (uint256 i = 0; i < len; ) {
+        for (uint256 i; i < len; ) {
             _setRate(exchanges[i]);
             unchecked {
                 ++i;

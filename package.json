@@ -1,6 +1,6 @@
 {
     "name": "@mstable/metavaults",
-    "version": "0.0.6",
+    "version": "0.0.7-dev",
     "description": "mStable EIP-4626 Tokenized Vaults",
     "author": "mStable <info@mstable.org>",
     "license": "AGPL-3.0-or-later",
@@ -41,7 +41,7 @@
         "task:fork:polly": "yarn hardhat --config tasks-fork-polygon.config.ts --typecheck",
         "test": "yarn hardhat test --typecheck",
         "test:fork": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/**/*.spec.ts --typecheck",
-        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/vault/savePlus.spec.ts --typecheck",
+        "test:fork:ci": "yarn hardhat --config hardhat-fork.config.ts test ./test-fork/vault/saveFraxPlus.spec.ts --typecheck",
         "test:file:fork": "yarn hardhat --config hardhat-fork.config.ts test --typecheck",
         "test:file": "yarn hardhat test --typecheck",
         "slither": "slither .",

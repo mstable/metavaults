@@ -33,7 +33,7 @@ contract PerfFeeBasicVault is Initializable, PerfFeeAbstractVault {
         string calldata _symbolArg,
         address _vaultManager,
         address feeReceiver,
-        uint32 _performanceFee
+        uint24 _performanceFee
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 decimals = InitializableToken(address(_asset)).decimals();

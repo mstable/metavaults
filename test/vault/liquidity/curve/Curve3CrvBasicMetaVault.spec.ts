@@ -3,8 +3,9 @@ import { ContractMocks, StandardAccounts } from "@utils/machines"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { Curve3CrvBasicMetaVault__factory, Curve3PoolCalculatorLibrary__factory } from "types/generated"
-import type { MockERC20, MockNexus, Curve3CrvBasicMetaVault } from "types/generated"
-import { Curve3CrvBasicMetaVaultLibraryAddresses } from "types/generated/factories/contracts/vault/liquidity/curve/Curve3CrvBasicMetaVault__factory"
+
+import type { Curve3CrvBasicMetaVault, MockERC20, MockNexus } from "types/generated"
+import type { Curve3CrvBasicMetaVaultLibraryAddresses } from "types/generated/factories/contracts/vault/liquidity/curve/Curve3CrvBasicMetaVault__factory"
 
 describe("Curve3CrvBasicMetaVault", () => {
     /* -- Declare shared variables -- */
@@ -13,8 +14,6 @@ describe("Curve3CrvBasicMetaVault", () => {
     let nexus: MockNexus
 
     // Testing contract
-    let vault: Curve3CrvBasicMetaVault
-    let asset: MockERC20
     let curve3PoolCalculatorLibraryAddresses: Curve3CrvBasicMetaVaultLibraryAddresses
 
     /* -- Declare shared functions -- */
@@ -24,7 +23,6 @@ describe("Curve3CrvBasicMetaVault", () => {
 
         mocks = await new ContractMocks().init(sa)
         nexus = mocks.nexus
-        asset = mocks.erc20
 
         const threePoolCalculatorLibrary = await new Curve3PoolCalculatorLibrary__factory(sa.default.signer).deploy()
         curve3PoolCalculatorLibraryAddresses = {

@@ -32,6 +32,7 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
     let asset: MockERC20
     let bVault1: BasicVault
     let bVault2: BasicVault
+    let bVault3: BasicVault
     let user: Account
     let underlyingVaults: Array<string>
 
@@ -53,7 +54,10 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
         bVault2 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
         await bVault2.initialize(`bv2${await asset.name()}`, `bv2${await asset.symbol()}`, sa.vaultManager.address)
 
-        underlyingVaults = [bVault1.address, bVault2.address]
+        bVault3 = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+        await bVault3.initialize(`bv3${await asset.name()}`, `bv3${await asset.symbol()}`, sa.vaultManager.address)
+
+        underlyingVaults = [bVault1.address, bVault2.address, bVault3.address]
 
         // Deploy test contract.
         vault = await new SameAssetUnderlyingsBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
@@ -116,8 +120,8 @@ describe("SameAssetUnderlyingsBasicVault", async () => {
             expect(await vaultInitialised.resolveVaultIndex(0), "vault index 0").to.eq(bVault1.address)
             expect(await vaultInitialised.resolveVaultIndex(1), "vault index 1").to.eq(bVault2.address)
 
-            expect(await vaultInitialised.activeUnderlyingVaults(), "active underlying vaults").to.eq(2)
-            expect(await vaultInitialised.totalUnderlyingVaults(), "total underlying vaults").to.eq(2)
+            expect(await vaultInitialised.activeUnderlyingVaults(), "active underlying vaults").to.eq(3)
+            expect(await vaultInitialised.totalUnderlyingVaults(), "total underlying vaults").to.eq(3)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(

@@ -80,7 +80,7 @@ abstract contract PeriodicAllocationAbstractVault is
     function settle(Settlement[] calldata settlements) external virtual onlyVaultManager {
         Settlement memory settlement;
 
-        for (uint256 i = 0; i < settlements.length; ) {
+        for (uint256 i; i < settlements.length; ) {
             settlement = settlements[i];
 
             if (settlement.assets > 0) {
@@ -128,7 +128,11 @@ abstract contract PeriodicAllocationAbstractVault is
         returns (uint256 assets)
     {
         assets = _previewMint(shares);
-        _checkAndUpdateAssetPerShare(assets);
+        if(_checkAndUpdateAssetPerShare(assets)) {
+            // if assetsPerShare updated recalculate assets amount
+            assets = _previewMint(shares);
+        }
+
         _transferAndMint(assets, shares, receiver, false);
     }
 
@@ -177,7 +181,10 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 assets) {
         assets = _previewRedeem(shares);
-        _checkAndUpdateAssetPerShare(assets);
+        if(_checkAndUpdateAssetPerShare(assets)) {
+            // if assetsPerShare updated recalculate assets amount
+            assets = _previewRedeem(shares);
+        }
 
         uint256 availableAssets = _sourceAssets(assets, shares);
         require(availableAssets >= assets, "not enough assets");
@@ -248,7 +255,7 @@ abstract contract PeriodicAllocationAbstractVault is
                 uint256[] memory underlyingVaultAssets = new uint256[](len);
 
                 // Compute max assets held by each underlying vault and total for the Meta Vault.
-                for (i = 0; i < len; ) {
+                for (; i < len; ) {
                     underlyingVaultAssets[i] = _activeUnderlyingVaults[i].maxWithdraw(
                         address(this)
                     );
@@ -298,14 +305,16 @@ abstract contract PeriodicAllocationAbstractVault is
 
     /// @dev Checks whether assetPerShare needs to be updated and updates it.
     /// @param _assets Amount of assets requested for transfer to/from the vault.
-    function _checkAndUpdateAssetPerShare(uint256 _assets) internal {
+    function _checkAndUpdateAssetPerShare(uint256 _assets) internal returns (bool isUpdated) {
         // 0 threshold means update before each transfer
         if (assetPerShareUpdateThreshold == 0) {
             _updateAssetPerShare();
+            isUpdated = true;
         } else {
             // if the transferred amount including this transfer is above threshold
             if (assetsTransferred + _assets >= assetPerShareUpdateThreshold) {
                 _updateAssetPerShare();
+                isUpdated = true;
 
                 // reset assetsTransferred
                 assetsTransferred = 0;
@@ -360,25 +369,25 @@ abstract contract PeriodicAllocationAbstractVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Uses AssetPerShareAbstractVault logic.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
         override(AssetPerShareAbstractVault, AbstractVault)
         returns (uint256 assets)
     {
-        return AssetPerShareAbstractVault._convertToAssets(shares);
+        return AssetPerShareAbstractVault._convertToAssets(shares, isRoundUp);
     }
 
     /// @dev Uses AssetPerShareAbstractVault logic.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
         override(AssetPerShareAbstractVault, AbstractVault)
         returns (uint256 shares)
     {
-        return AssetPerShareAbstractVault._convertToShares(assets);
+        return AssetPerShareAbstractVault._convertToShares(assets, isRoundUp);
     }
 
     /***************************************
@@ -393,5 +402,12 @@ abstract contract PeriodicAllocationAbstractVault is
     /// @dev Updates assetPerShare after an underlying vault is removed
     function _afterRemoveVault() internal virtual override {
         _updateAssetPerShare();
+    }
+
+    /**
+     * @dev check for whether the removal vault is not the "cache" vault
+     */
+    function _beforeRemoveVault(uint256 vaultIndex) internal virtual override {
+        require(vaultIndex != sourceParams.singleSourceVaultIndex, "Cannot remove cache vault");
     }
 }

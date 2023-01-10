@@ -1,7 +1,8 @@
+import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers"
 import { logger } from "@tasks/utils/logger"
 import { assertBNClose } from "@utils/assertions"
 import { DEAD_ADDRESS } from "@utils/constants"
-import { impersonate, loadOrExecFixture, stopImpersonate } from "@utils/fork"
+import { impersonate, loadOrExecFixture } from "@utils/fork"
 import { ContractMocks } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
@@ -215,7 +216,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             const vaultSigner = await impersonate(vault.address, true)
             await bVault0.connect(vaultSigner).deposit(assetsAmount, vault.address)
             if (network.name == "anvil") {
-                await stopImpersonate(vault.address)
+                await stopImpersonatingAccount(vault.address)
             }
         })
         it("totalAssets", async () => {
@@ -339,7 +340,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
             })
         })
         describe("add vault", async () => {
-            it("should fail if callee is not vault manger", async () => {
+            it("should fail if callee is not governor", async () => {
                 const { vault, sa } = ctx()
                 const tx = vault.connect(sa.alice.signer).addVault(DEAD_ADDRESS)
                 await expect(tx).to.be.revertedWith("Only governor can execute")
@@ -523,7 +524,7 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                     const vaultSigner = await impersonate(vault.address, true)
                     await bVault0.connect(vaultSigner).deposit(amounts.initialDeposit, vault.address)
                     if (network.name == "anvil") {
-                        await stopImpersonate(vault.address)
+                        await stopImpersonatingAccount(vault.address)
                     }
 
                     const bVault0MaxWithdrawAfter = await bVault0.maxWithdraw(vault.address)
@@ -556,6 +557,44 @@ export function shouldBehaveLikeSameAssetUnderlyingsAbstractVault(ctx: () => Sam
                         variances.totalAssets,
                         "meta vault asset balance after",
                     )
+                })
+                it("should be able to correctly remove neth vault when some of < n indexed vaults are removed", async () => {
+                    const { vault, sa, asset } = ctx()
+                    const nexus = mocks.nexus
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+
+                    bVaultNew = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address)
+                    await bVaultNew.initialize(`bvNew${await asset.name()}`, `bvNew${await asset.symbol()}`, sa.vaultManager.address)
+                    await vault.connect(sa.governor.signer).addVault(bVaultNew.address)
+
+                    await vault.connect(sa.governor.signer).removeVault(1)
+                    await vault.connect(sa.governor.signer).removeVault(4)
+
+                    // Following fn will revert as expected because the corresponding index on the map is 0xF
+                    // "Inactive vault"
+                    const tx = vault.connect(sa.governor.signer).removeVault(4)
+                    await expect(tx).to.be.revertedWith("Inactive vault")
+
+                    // Should correctly remove nth vault
+                    const nVaultAddress = await vault.resolveVaultIndex(5)
+                    const removeVaultTx = await vault.connect(sa.governor.signer).removeVault(5)
+                    await expect(removeVaultTx).to.emit(vault, "RemovedVault").withArgs(5, nVaultAddress)
+                })
+                it("should be able to remove and re-add vault", async () => {
+                    const { vault, sa } = ctx()
+
+                    expect( await vault.resolveVaultIndex(0)).to.equal(bVault0.address);
+                    // Remove underlying vault
+                    const removeTx = vault.connect(sa.governor.signer).removeVault(0)
+                    await expect(removeTx).to.emit(vault, "RemovedVault").withArgs(0, bVault0.address)
+
+                    // Add it again
+                    totalUnderlyingVaultsBefore = (await vault.totalUnderlyingVaults()).toNumber()
+                    const addTx = vault.connect(sa.governor.signer).addVault(bVault0.address)
+                    await expect(addTx).to.emit(vault, "AddedVault").withArgs(totalUnderlyingVaultsBefore, bVault0.address)
                 })
             })
         })

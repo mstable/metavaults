@@ -80,7 +80,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             _data.booster
         ).poolInfo(_data.convexPoolId);
         metapoolToken = metapoolTokenAddress;
-        metapoolTokenScale = 10**IERC20Metadata(metapoolTokenAddress).decimals();
+        metapoolTokenScale = 10 ** IERC20Metadata(metapoolTokenAddress).decimals();
         baseRewardPool = IConvexRewardsPool(baseRewardPoolAddress);
 
         metapool = _data.metapool;
@@ -145,12 +145,23 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         shares = _depositInternal(assets, receiver, depositSlippage);
     }
 
-    /// @dev Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
+    /**
+     * @dev Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
+     * If the vault has any 3Crv balance, it is added to the mint/deposit 3Crv that is added to the Metapool
+     * and LP deposited to the Convex pool. The resulting shares are proportionally split between the reciever
+     * and the vault via _afterSharesMintedHook fn.
+     *
+     * @param _assets The amount of underlying assets to be transferred to the vault.
+     * @param _receiver The account that the vault shares will be minted to.
+     * @param _slippage Deposit slippage in basis points i.e. 1% = 100.
+     * @return shares The amount of vault shares that were minted.
+     */
     function _depositInternal(
         uint256 _assets,
         address _receiver,
         uint256 _slippage
     ) internal virtual returns (uint256 shares) {
+        uint256 assetsToDeposit = _asset.balanceOf(address(this)) + _assets;
         // Transfer vault's asssets (3Crv) from the caller.
         _asset.safeTransferFrom(msg.sender, address(this), _assets);
 
@@ -159,29 +170,35 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 totalMetapoolTokensBefore = baseRewardPool.balanceOf(address(this));
 
         // Calculate fair amount of metapool LP tokens, eg musd3Crv, using virtual prices for vault assets (3Crv)
-        uint256 minMetapoolTokens = _getMetapoolTokensForAssets(_assets);
+        uint256 minMetapoolTokens = _getMetapoolTokensForAssets(assetsToDeposit);
         // Calculate min amount of metapool LP tokens with max slippage
         // This is used for sandwich attack protection
         minMetapoolTokens = (minMetapoolTokens * (BASIS_SCALE - _slippage)) / BASIS_SCALE;
 
         // Deposit 3Crv into metapool and the stake into Convex vault
-        uint256 metapoolTokensReceived = _depositAndStake(_assets, minMetapoolTokens);
+        uint256 metapoolTokensReceived = _depositAndStake(assetsToDeposit, minMetapoolTokens);
 
         // Calculate the proportion of shares to mint based on the amount of Metapool LP tokens.
-        shares = _getSharesFromMetapoolTokens(
+        uint256 sharesToMint = _getSharesFromMetapoolTokens(
             metapoolTokensReceived,
             totalMetapoolTokensBefore,
-            totalSupply()
+            totalSupply(),
+            false
         );
+        // Calculate the proportion of shares to mint to the receiver.
+        shares = (sharesToMint * _assets) / assetsToDeposit;
 
         _mint(_receiver, shares);
 
         emit Deposit(msg.sender, _receiver, _assets, shares);
+        // Account any new shares, assets.
+        _afterSharesMintedHook(sharesToMint - shares, assetsToDeposit - _assets);
     }
 
     /// @dev Converts vault assets to shares in two steps
     /// Vault assets (3Crv) -> Metapool LP tokens, eg musd3Crv -> vault shares
     /// Override `AbstractVault._previewDeposit`.
+    /// changes - It takes into account any asset balance to be included in the deposit.
     function _previewDeposit(uint256 assets)
         internal
         view
@@ -190,20 +207,25 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         returns (uint256 shares)
     {
         if (assets > 0) {
+            // Take into account any asset balance.
+            uint256 assetsToDeposit = _asset.balanceOf(address(this)) + assets;
             // Calculate Metapool LP tokens, eg musd3Crv, for vault assets (3Crv)
             (uint256 metapoolTokens, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcDeposit(
                 metapool,
                 metapoolToken,
-                assets,
+                assetsToDeposit,
                 1
             );
 
             // Calculate the proportion of shares to mint based on the amount of metapool LP tokens, eg musd3Crv.
-            shares = _getSharesFromMetapoolTokens(
+            uint256 sharesToMint = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
+            // Calculate the callers portion of shares
+            shares = (sharesToMint * assets) / assetsToDeposit;
         }
     }
 
@@ -215,19 +237,32 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         override
         returns (uint256 assets)
     {
+        uint256 donatedAssets = _asset.balanceOf(address(this));
+        uint256 donatedMetapoolTokens = 0;
+        if (donatedAssets > 0) {
+            (donatedMetapoolTokens, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcDeposit(
+                metapool,
+                metapoolToken,
+                donatedAssets,
+                1
+            );
+        }
         // Calculate Curve Metapool LP tokens, eg musd3CRV, needed to mint the required amount of shares
-        uint256 requiredMetapoolTokens = _getMetapoolTokensFromShares(
+        uint256 metapoolTokens = _getMetapoolTokensFromShares(
             shares,
             baseRewardPool.balanceOf(address(this)),
-            totalSupply()
+            totalSupply(),
+            false
         );
+        uint256 requiredMetapoolTokens = metapoolTokens + donatedMetapoolTokens;
 
-        // Calculate assets needed to deposit into the metapool for the for required metapool lp tokens.
+        // Calculate assets needed to deposit into the metapool for the required metapool lp tokens.
+        uint256 assetsToDeposit;
         uint256 invariant;
         uint256 metapoolTotalSupply;
         uint256 baseVirtualPrice;
         (
-            assets,
+            assetsToDeposit,
             invariant,
             metapoolTotalSupply,
             baseVirtualPrice
@@ -237,39 +272,61 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             requiredMetapoolTokens,
             1
         );
+        assets = (assetsToDeposit * requiredMetapoolTokens) / metapoolTokens;
+
         // Protect against sandwich and flash loan attacks where the balance of the metapool is manipulated.
         uint256 maxAssets = (requiredMetapoolTokens * invariant * VIRTUAL_PRICE_SCALE) /
             (metapoolTotalSupply * baseVirtualPrice);
         maxAssets = (maxAssets * (BASIS_SCALE + mintSlippage)) / BASIS_SCALE;
-        require(assets <= maxAssets, "too much slippage");
+
+        require(assetsToDeposit <= maxAssets, "too much slippage");
 
         // Transfer vault's asssets (3Crv) from the caller.
         _asset.safeTransferFrom(msg.sender, address(this), assets);
 
         // Deposit 3Crv into metapool and the stake into Convex vault
-        _depositAndStake(assets, requiredMetapoolTokens);
+        _depositAndStake(assetsToDeposit, requiredMetapoolTokens);
 
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
+        // Account any new shares, assets.
+        uint256 donatedShares = donatedAssets == 0
+            ? 0
+            : (shares * requiredMetapoolTokens) / donatedMetapoolTokens;
+        _afterSharesMintedHook(donatedShares, donatedAssets);
     }
 
     /// @dev Converts vault shares to assets in two steps
     /// Vault shares -> Metapool LP tokens, eg musd3Crv -> vault assets (3Crv)
     /// Override `AbstractVault._previewMint`.
+    /// changes - It takes into account any asset balance to be included in the next mint.
     function _previewMint(uint256 shares) internal view virtual override returns (uint256 assets) {
         if (shares > 0) {
+            uint256 donatedAssets = _asset.balanceOf(address(this));
+            uint256 donatedMetapoolTokens = 0;
+            if (donatedAssets > 0) {
+                (donatedMetapoolTokens, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcDeposit(
+                    metapool,
+                    metapoolToken,
+                    donatedAssets,
+                    1
+                );
+            }
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
-            (assets, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcMint(
+            (uint256 assetsToDeposit, , , ) = Curve3CrvMetapoolCalculatorLibrary.calcMint(
                 metapool,
                 metapoolToken,
-                metapoolTokens,
+                metapoolTokens + donatedMetapoolTokens,
                 1
             );
+            // Calculate receivers portion of assets.
+            assets = (assetsToDeposit * (metapoolTokens + donatedMetapoolTokens)) / metapoolTokens;
         }
     }
 
@@ -304,7 +361,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokensRequired,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                true
             );
 
             // If caller is not the owner of the shares
@@ -351,7 +409,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                true
             );
         }
     }
@@ -401,7 +460,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             uint256 requiredMetapoolTokens = _getMetapoolTokensFromShares(
                 _shares,
                 totalMetapoolTokens,
-                totalSupply()
+                totalSupply(),
+                false
             );
 
             // Calculate fair amount of assets (3Crv) using virtual prices for metapool LP tokens, eg musd3Crv
@@ -442,7 +502,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                false
             );
             (assets, , ) = Curve3CrvMetapoolCalculatorLibrary.calcRedeem(
                 metapool,
@@ -458,7 +519,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Override `AbstractVault._convertToAssets`.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
@@ -469,7 +530,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             uint256 metapoolTokens = _getMetapoolTokensFromShares(
                 shares,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                isRoundUp
             );
             assets = Curve3CrvMetapoolCalculatorLibrary.convertToBaseLp(
                 metapool,
@@ -480,7 +542,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
     }
 
     /// @dev Override `AbstractVault._convertToShares`.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
@@ -496,7 +558,8 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
             shares = _getSharesFromMetapoolTokens(
                 metapoolTokens,
                 baseRewardPool.balanceOf(address(this)),
-                totalSupply()
+                totalSupply(),
+                isRoundUp
             );
         }
     }
@@ -560,26 +623,49 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
     function _getSharesFromMetapoolTokens(
         uint256 _metapoolTokens,
         uint256 _totalMetapoolTokens,
-        uint256 _totalShares
-    ) internal pure returns (uint256 shares) {
+        uint256 _totalShares,
+        bool isRoundUp
+    ) internal view returns (uint256 shares) {
         if (_totalMetapoolTokens == 0) {
-            shares = _metapoolTokens;
+            shares = (_metapoolTokens * ASSET_SCALE) / metapoolTokenScale;
         } else {
             shares = (_metapoolTokens * _totalShares) / _totalMetapoolTokens;
+            if (isRoundUp && mulmod(_metapoolTokens, _totalShares, _totalMetapoolTokens) > 0) {
+                shares += 1;
+            }
         }
     }
 
     function _getMetapoolTokensFromShares(
         uint256 _shares,
         uint256 _totalMetapoolTokens,
-        uint256 _totalShares
-    ) internal pure returns (uint256 metapoolTokens) {
+        uint256 _totalShares,
+        bool isRoundUp
+    ) internal view returns (uint256 metapoolTokens) {
         if (_totalShares == 0) {
-            metapoolTokens = _shares;
+            metapoolTokens = (_shares * metapoolTokenScale) / ASSET_SCALE;
         } else {
             metapoolTokens = (_shares * _totalMetapoolTokens) / _totalShares;
+            if (isRoundUp && mulmod(_shares, _totalMetapoolTokens, _totalShares) > 0) {
+                metapoolTokens += 1;
+            }
         }
     }
+
+    /**
+     * Called be the `deposit` and `mint` functions after the assets have been transferred into the vault
+     * but before shares are minted.
+     * Typically, the hook implementation deposits the assets into the underlying vaults or platforms.
+     *
+     * @dev the shares returned from `totalSupply` and `balanceOf` have not yet been updated with the minted shares.
+     * The assets returned from `totalAssets` and `assetsOf` are typically updated as part of the `_afterDepositHook` hook but it depends on the implementation.
+     *
+     * If an vault is implementing multiple vault capabilities, the `_afterDepositHook` function that updates the assets amounts should be executed last.
+     *
+     * @param newShares the amount of underlying assets to be transferred to the vault.
+     * @param newAssets the amount of vault shares to be minted.
+     */
+    function _afterSharesMintedHook(uint256 newShares, uint256 newAssets) internal virtual;
 
     /***************************************
                     Emergency Functions

@@ -138,11 +138,11 @@ const bundle = () => {
             main: names.main,
             types: names.types,
             // Enable if it is desired to publish to git hub packages
-            // publishConfig: {
-            //     registry: "https://npm.pkg.github.com/",
-            //     email: "info@mstable.com",
-            //     scope: "@mstable",
-            // },
+            publishConfig: {
+                registry: "https://registry.npmjs.org",
+                email: "info@mstable.com",
+                scope: "@mstable",
+            },
         })
     } catch (e) {
         console.error("Error writing package.json ", e)
@@ -169,7 +169,7 @@ const bundle = () => {
 const publish = () => {
     // publish
     try {
-        sh.exec(`npm publish`, { cwd: paths.out })
+        sh.exec(`npm publish  --access public`, { cwd: paths.out })
     } catch (e) {
         console.error("Error publishing npm package ", e)
     }
@@ -179,6 +179,6 @@ const publish = () => {
         clean()
         compile()
         bundle()
-        //publish()
-        //clean()
+        publish()
+        clean()
     })()

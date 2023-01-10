@@ -12,7 +12,7 @@ jobs:
               node-version: 16
         - name: Get yarn cache directory path
           id: yarn-cache-dir-path
-          run: echo "::set-output name=dir::$(yarn cache dir)
+          run: echo "::set-output name=dir::$(yarn cache dir)"
         - uses: actions/cache@v3
           id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
           with:
@@ -34,6 +34,7 @@ jobs:
           node-version: 16
           registry-url: https://registry.npmjs.org/
       - run: npm ci
-      - run: npm publish
+      - run: npm publish --access public
+      - run: yarn web
         env:
           NODE_AUTH_TOKEN: ${{secrets.GH_NPM_TOKEN}}

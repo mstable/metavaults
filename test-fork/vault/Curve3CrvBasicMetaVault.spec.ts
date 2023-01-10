@@ -27,14 +27,14 @@ const governorAddress = resolveAddress("Governor")
 const nexusAddress = resolveAddress("Nexus")
 const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const daiUserAddress = "0x075e72a5edf65f0a5f44699c7654c1a76941ddc8" // 250M at block 14810528
-const usdcUserAddress = "0x0a59649758aa4d66e25f08dd01271e891fe52199" // Maker: PSM-USDC-A
+const usdcUserAddress = "0x0A59649758aa4d66E25f08Dd01271e891fe52199" // Maker: PSM-USDC-A
 const usdtUserAddress = "0x5754284f345afc66a98fbb0a0afe71e0f007b949" // Tether Treasury
 
 const normalBlock = 14810528
 
 const slippageData = {
     redeem: 101,
-    deposit: 99,
+    deposit: 10,
     withdraw: 11,
     mint: 10,
 }
@@ -182,70 +182,145 @@ describe("Curve 3Crv Basic Vault", async () => {
     })
 
     describe("DAI 3Pooler Vault", () => {
-        before(() => {
-            // Anonymous functions cannot be used as fixtures so can't use arrow function
-            ctx.fixture = async function fixture() {
-                await commonSetup(normalBlock)
+        describe("should behave like Curve3Crv Vault", async () => {
+            before(() => {
+                // Anonymous functions cannot be used as fixtures so can't use arrow function
+                ctx.fixture = async function fixture() {
+                    await commonSetup(normalBlock)
 
-                // Reset ctx values from commonSetup
-                ctx.threePool = threePool
-                ctx.metaVault = metaVault
-                ctx.governor = governor
+                    // Reset ctx values from commonSetup
+                    ctx.threePool = threePool
+                    ctx.metaVault = metaVault
+                    ctx.governor = governor
 
-                // Asset specific values
-                ctx.owner = await impersonateAccount(daiUserAddress)
-                ctx.asset = IERC20__factory.connect(DAI.address, ctx.owner.signer)
-                ctx.amounts = testAmounts(100000, DAI.decimals)
+                    // Asset specific values
+                    ctx.owner = await impersonateAccount(daiUserAddress)
+                    ctx.asset = IERC20__factory.connect(DAI.address, ctx.owner.signer)
+                    ctx.amounts = testAmounts(100000, DAI.decimals)
 
-                // Deploy new Curve3CrvBasicMetaVault
-                ctx.vault = await deployVault(ctx.asset, ctx.owner)
-            }
+                    // Deploy new Curve3CrvBasicMetaVault
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                }
+            })
+            behaveLikeCurve3CrvVault(() => ctx)
         })
-        behaveLikeCurve3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Curve3CrvBasicMetaVault
+            let owner: Account
+            let asset: IERC20
+            before(async () => {
+                await commonSetup(normalBlock)
+                owner = await impersonateAccount(daiUserAddress)
+                asset = IERC20__factory.connect(DAI.address, owner.signer)
+                vault = await deployVault(asset, owner)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await asset.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("USDC 3Pooler Vault", () => {
-        before(() => {
-            // Anonymous functions cannot be used as fixtures so can't use arrow function
-            ctx.fixture = async function fixture() {
-                await commonSetup(normalBlock)
+        describe("should behave like Curve3Crv Vault", async () => {
+            before(() => {
+                // Anonymous functions cannot be used as fixtures so can't use arrow function
+                ctx.fixture = async function fixture() {
+                    await commonSetup(normalBlock)
 
-                // Reset ctx values from commonSetup
-                ctx.threePool = threePool
-                ctx.metaVault = metaVault
-                ctx.governor = governor
+                    // Reset ctx values from commonSetup
+                    ctx.threePool = threePool
+                    ctx.metaVault = metaVault
+                    ctx.governor = governor
 
-                // Asset specific values
-                ctx.owner = await impersonateAccount(usdcUserAddress)
-                ctx.asset = IERC20__factory.connect(USDC.address, ctx.owner.signer)
-                ctx.amounts = testAmounts(100000, USDC.decimals)
+                    // Asset specific values
+                    ctx.owner = await impersonateAccount(usdcUserAddress)
+                    ctx.asset = IERC20__factory.connect(USDC.address, ctx.owner.signer)
+                    ctx.amounts = testAmounts(100000, USDC.decimals)
 
-                // Deploy new Curve3CrvBasicMetaVault
-                ctx.vault = await deployVault(ctx.asset, ctx.owner)
-            }
+                    // Deploy new Curve3CrvBasicMetaVault
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                }
+            })
+            behaveLikeCurve3CrvVault(() => ctx)
         })
-        behaveLikeCurve3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Curve3CrvBasicMetaVault
+            let owner: Account
+            let asset: IERC20
+            before(async () => {
+                await commonSetup(normalBlock)
+                owner = await impersonateAccount(usdcUserAddress)
+                asset = IERC20__factory.connect(USDC.address, owner.signer)
+                vault = await deployVault(asset, owner)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await asset.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("USDT 3Pooler Vault", () => {
-        before(() => {
-            // Anonymous functions cannot be used as fixtures so can't use arrow function
-            ctx.fixture = async function fixture() {
-                await commonSetup(normalBlock)
+        describe("should behave like Curve3Crv Vault", async () => {
+            before(() => {
+                // Anonymous functions cannot be used as fixtures so can't use arrow function
+                ctx.fixture = async function fixture() {
+                    await commonSetup(normalBlock)
 
-                // Reset ctx values from commonSetup
-                ctx.threePool = threePool
-                ctx.metaVault = metaVault
-                ctx.governor = governor
+                    // Reset ctx values from commonSetup
+                    ctx.threePool = threePool
+                    ctx.metaVault = metaVault
+                    ctx.governor = governor
 
-                // Asset specific values
-                ctx.owner = await impersonateAccount(usdtUserAddress)
-                ctx.asset = IERC20__factory.connect(USDT.address, ctx.owner.signer)
-                ctx.amounts = testAmounts(100000, USDT.decimals)
+                    // Asset specific values
+                    ctx.owner = await impersonateAccount(usdtUserAddress)
+                    ctx.asset = IERC20__factory.connect(USDT.address, ctx.owner.signer)
+                    ctx.amounts = testAmounts(100000, USDT.decimals)
 
-                // Deploy new Curve3CrvBasicMetaVault
-                ctx.vault = await deployVault(ctx.asset, ctx.owner)
-            }
+                    // Deploy new Curve3CrvBasicMetaVault
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                }
+            })
+            behaveLikeCurve3CrvVault(() => ctx)
         })
-        behaveLikeCurve3CrvVault(() => ctx)
+        describe("withdraw should round up", async () => {
+            let vault: Curve3CrvBasicMetaVault
+            let owner: Account
+            let asset: IERC20
+            before(async () => {
+                await commonSetup(normalBlock)
+                owner = await impersonateAccount(usdtUserAddress)
+                asset = IERC20__factory.connect(USDT.address, owner.signer)
+                vault = await deployVault(asset, owner)
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await vault.connect(owner.signer)["deposit(uint256,address)"](10, owner.address)
+                await asset.connect(owner.signer).transfer(vault.address, 1)
+
+                const userSharesBefore = await vault.balanceOf(owner.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await vault.connect(owner.signer).withdraw(3, owner.address, owner.address)
+                const userSharesAfter = await vault.balanceOf(owner.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
     })
     describe("validations", () => {
         before(async () => {

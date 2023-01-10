@@ -48,7 +48,7 @@ contract PeriodicAllocationPerfFeeMetaVault is
         string calldata _name,
         string calldata _symbol,
         address _vaultManager,
-        uint256 _performanceFee,
+        uint24 _performanceFee,
         address _feeReceiver,
         address[] memory _underlyingVaults,
         AssetSourcingParams memory _sourceParams,
@@ -174,25 +174,25 @@ contract PeriodicAllocationPerfFeeMetaVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
-    function _convertToAssets(uint256 shares)
+    function _convertToAssets(uint256 shares, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, PeriodicAllocationAbstractVault)
         returns (uint256 assets)
     {
-        return PeriodicAllocationAbstractVault._convertToAssets(shares);
+        return PeriodicAllocationAbstractVault._convertToAssets(shares, isRoundUp);
     }
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
-    function _convertToShares(uint256 assets)
+    function _convertToShares(uint256 assets, bool isRoundUp)
         internal
         view
         virtual
         override(AbstractVault, PeriodicAllocationAbstractVault)
         returns (uint256 shares)
     {
-        return PeriodicAllocationAbstractVault._convertToShares(assets);
+        return PeriodicAllocationAbstractVault._convertToShares(assets, isRoundUp);
     }
 
     /***************************************

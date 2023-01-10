@@ -568,7 +568,7 @@ library Curve3CrvFactoryMetapoolCalculatorLibrary {
         uint256 Dprev = 0;
         D = S;
         uint256 D_P;
-        for (uint256 i = 0; i < 255; ) {
+        for (uint256 i; i < 255; ) {
             // D_P: uint256 = D
             // for _x in xp:
             //     D_P = D_P * D / (_x * N_COINS)  # If division by 0, this will be borked: only withdrawal will work. And that is good

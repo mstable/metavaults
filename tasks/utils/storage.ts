@@ -1,8 +1,8 @@
+import { setStorageAt } from "@nomicfoundation/hardhat-network-helpers"
 import { hexlify, hexZeroPad, keccak256 } from "ethers/lib/utils"
-import { network } from "hardhat"
 
 import type { BigNumberish } from "ethers"
-import type { BytesLike} from "ethers/lib/utils";
+import type { BytesLike } from "ethers/lib/utils"
 
 /**
  * @description Sets the value of a mapping storage variable in a contract for local Hardhat tests.
@@ -43,5 +43,5 @@ export const setMappedValue = async (
 
     const hashedStorageSlot = keccak256(keyHex.concat(paddedStorageSlot))
 
-    await network.provider.send("hardhat_setStorageAt", [contract, hashedStorageSlot, valueHex])
+    await setStorageAt(contract, hashedStorageSlot, valueHex)
 }

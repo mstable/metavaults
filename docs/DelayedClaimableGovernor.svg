@@ -14,29 +14,29 @@
 <title>0</title>
 <polygon fill="#f2f2f2" stroke="black" points="12.83,-229.5 12.83,-505.5 479.9,-505.5 479.9,-229.5 12.83,-229.5"/>
 <text text-anchor="middle" x="246.36" y="-488.9" font-family="Times,serif" font-size="14.00">ClaimableGovernor</text>
-<text text-anchor="middle" x="246.36" y="-472.1" font-family="Times,serif" font-size="14.00">../contracts/governance/ClaimableGovernor.sol</text>
+<text text-anchor="middle" x="246.36" y="-472.1" font-family="Times,serif" font-size="14.00">..contractsgovernanceClaimableGovernor.sol</text>
 <polyline fill="none" stroke="black" points="12.83,-463.9 479.9,-463.9 "/>
 <text text-anchor="start" x="20.83" y="-447.3" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="20.83" y="-430.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;proposedGovernor: address</text>
 <polyline fill="none" stroke="black" points="12.83,-422.3 479.9,-422.3 "/>
 <text text-anchor="start" x="20.83" y="-405.7" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="20.83" y="-388.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;changeGovernor(address)</text>
+<text text-anchor="start" x="20.83" y="-388.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;changeGovernor(address) &lt;&lt;onlyGovernor&gt;&gt;</text>
 <text text-anchor="start" x="20.83" y="-372.1" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="20.83" y="-355.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; GovernorChangeClaimed(proposedGovernor: address)</text>
 <text text-anchor="start" x="20.83" y="-338.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; GovernorChangeCancelled(governor: address, proposed: address)</text>
 <text text-anchor="start" x="20.83" y="-321.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; GovernorChangeRequested(governor: address, proposed: address)</text>
 <text text-anchor="start" x="20.83" y="-304.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyProposedGovernor()</text>
 <text text-anchor="start" x="20.83" y="-288.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_governorAddr: address)</text>
-<text text-anchor="start" x="20.83" y="-271.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;requestGovernorChange(_proposedGovernor: address)</text>
-<text text-anchor="start" x="20.83" y="-254.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelGovernorChange()</text>
-<text text-anchor="start" x="20.83" y="-237.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;claimGovernorChange()</text>
+<text text-anchor="start" x="20.83" y="-271.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;requestGovernorChange(_proposedGovernor: address) &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="20.83" y="-254.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelGovernorChange() &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="20.83" y="-237.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;claimGovernorChange() &lt;&lt;onlyProposedGovernor&gt;&gt;</text>
 </g>
 <!-- 2 -->
 <g id="node3" class="node">
 <title>2</title>
 <polygon fill="#f2f2f2" stroke="black" points="0,-542.5 0,-801.7 492.72,-801.7 492.72,-542.5 0,-542.5"/>
 <text text-anchor="middle" x="246.36" y="-785.1" font-family="Times,serif" font-size="14.00">Governable</text>
-<text text-anchor="middle" x="246.36" y="-768.3" font-family="Times,serif" font-size="14.00">../contracts/governance/Governable.sol</text>
+<text text-anchor="middle" x="246.36" y="-768.3" font-family="Times,serif" font-size="14.00">..contractsgovernanceUmlClassDiagramovernable.sol</text>
 <polyline fill="none" stroke="black" points="0,-760.1 492.72,-760.1 "/>
 <text text-anchor="start" x="8" y="-743.5" font-family="Times,serif" font-size="14.00">Private:</text>
 <text text-anchor="start" x="8" y="-726.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;_governor: address</text>
@@ -44,7 +44,7 @@
 <text text-anchor="start" x="8" y="-701.9" font-family="Times,serif" font-size="14.00">Internal:</text>
 <text text-anchor="start" x="8" y="-685.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;_changeGovernor(_newGovernor: address)</text>
 <text text-anchor="start" x="8" y="-668.3" font-family="Times,serif" font-size="14.00">External:</text>
-<text text-anchor="start" x="8" y="-651.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;changeGovernor(_newGovernor: address)</text>
+<text text-anchor="start" x="8" y="-651.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;changeGovernor(_newGovernor: address) &lt;&lt;onlyGovernor&gt;&gt;</text>
 <text text-anchor="start" x="8" y="-634.7" font-family="Times,serif" font-size="14.00">Public:</text>
 <text text-anchor="start" x="8" y="-617.9" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;event&gt;&gt; GovernorChanged(previousGovernor: address, newGovernor: address)</text>
 <text text-anchor="start" x="8" y="-601.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;&lt;&lt;modifier&gt;&gt; onlyGovernor()</text>
@@ -61,19 +61,19 @@
 <!-- 1 -->
 <g id="node2" class="node">
 <title>1</title>
-<polygon fill="#f2f2f2" stroke="black" points="77.6,-0.5 77.6,-192.5 415.12,-192.5 415.12,-0.5 77.6,-0.5"/>
+<polygon fill="#f2f2f2" stroke="black" points="20.79,-0.5 20.79,-192.5 471.93,-192.5 471.93,-0.5 20.79,-0.5"/>
 <text text-anchor="middle" x="246.36" y="-175.9" font-family="Times,serif" font-size="14.00">DelayedClaimableGovernor</text>
-<text text-anchor="middle" x="246.36" y="-159.1" font-family="Times,serif" font-size="14.00">../contracts/governance/DelayedClaimableGovernor.sol</text>
-<polyline fill="none" stroke="black" points="77.6,-150.9 415.12,-150.9 "/>
-<text text-anchor="start" x="85.6" y="-134.3" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="85.6" y="-117.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;delay: uint256</text>
-<text text-anchor="start" x="85.6" y="-100.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;requestTime: uint256</text>
-<polyline fill="none" stroke="black" points="77.6,-92.5 415.12,-92.5 "/>
-<text text-anchor="start" x="85.6" y="-75.9" font-family="Times,serif" font-size="14.00">Public:</text>
-<text text-anchor="start" x="85.6" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_governorAddr: address, _delay: uint256)</text>
-<text text-anchor="start" x="85.6" y="-42.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;requestGovernorChange(_proposedGovernor: address)</text>
-<text text-anchor="start" x="85.6" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelGovernorChange()</text>
-<text text-anchor="start" x="85.6" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;claimGovernorChange()</text>
+<text text-anchor="middle" x="246.36" y="-159.1" font-family="Times,serif" font-size="14.00">..contractsgovernanceDelayedClaimableGovernor.sol</text>
+<polyline fill="none" stroke="black" points="20.79,-150.9 471.93,-150.9 "/>
+<text text-anchor="start" x="28.79" y="-134.3" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="28.79" y="-117.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;delay: uint256</text>
+<text text-anchor="start" x="28.79" y="-100.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;requestTime: uint256</text>
+<polyline fill="none" stroke="black" points="20.79,-92.5 471.93,-92.5 "/>
+<text text-anchor="start" x="28.79" y="-75.9" font-family="Times,serif" font-size="14.00">Public:</text>
+<text text-anchor="start" x="28.79" y="-59.1" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;constructor(_governorAddr: address, _delay: uint256)</text>
+<text text-anchor="start" x="28.79" y="-42.3" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;requestGovernorChange(_proposedGovernor: address) &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="28.79" y="-25.5" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;cancelGovernorChange() &lt;&lt;onlyGovernor&gt;&gt;</text>
+<text text-anchor="start" x="28.79" y="-8.7" font-family="Times,serif" font-size="14.00"> &#160;&#160;&#160;claimGovernorChange() &lt;&lt;onlyProposedGovernor&gt;&gt;</text>
 </g>
 <!-- 1&#45;&gt;0 -->
 <g id="edge2" class="edge">

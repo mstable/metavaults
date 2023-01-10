@@ -45,8 +45,10 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
         let metaVaultShares: BN
         const totalMetaVaultShares = await metaVault.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
+        const metaVaultScale = await vault.metaVaultScale()
+        const assetScale = await vault.assetScale()
         if (totalShares.eq(0)) {
-            metaVaultShares = shares
+            metaVaultShares = shares.mul(metaVaultScale).div(assetScale)
         } else {
             metaVaultShares = shares.mul(totalMetaVaultShares).div(totalShares)
         }
@@ -64,8 +66,10 @@ export const behaveLikeCurve3CrvVault = (ctx: () => Curve3CrvContext): void => {
         let shares: BN
         const totalMetaVaultShares = await metaVault.balanceOf(vault.address)
         const totalShares = await vault.totalSupply()
+        const metaVaultScale = await vault.metaVaultScale()
+        const assetScale = await vault.assetScale()
         if (totalMetaVaultShares.eq(0)) {
-            shares = metaVaultShares
+            shares = metaVaultShares.mul(assetScale).div(metaVaultScale)
         } else {
             shares = metaVaultShares.mul(totalShares).div(totalMetaVaultShares)
         }

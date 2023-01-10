@@ -1,3 +1,4 @@
+import { setBalance, setStorageAt } from "@nomicfoundation/hardhat-network-helpers"
 import { logger } from "@tasks/utils/logger"
 import { utils } from "ethers"
 
@@ -5,6 +6,7 @@ import { BN, simpleToExactAmount } from "./math"
 
 import type { Signer } from "ethers"
 import type { Account, ERC20 } from "types"
+import { BUSD, FRAX, USDC } from "@tasks/utils"
 
 const log = logger("fork")
 
@@ -24,10 +26,7 @@ export const impersonate = async (addr: string, fund = true): Promise<Signer> =>
     })
     if (fund) {
         // Give the account 10 Ether
-        await network.provider.request({
-            method: "hardhat_setBalance",
-            params: [addr, "0x8AC7230489E80000"],
-        })
+        await setBalance(addr, simpleToExactAmount(10))
     }
     return ethers.provider.getSigner(addr)
 }
@@ -40,23 +39,8 @@ export const impersonateAccount = async (address: string, fund = true): Promise<
     }
 }
 
-// Used for testing against an Anvil node
-export const stopImpersonate = async (addr: string) => {
-    const { network } = await import("hardhat")
-    await network.provider.request({
-        method: "hardhat_stopImpersonateAccount",
-        params: [addr],
-    })
-}
-
 export const toBytes32 = (bn: BN): string => utils.hexlify(utils.zeroPad(bn.toHexString(), 32))
 
-export const setStorageAt = async (address: string, index: string, value: string): Promise<void> => {
-    const { ethers } = await import("hardhat")
-
-    await ethers.provider.send("hardhat_setStorageAt", [address, index, value])
-    await ethers.provider.send("evm_mine", []) // Just mines to the next block
-}
 /**
  *
  * Based on https://blog.euler.finance/brute-force-storage-layout-discovery-in-erc20-contracts-with-hardhat-7ff9342143ed
@@ -86,11 +70,11 @@ export const findBalancesSlot = async (tokenAddress: string): Promise<number> =>
         // make sure the probe will change the slot value
         const probe = prev === probeA ? probeB : probeA
 
-        await network.provider.send("hardhat_setStorageAt", [tokenAddress, probedSlot, probe])
+        await setStorageAt(tokenAddress, probedSlot, probe)
 
         const balance = await token.balanceOf(account)
         // reset to previous value
-        await network.provider.send("hardhat_setStorageAt", [tokenAddress, probedSlot, prev])
+        await setStorageAt(tokenAddress, probedSlot, prev)
         if (balance.eq(ethers.BigNumber.from(probe))) return i
     }
     throw new Error("Balances slot not found!")
@@ -104,12 +88,13 @@ export const findBalancesSlot = async (tokenAddress: string): Promise<number> =>
  * @param {string} [slotIndex]
  * @return {*}  {Promise<void>}
  */
-export const setBalance = async (userAddress: string, tokenAddress: string, amount: BN, slotIndex?: string): Promise<void> => {
+export const setTokenBalance = async (userAddress: string, tokenAddress: string, amount: BN, slotIndex?: string): Promise<void> => {
     let index = slotIndex
     if (slotIndex === undefined) {
         const balanceSlot = await findBalancesSlot(tokenAddress)
         // key, slot
         index = utils.solidityKeccak256(["uint256", "uint256"], [userAddress, balanceSlot])
+        log(`slotIndex: ${index} for tokenAddress: ${tokenAddress}, userAddress: ${userAddress}`)
     }
 
     log(`Setting balance of user  ${userAddress} with token ${tokenAddress} at index ${index}`)
@@ -161,28 +146,71 @@ export async function setBalancesToAccount(
     await Promise.all(tokensTransfer.map((token) => token.transfer(account.address, simpleToExactAmount(amount))))
 
     // Set balance directly by manipulating the contract storage
-    await setBalance(
+    await setTokenBalance(
         account.address,
         musdTokenAddress,
         simpleToExactAmount(amount),
         "0xa9b759fed45888fb7af7fd8c229074535d6dd9f041494f8276fb277331ee6b1a",
     )
-    await setBalance(
+    await setTokenBalance(
         account.address,
         usdcTokenAddress,
         simpleToExactAmount(amount),
         "0xe5edfbb1a168440ed929bb6e6e846a69c257cb12652e468fc03b05a005956076",
     )
-    await setBalance(
+    await setTokenBalance(
         account.address,
         daiTokenAddress,
         simpleToExactAmount(amount),
         "0xabc891fafcb542a415fddaa6995544b58e8a23eba34a9a8e87af53857c0f1bfc",
     )
-    await setBalance(
+    await setTokenBalance(
         account.address,
         usdtTokenAddress,
         simpleToExactAmount(amount),
         "0xbc40fbf4394cd00f78fae9763b0c2c71b21ea442c42fdadc5b720537240ebac1",
+    )
+}
+
+/**
+ * Sets balance to a given account
+ *
+ * @param {Account} account to set balance
+ * @param {[ERC20]} tokensTransfer Tokens that sets the balance by token.transfer tx
+ * @param {{
+ *         busdTokenAddress: string, usdcTokenAddress: string, fraxTokenAddress: string
+ *     }} tokensStorage Tokens that sets the balance by manipulation of their storage
+ * @param {number} [amount=10000] Amount of tokens to set
+ */
+export async function setBalancesToAccountForFraxBp(
+    account: Account,
+    tokensTransfer: Array<ERC20>,
+    tokensStorage: {
+        busdTokenAddress: string
+        usdcTokenAddress: string
+        fraxTokenAddress: string
+    },
+    amount = 10000,
+) {
+    const { busdTokenAddress, usdcTokenAddress, fraxTokenAddress } = tokensStorage
+
+    await Promise.all(tokensTransfer.map((token) => token.transfer(account.address, simpleToExactAmount(amount))))
+
+    // Set balance directly by manipulating the contract storage
+    await setTokenBalance(
+        account.address,
+        fraxTokenAddress,
+        simpleToExactAmount(amount, FRAX.decimals),
+    )
+    await setTokenBalance(
+        account.address,
+        usdcTokenAddress,
+        simpleToExactAmount(amount, USDC.decimals),
+    )
+    // TODO - Not working, fix later
+    await setTokenBalance(
+        account.address,
+        busdTokenAddress,
+        simpleToExactAmount(amount, BUSD.decimals),
     )
 }

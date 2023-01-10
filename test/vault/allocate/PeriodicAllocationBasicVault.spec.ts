@@ -4,7 +4,7 @@ import { assertBNClose } from "@utils/assertions"
 import { ZERO_ADDRESS } from "@utils/constants"
 import { loadOrExecFixture } from "@utils/fork"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
-import { BN, simpleToExactAmount } from "@utils/math"
+import { BN, simpleToExactAmount, roundUp } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, PeriodicAllocationBasicVault__factory } from "types/generated"
@@ -276,6 +276,43 @@ describe("PeriodicAllocationBasicVault", async () => {
         const belowThresholdAmount = singleVaultThresholdAmount.div(2)
         const aboveThresholdAmount = singleVaultThresholdAmount.mul(2)
 
+        describe("remove vault", async () => {
+            it("cannot remove single source vault", async () => {
+                const cachecVaultIndex = (await pabVault.sourceParams()).singleSourceVaultIndex
+                const tx = pabVault.connect(sa.governor.signer).removeVault(cachecVaultIndex)
+                await expect(tx).to.be.revertedWith("Cannot remove cache vault")
+            })
+        })
+        describe("mint and withdraw should round up", async () => {
+            it("minting shares should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await pabVault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(pabVault.address, 1)
+
+                await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+
+                const userAssetsBefore = await asset.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when minting 3 shares, it would result in 3.33 assets transferred from user
+                // According to erc4626 it should round up, thus it should transfer 4 assets
+                await pabVault.connect(user.signer).mint(3, user.address)
+                const userAssetsAfter = await asset.balanceOf(user.address)
+                expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
+            })
+            it("withdrawing assets should round up", async () => {
+                // vault asset/share ratio is 11:10 after the following 2 transactions
+                await pabVault.connect(user.signer).deposit(10, user.address)
+                await asset.transfer(pabVault.address, 1)
+
+                await pabVault.connect(sa.vaultManager.signer).updateAssetPerShare()
+
+                const userSharesBefore = await pabVault.balanceOf(user.address)
+                // asset/share ratio is 11:10. Thus, when withdrawing 3 assets, it would result in 2.73 shares burned from user
+                // According to erc4626 it should round up, thus burning 3 shares
+                await pabVault.connect(user.signer).withdraw(3, user.address, user.address)
+                const userSharesAfter = await pabVault.balanceOf(user.address)
+                expect(userSharesAfter).to.be.eq(userSharesBefore.sub(3))
+            })
+        })
         describe("before settlement", async () => {
             const redeemAmount = oneMil
             const withdrawAmount = oneMil
@@ -497,6 +534,60 @@ describe("PeriodicAllocationBasicVault", async () => {
                         const redeemTx = pabVault.connect(user.signer).redeem(smallRedeemAmount, user.address, user.address)
 
                         await expect(redeemTx).to.be.revertedWith("not enough assets")
+                    })
+                    it("redeem should recalculate assets amount when assetsPerShareThreshold is breached", async () => {
+                        // assets amount calculated by redeem before assetsPerShare update
+                        const assetsAmountBefore = await pabVault.previewRedeem(aboveThresholdAmount)
+                        const userAssetsBefore = await asset.balanceOf(user.address)
+
+                        const transferAmount = oneMil.mul(2)
+                        // Send some assets to bVault1 to change assetPerShare
+                        await asset.transfer(bVault1.address, transferAmount)
+
+                        // Calculate updatedAssetsPerShare
+                        const updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+                        expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
+
+                        // Calculate assets to be received by user
+                        const assetsAmountAfter = aboveThresholdAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+
+                        const redeemTx = pabVault.connect(user.signer).redeem(aboveThresholdAmount, user.address, user.address)
+
+                        // assetsPerShare updated by redeem tx
+                        await expect(redeemTx).to.emit(pabVault, "AssetsPerShareUpdated")
+                        expect(await pabVault.assetsPerShare()).to.eq(updatedAssetPerShare)
+
+                        // assets amount after assetsPerShare update
+                        const userAssetsReceived = (await asset.balanceOf(user.address)).sub(userAssetsBefore)
+                        expect(userAssetsReceived).to.gt(assetsAmountBefore)
+                        expect(userAssetsReceived).to.eq(assetsAmountAfter)
+                    })
+                    it("mint should recalculate assets amount when assetsPerShareThreshold is breached", async () => {
+                        // assets amount calculated by mint before assetsPerShare update
+                        const assetsAmountBefore = await pabVault.previewMint(aboveThresholdAmount)
+                        const userAssetsBefore = await asset.balanceOf(user.address)
+
+                        const transferAmount = oneMil.mul(2)
+                        // Send some assets to bVault1 to change assetPerShare
+                        await asset.transfer(bVault1.address, transferAmount)
+
+                        // Calculate updatedAssetsPerShare
+                        const updatedAssetPerShare = initialDepositAmount.add(transferAmount).mul(assetsPerShareScale).div(initialDepositAmount)
+                        expect((await pabVault.calculateAssetPerShare()).assetsPerShare_).to.eq(updatedAssetPerShare)
+
+                        // Calculate assets transferred from user
+                        const assetsAmountAfter = aboveThresholdAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+
+                        const mintTx = pabVault.connect(user.signer).mint(aboveThresholdAmount, user.address)
+
+                        // assetsPerShare updated by mint tx
+                        await expect(mintTx).to.emit(pabVault, "AssetsPerShareUpdated")
+                        expect(await pabVault.assetsPerShare()).to.eq(updatedAssetPerShare)
+
+                        // assets amount after assetsPerShare update
+                        const userAssetsConsumed = (userAssetsBefore).sub(await asset.balanceOf(user.address))
+                        expect(userAssetsConsumed).to.gt(assetsAmountBefore)
+                        expect(userAssetsConsumed).to.eq(assetsAmountAfter)
                     })
                     context("it should correctly source assets with", async () => {
                         it("sharesRedeemed > singleVaultShareThreshold", async () => {
@@ -1055,7 +1146,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userSharesConsumed = userSharesBefore.sub(await pabVault.balanceOf(user.address))
-                const expectedSharesConsumed = withdrawAmount.mul(assetsPerShareScale).div(updatedAssetPerShare)
+                const expectedSharesConsumed = roundUp(withdrawAmount.mul(assetsPerShareScale), updatedAssetPerShare)
                 expect(userSharesConsumed, "userSharesConsumed").to.eq(expectedSharesConsumed)
             })
             it("mint", async () => {
@@ -1066,7 +1157,7 @@ describe("PeriodicAllocationBasicVault", async () => {
                     .withArgs(updatedAssetPerShare, initialDepositAmount.add(transferAmount))
 
                 const userAssetsConsumed = userAssetsBefore.sub(await asset.balanceOf(user.address))
-                const expectedAssetsConsumed = mintAmount.mul(updatedAssetPerShare).div(assetsPerShareScale)
+                const expectedAssetsConsumed = roundUp(mintAmount.mul(updatedAssetPerShare), assetsPerShareScale)
                 expect(userAssetsConsumed, "userAssetsConsumed").to.eq(expectedAssetsConsumed)
             })
         })
@@ -1159,6 +1250,10 @@ describe("PeriodicAllocationBasicVault", async () => {
 
                 // validate pre-removal assetPerShare
                 expect(await pabVault.assetsPerShare(), "assetPerShare").to.eq(assetsPerShareScale)
+
+                // change singleSourceVaultIndex to enable removal
+                await pabVault.connect(sa.governor.signer).setSingleSourceVaultIndex(1)
+                expect((await pabVault.sourceParams()).singleSourceVaultIndex).to.be.eq(1)
 
                 // Remove underlying vault
                 const tx = pabVault.connect(sa.governor.signer).removeVault(0)

@@ -179,12 +179,7 @@ task("proxy-propose", "Propose new proxy implementation")
         false,
     )
     .addParam("impl", "Token symbol, contract name or address of the new implementation contract.", undefined, types.string, false)
-    .addOptionalParam(
-        "admin",
-        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
-        "DelayedProxyAdmin",
-        types.string,
-    )
+    .addOptionalParam("admin", "Contract name or address of the new admin.", "DelayedProxyAdmin", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { admin, proxy, impl, speed } = taskArgs
@@ -214,12 +209,7 @@ task("proxy-accept", "Accept new proxy implementation")
         types.string,
         false,
     )
-    .addOptionalParam(
-        "admin",
-        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
-        "DelayedProxyAdmin",
-        types.string,
-    )
+    .addOptionalParam("admin", "Contract name or address of the new admin.", "DelayedProxyAdmin", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { admin, proxy, speed } = taskArgs
@@ -243,12 +233,7 @@ task("proxy-cancel", "Cancel a proposed proxy upgrade")
         types.string,
         false,
     )
-    .addOptionalParam(
-        "admin",
-        "Contract name or address of the new admin. DelayedProxyAdmin | InstantProxyAdmin",
-        "DelayedProxyAdmin",
-        types.string,
-    )
+    .addOptionalParam("admin", "Contract name or address of the new admin.", "DelayedProxyAdmin", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
         const { admin, proxy, speed } = taskArgs
@@ -262,4 +247,33 @@ task("proxy-cancel", "Cancel a proposed proxy upgrade")
         const tx = await proxyAdmin.cancelUpgrade(proxyAddress)
 
         await logTxDetails(tx, "cancel proxy upgrade")
+    })
+
+task("proxy-upgrade", "Upgrade proxy implementation")
+    .addParam(
+        "proxy",
+        "Token symbol, contract name or address of the proxy contract. eg mUSD, EmissionsController",
+        undefined,
+        types.string,
+        false,
+    )
+    .addParam("impl", "Token symbol, contract name or address of the new implementation contract.", undefined, types.string, false)
+    .addOptionalParam("admin", "Contract name or address of the new admin.", "InstantProxyAdmin", types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { admin, proxy, impl, speed } = taskArgs
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const proxyImplAddress = resolveAddress(impl, chain)
+        const proxyAdminAddress = resolveAddress(admin, chain)
+        const proxyAddress = resolveAddress(proxy, chain)
+
+        const proxyAdmin = InstantProxyAdmin__factory.connect(proxyAdminAddress, signer)
+
+        const encoded = proxyAdmin.interface.encodeFunctionData("upgrade", [proxyAddress, proxyImplAddress])
+        log(`Encoded propose upgrade data: ${encoded}`)
+        const tx = await proxyAdmin.upgrade(proxyAddress, proxyImplAddress)
+
+        await logTxDetails(tx, "proxy upgrade")
     })
