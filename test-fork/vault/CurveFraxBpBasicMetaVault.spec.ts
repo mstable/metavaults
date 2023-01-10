@@ -2,7 +2,7 @@ import { deployContract } from "@tasks/utils"
 import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { crvFRAX, USDC, FRAX } from "@tasks/utils/tokens"
 import { impersonate, impersonateAccount } from "@utils/fork"
-import { simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount, BN } from "@utils/math"
 import { expect } from "chai"
 import { ethers, network } from "hardhat"
 import {
@@ -36,12 +36,14 @@ const slippageData = {
     withdraw: 110,
     mint: 100,
 }
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Curve FraxBp Basic Vault", async () => {
     let deployer: Signer
     let crvFraxToken: IERC20
     let fraxBasePool: ICurveFraxBP
     let metaVault: IERC4626Vault
+    let assetToBurn: BN
     let curveFraxBpCalculatorLibraryAddresses
 
     const commonSetup = async (blockNumber: number) => {
@@ -63,8 +65,10 @@ describe("Curve FraxBp Basic Vault", async () => {
         crvFraxToken = IERC20__factory.connect(crvFRAX.address, deployer)
         fraxBasePool = ICurveFraxBP__factory.connect(resolveAddress("FraxBP"), deployer)
 
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
+
         const underlyingVault = await new BasicVault__factory(deployer).deploy(nexusAddress, crvFRAX.address)
-        await underlyingVault.initialize("Vault Convex bUSD/crvFrax", "vcvxbusdCrvFrax", vaultManagerAddress)
+        await underlyingVault.initialize("Vault Convex bUSD/crvFrax", "vcvxbusdCrvFrax", vaultManagerAddress, defaultAssetToBurn)
 
         metaVault = await IERC4626Vault__factory.connect(underlyingVault.address, deployer)
 
@@ -81,7 +85,16 @@ describe("Curve FraxBp Basic Vault", async () => {
             "CurveFraxBpBasicMetaVault",
             [nexusAddress, USDC.address, metaVault.address],
         )
-        await vault.initialize("FraxBp Meta Vault (USDC)", "fraxBpUSDC", vaultManagerAddress, slippageData)
+
+        let usdcToken = IERC20__factory.connect(USDC.address, deployer)
+        let usdcWhale = await impersonateAccount(usdcUserAddress)
+
+        await usdcToken.connect(usdcWhale.signer).transfer(deployerAddress, simpleToExactAmount(100000, USDC.decimals))
+        await usdcToken.connect(deployer).approve(vault.address, ethers.constants.MaxUint256)
+
+        assetToBurn = simpleToExactAmount(10 , USDC.decimals)
+
+        await vault.initialize("FraxBp Meta Vault (USDC)", "fraxBpUSDC", vaultManagerAddress, slippageData, assetToBurn)
 
         // Vault token data
         expect(await vault.name(), "name").eq("FraxBp Meta Vault (USDC)")
@@ -96,16 +109,25 @@ describe("Curve FraxBp Basic Vault", async () => {
 
         // Vault balances
         expect(await vault.balanceOf(deployer.getAddress()), "balanceOf").eq(0)
-        expect(await vault.totalAssets(), "totalAssets").eq(0)
-        expect(await vault.totalSupply(), "totalSupply").eq(0)
+        expect(await vault.totalAssets(), "totalAssets").to.gt(0)
+        expect(await vault.totalSupply(), "totalSupply").to.gt(0)
+
+        //locked shares
+        expect((await vault.balanceOf(vault.address)), "locked shares").to.gt(0)
+
+        //reset
+        assetToBurn = defaultAssetToBurn
     })
-    const deployVault = async (asset: IERC20, owner: Account): Promise<CurveFraxBpBasicMetaVault> => {
+    const deployVault = async (asset: IERC20, owner: Account, decimals: number): Promise<CurveFraxBpBasicMetaVault> => {
         const vault = await new CurveFraxBpBasicMetaVault__factory(curveFraxBpCalculatorLibraryAddresses, deployer).deploy(
             nexusAddress,
             asset.address,
             metaVault.address,
         )
-        await vault.initialize("FraxBp Meta Vault", "FraxBpMV", vaultManagerAddress, slippageData)
+        await asset.connect(owner.signer).transfer(deployerAddress, simpleToExactAmount(100000, decimals))
+        await asset.connect(deployer).approve(vault.address, ethers.constants.MaxUint256)
+
+        await vault.initialize("FraxBp Meta Vault", "FraxBpMV", vaultManagerAddress, slippageData, assetToBurn)
 
         // Set allowances
         await asset.connect(owner.signer).approve(vault.address, ethers.constants.MaxUint256)
@@ -141,7 +163,7 @@ describe("Curve FraxBp Basic Vault", async () => {
                     ctx.amounts = testAmounts(100000, FRAX.decimals)
 
                     // Deploy new CurveFraxBpBasicMetaVault
-                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner, FRAX.decimals)
                 }
             })
             behaveLikeCurveFraxBpVault(() => ctx)
@@ -154,7 +176,7 @@ describe("Curve FraxBp Basic Vault", async () => {
                 await commonSetup(normalBlock)
                 owner = await impersonateAccount(fraxUserAddress)
                 asset = IERC20__factory.connect(FRAX.address, owner.signer)
-                vault = await deployVault(asset, owner)
+                vault = await deployVault(asset, owner, FRAX.decimals)
             })
             it("withdrawing assets should round up", async () => {
                 // vault asset/share ratio is 11:10 after the following 2 transactions
@@ -187,7 +209,7 @@ describe("Curve FraxBp Basic Vault", async () => {
                     ctx.amounts = testAmounts(100000, USDC.decimals)
 
                     // Deploy new CurveFraxBpBasicMetaVault
-                    ctx.vault = await deployVault(ctx.asset, ctx.owner)
+                    ctx.vault = await deployVault(ctx.asset, ctx.owner, USDC.decimals)
                 }
             })
             behaveLikeCurveFraxBpVault(() => ctx)
@@ -200,7 +222,7 @@ describe("Curve FraxBp Basic Vault", async () => {
                 await commonSetup(normalBlock)
                 owner = await impersonateAccount(usdcUserAddress)
                 asset = IERC20__factory.connect(USDC.address, owner.signer)
-                vault = await deployVault(asset, owner)
+                vault = await deployVault(asset, owner, USDC.decimals)
             })
             it("withdrawing assets should round up", async () => {
                 // vault asset/share ratio is 11:10 after the following 2 transactions

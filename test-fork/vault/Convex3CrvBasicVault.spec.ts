@@ -51,6 +51,7 @@ const vaultManagerAddress = "0xeB2629a2734e272Bcc07BDA959863f316F4bD4Cf"
 const threeCrvWhaleAddress = "0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A" // Curve.fi: DAI/USDC/USDT Gauge
 const bobAddress = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
 const normalBlock = 14677900
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Convex 3Crv Basic Vault", async () => {
     let deployer: Signer
@@ -64,6 +65,7 @@ describe("Convex 3Crv Basic Vault", async () => {
     let dataEmitter: DataEmitter
     let metapoolCalculatorLibrary: Curve3CrvMetapoolCalculatorLibrary
     let factoryMetapoolCalculatorLibrary: Curve3CrvFactoryMetapoolCalculatorLibrary
+    let assetToBurn: BN
     const { network } = hre
 
     const setup = async (blockNumber: number) => {
@@ -85,7 +87,10 @@ describe("Convex 3Crv Basic Vault", async () => {
         governor = await impersonateAccount(governorAddress)
         bob = await impersonateAccount(bobAddress)
 
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
+
         threeCrvToken = IERC20Metadata__factory.connect(ThreeCRV.address, deployer)
+        await threeCrvToken.connect(owner.signer).transfer(deployerAddress, simpleToExactAmount(100000, await threeCrvToken.decimals()))
 
         dataEmitter = await new DataEmitter__factory(deployer).deploy()
 
@@ -108,6 +113,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             ThreeCRV.address,
             constructorData,
         )
+        await threeCrvToken.connect(deployer).approve(vault.address, ethers.constants.MaxUint256)
         return vault
     }
 
@@ -122,7 +128,7 @@ describe("Convex 3Crv Basic Vault", async () => {
         baseCtx.fixture = async function fixture() {
             await setup(normalBlock)
             const vault = await deployVault(constructorData)
-            await vault.initialize(name, symbol, vaultManagerAddress, slippageData)
+            await vault.initialize(name, symbol, vaultManagerAddress, slippageData, assetToBurn)
 
             threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
             metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -178,7 +184,8 @@ describe("Convex 3Crv Basic Vault", async () => {
         expect(await vault.convexPoolId(), "convex Pool Id").to.equal(convexConstructorData.convexPoolId)
         expect(await vault.baseRewardPool(), "convex reward pool").to.equal(baseRewardPoolAddress)
 
-        await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, config.convex3CrvPools.musd.slippageData)
+        assetToBurn = simpleToExactAmount(10 , await threeCrvToken.decimals())
+        await vault.initialize("Vault Convex mUSD/3CRV", "vcvxmusd3CRV", vaultManagerAddress, config.convex3CrvPools.musd.slippageData, assetToBurn)
 
         const data = await snapVault(vault, threeCrvToken, threeCrvWhaleAddress, simpleToExactAmount(1), simpleToExactAmount(1))
 
@@ -202,8 +209,14 @@ describe("Convex 3Crv Basic Vault", async () => {
 
         // Vault balances
         expect(data.vault.balanceOf, "balanceOf").eq(0)
-        expect(data.vault.totalAssets, "totalAssets").eq(0)
-        expect(data.vault.totalSupply, "totalSupply").eq(0)
+        expect(data.vault.totalAssets, "totalAssets").to.gt(0)
+        expect(data.vault.totalSupply, "totalSupply").to.gt(0)
+
+        //locked shares
+        expect((await vault.balanceOf(vault.address)), "locked shares").to.gt(0)
+
+        // reset
+        assetToBurn = defaultAssetToBurn
     })
     describe("mUSD Convex Vault", () => {
         const initialDeposit = simpleToExactAmount(400000, 18)
@@ -224,6 +237,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                     "vcvxmusd3CRV",
                     vaultManagerAddress,
                     config.convex3CrvPools.musd.slippageData,
+                    assetToBurn
                 )
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
@@ -264,6 +278,7 @@ describe("Convex 3Crv Basic Vault", async () => {
                     "vcvxmusd3CRV",
                     vaultManagerAddress,
                     config.convex3CrvPools.musd.slippageData,
+                    assetToBurn
                 )
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
@@ -311,7 +326,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 const vault = await deployVault(convexConstructorData)
-                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
+                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -344,7 +359,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 vault = await deployVault(convexConstructorData)
-                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData)
+                await vault.initialize("Vault Convex USDP/3CRV", "vcvxUSDP3CRV", vaultManagerAddress, config.convex3CrvPools.usdp.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -378,7 +393,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 const vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
+                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -411,7 +426,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData)
+                await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -445,7 +460,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 const vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
+                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -478,7 +493,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData)
+                await vault.initialize("Vault Convex BUSD/3CRV", "vcvxBUSD3CRV", vaultManagerAddress, config.convex3CrvPools.busd.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -512,7 +527,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 const vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
+                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
@@ -545,7 +560,7 @@ describe("Convex 3Crv Basic Vault", async () => {
             before(async () => {
                 await setup(15410000)
                 vault = await deployVault(convexConstructorData, true)
-                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData)
+                await vault.initialize("Vault Convex LUSD/3CRV", "vcvxLUSD3CRV", vaultManagerAddress, config.convex3CrvPools.lusd.slippageData, assetToBurn)
 
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)

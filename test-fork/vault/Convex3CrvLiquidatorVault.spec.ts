@@ -3,9 +3,10 @@ import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, DAI, ThreeCRV, USDC, USDT } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY, ZERO, ZERO_ADDRESS } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
-import { simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount, BN } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
+import { ethers } from "ethers"
 import { keccak256, toUtf8Bytes } from "ethers/lib/utils"
 
 import * as hre from "hardhat"
@@ -49,6 +50,7 @@ const staker1Address = "0x85eB61a62701be46479C913717E8d8FAD42b398d"
 const staker2Address = "0x701aEcF92edCc1DaA86c5E7EdDbAD5c311aD720C"
 const mockLiquidatorAddress = "0x28c6c06298d514db089934071355e5743bf21d60" // Binance 14
 const normalBlock = 14677900
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Convex 3Crv Liquidator Vault", async () => {
     let keeper: Account
@@ -68,6 +70,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
     let metaPool: ICurveMetapool
     let baseRewardsPool: IConvexRewardsPool
     let dataEmitter: DataEmitter
+    let assetToBurn: BN
     const { network } = hre
 
     const donationFee = 10000 // 1%
@@ -100,6 +103,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         staker2 = await impersonateAccount(staker2Address)
         mockLiquidator = await impersonateAccount(mockLiquidatorAddress)
 
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
+
         threeCrvToken = IERC20__factory.connect(ThreeCRV.address, staker1.signer)
         crvToken = IERC20__factory.connect(CRV.address, staker1.signer)
         cvxToken = IERC20__factory.connect(CVX.address, staker1.signer)
@@ -111,6 +116,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         baseRewardsPool = IConvexRewardsPool__factory.connect(baseRewardPoolAddress, staker1.signer)
 
         dataEmitter = await new DataEmitter__factory(staker1.signer).deploy()
+
+        await threeCrvToken.connect(staker1.signer).transfer(keeperAddress, simpleToExactAmount(100000))
 
         // Mock the Liquidator
         const nexus = Nexus__factory.connect(resolveAddress("Nexus"), governor.signer)
@@ -133,6 +140,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             musdConvexConstructorData,
             ONE_DAY.mul(6),
         )
+        await threeCrvToken.connect(keeper.signer).approve(musdConvexVault.address, ethers.constants.MaxUint256)
         await musdConvexVault.initialize(
             "Vault Convex mUSD/3CRV",
             "vcvxmusd3CRV",
@@ -142,6 +150,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             DAI.address,
             feeReceiver,
             donationFee,
+            assetToBurn
         )
     }
 
@@ -168,6 +177,8 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         expect(await musdConvexVault.convexPoolId(), "convex Pool Id").to.equal(config.convex3CrvPools.musd.convexPoolId)
         expect(await musdConvexVault.baseRewardPool(), "convex reward pool").to.equal(baseRewardPoolAddress)
 
+        await threeCrvToken.connect(keeper.signer).approve(musdConvexVault.address, ethers.constants.MaxUint256)
+        assetToBurn = simpleToExactAmount(10)
         await musdConvexVault.initialize(
             "Vault Convex mUSD/3CRV",
             "vcvxmusd3CRV",
@@ -177,6 +188,7 @@ describe("Convex 3Crv Liquidator Vault", async () => {
             DAI.address,
             feeReceiver,
             donationFee,
+            assetToBurn
         )
 
         const data = await snapVault(musdConvexVault, threeCrvToken, staker1Address, simpleToExactAmount(1), simpleToExactAmount(1))
@@ -213,6 +225,12 @@ describe("Convex 3Crv Liquidator Vault", async () => {
         expect(await musdConvexVault.feeReceiver(), "fee receiver").to.eq(feeReceiver)
         expect(await musdConvexVault.donationFee(), "donation fee").to.eq(donationFee)
         expect(await musdConvexVault.STREAM_DURATION(), "stream duration").to.eq(ONE_DAY.mul(6))
+
+        //locked shares
+        expect((await musdConvexVault.balanceOf(musdConvexVault.address)), "locked shares").to.gt(0)
+
+        // reset
+        assetToBurn = defaultAssetToBurn
     })
     describe("behave like Convex 3Crv Vault", () => {
         let ctx: Convex3CrvContext
