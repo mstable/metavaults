@@ -157,7 +157,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         address _receiver,
         uint256 _slippage
     ) internal virtual returns (uint256 shares) {
-        // Transfer this vault's asssets (DAI, USDC or USDT) from the caller
+        // Transfer this vault's assets (DAI, USDC or USDT) from the caller
         _asset.safeTransferFrom(msg.sender, address(this), _assets);
 
         // Get this vault's balance of underlying Meta Vault shares before deposit.
@@ -273,7 +273,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         maxAssets = (maxAssets * (BASIS_SCALE + mintSlippage)) / BASIS_SCALE;
         require(assets <= maxAssets, "too much slippage");
 
-        // Transfer this vault's asssets (DAI, USDC or USDT) from the caller.
+        // Transfer this vault's assets (DAI, USDC or USDT) from the caller.
         _asset.safeTransferFrom(msg.sender, address(this), assets);
 
         // Deposit asset (DAI, USDC or USDT) into 3Pool and then deposit into underlying meta vault.
@@ -390,7 +390,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             // Burn the owner's vault shares
             _burn(owner, shares);
 
-            // Transfer this vault's asssets (DAI, USDC or USDT) to the receiver.
+            // Transfer this vault's assets (DAI, USDC or USDT) to the receiver.
             _asset.safeTransfer(receiver, assets);
 
             emit Withdraw(msg.sender, receiver, owner, assets, shares);
@@ -545,7 +545,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             // the assets amount passed into this function for redeem()
             assets = _asset.balanceOf(address(this));
 
-            // Transfer this vault's asssets (DAI, USDC or USDT) to the receiver.
+            // Transfer this vault's assets (DAI, USDC or USDT) to the receiver.
             _asset.safeTransfer(_receiver, assets);
 
             emit Withdraw(msg.sender, _receiver, _owner, assets, _shares);

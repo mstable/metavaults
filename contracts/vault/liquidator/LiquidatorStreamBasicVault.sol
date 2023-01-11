@@ -21,7 +21,7 @@ contract LiquidatorStreamBasicVault is LiquidatorStreamAbstractVault, Initializa
     /**
      * @param _nexus    Address of the Nexus contract that resolves protocol modules and roles.
      * @param _asset    Address of the vault's asset.
-     * @param _streamDuration  Number of seconds the increased asssets per share will be streamed after tokens are donated.
+     * @param _streamDuration  Number of seconds the increased assets per share will be streamed after tokens are donated.
      */
     constructor(
         address _nexus,
