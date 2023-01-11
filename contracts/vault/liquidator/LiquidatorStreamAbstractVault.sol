@@ -34,7 +34,7 @@ struct StreamData {
 abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbstractVault {
     using SafeERC20 for IERC20;
 
-    /// @notice Number of seconds the increased asssets per share will be streamed after tokens are donated.
+    /// @notice Number of seconds the increased assets per share will be streamed after tokens are donated.
     uint256 public immutable STREAM_DURATION;
     /// @notice The scale of the shares per second to be burnt which is 18 decimal places.
     uint256 public constant STREAM_PER_SECOND_SCALE = 1e18;
@@ -48,7 +48,7 @@ abstract contract LiquidatorStreamAbstractVault is AbstractVault, LiquidatorAbst
     }
 
     /**
-     * @param _streamDuration  Number of seconds the increased asssets per share will be streamed after liquidated rewards are donated back.
+     * @param _streamDuration  Number of seconds the increased assets per share will be streamed after liquidated rewards are donated back.
      */
     constructor(uint256 _streamDuration) {
         STREAM_DURATION = _streamDuration;

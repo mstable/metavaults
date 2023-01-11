@@ -218,7 +218,7 @@ abstract contract PeriodicAllocationAbstractVault is
 
         // If there is not enough assets held in this vault, the extra assets need to be sourced from the underlying vaults.
         if (assets > actualAssets) {
-            // Bool to track whether sourcing from single vault is successs
+            // Bool to track whether sourcing from single vault is success
             bool sourceFromSingleVaultComplete = false;
 
             // Calculate how many assets need to be withdrawn from the underlying

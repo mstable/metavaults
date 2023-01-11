@@ -163,7 +163,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
         uint256 _slippage
     ) internal virtual returns (uint256 shares) {
         uint256 assetsToDeposit = _asset.balanceOf(address(this)) + _assets;
-        // Transfer vault's asssets (3Crv) from the caller.
+        // Transfer vault's assets (3Crv) from the caller.
         _asset.safeTransferFrom(msg.sender, address(this), _assets);
 
         // Get this vault's balance of Metapool LP tokens, eg musd3Crv.
@@ -282,7 +282,7 @@ abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
 
         require(assetsToDeposit <= maxAssets, "too much slippage");
 
-        // Transfer vault's asssets (3Crv) from the caller.
+        // Transfer vault's assets (3Crv) from the caller.
         _asset.safeTransferFrom(msg.sender, address(this), assets);
 
         // Deposit 3Crv into metapool and the stake into Convex vault
