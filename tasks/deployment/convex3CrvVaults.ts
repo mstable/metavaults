@@ -96,7 +96,7 @@ export const setBalancesToAccounts = async (hre) => {
     await setBalancesToAccount(sa.dummy2, [threeCrvToken], tokensToMockBalance)
 }
 const deployerConvex3CrvVault =
-    (hre: HardhatRuntimeEnvironment, signer: Signer, nexus: string, vaultManager: string, proxyAdmin: string) =>
+    (hre: HardhatRuntimeEnvironment, signer: Signer, nexus: string, vaultManager: string, proxyAdmin: string, deployerAddress: string) =>
     async (pool: string, calculatorLibrary: string) => {
         const convex3CrvPool: Convex3CrvPool = config.convex3CrvPools[pool]
         const constructorData = {
@@ -105,7 +105,7 @@ const deployerConvex3CrvVault =
             booster: resolveAddress("ConvexBooster"),
         }
 
-        return deployConvex3CrvLiquidatorVault(hre, signer, {
+        return deployConvex3CrvLiquidatorVault(hre, signer, deployerAddress, {
             name: convex3CrvPool.name,
             symbol: convex3CrvPool.symbol,
             constructorData,
@@ -122,6 +122,7 @@ const deployerConvex3CrvVault =
             donationFee: 10000,
             factory: convex3CrvPool.isFactory,
             proxy: true,
+            assetToBurn: convex3CrvPool.assetToBurn
         })
     }
 export async function deployConvex3CrvVaults(
@@ -130,8 +131,9 @@ export async function deployConvex3CrvVaults(
     nexus: string,
     vaultManager: string,
     proxyAdmin: string,
+    deployerAddress: string
 ) {
-    const fnDeployConvex3CrvVault = deployerConvex3CrvVault(hre, signer, nexus, vaultManager, proxyAdmin)
+    const fnDeployConvex3CrvVault = deployerConvex3CrvVault(hre, signer, nexus, vaultManager, proxyAdmin, deployerAddress)
     const convex3CrvVaults: Convex3CrvVaultsDeployed = {}
     const pools: string[] = ["musd", "frax", "busd"]
     const curve3CrvMetapoolCalculatorLibrary: Curve3CrvMetapoolCalculatorLibrary = await deployCurve3CrvMetapoolCalculatorLibrary(
@@ -201,6 +203,7 @@ export const deploy3CrvMetaVaults = async (
     nexus: Nexus,
     proxyAdmin: DelayedProxyAdmin | InstantProxyAdmin,
     vaultManager: string,
+    deployerAddress: string
 ): Promise<Phase3Deployed> => {
     // 1 - deployConvex3CrvLiquidatorVault
     const { convex3CrvVaults, curve3CrvMetapoolCalculatorLibrary } = await deployConvex3CrvVaults(
@@ -209,6 +212,7 @@ export const deploy3CrvMetaVaults = async (
         nexus.address,
         vaultManager,
         proxyAdmin.address,
+        deployerAddress
     )
     // 2 - deployPeriodicAllocationPerfFeeMetaVaults
     const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVaults(
@@ -218,6 +222,7 @@ export const deploy3CrvMetaVaults = async (
         vaultManager,
         proxyAdmin.address,
         convex3CrvVaults,
+        deployerAddress
     )
     // 3 - deployCurve3CrvMetaVault
     const { curve3CrvMetaVaults, curve3PoolCalculatorLibrary } = await deployCurve3CrvMetaVaults(
@@ -227,6 +232,7 @@ export const deploy3CrvMetaVaults = async (
         vaultManager,
         proxyAdmin.address,
         periodicAllocationPerfFeeMetaVault.proxy.address,
+        deployerAddress
     )
 
     return {

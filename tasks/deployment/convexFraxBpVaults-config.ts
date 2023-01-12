@@ -26,6 +26,7 @@ const usdcCurveFraxBpMetaVault: CurveFraxBpPool = {
     symbol: "mvUSDCFraxBp-CX1",
     decimals: USDC.decimals,
     slippageData,
+    assetToBurn: simpleToExactAmount(10, USDC.decimals),
 }
 
 const fraxCurveFraxBpMetaVault: CurveFraxBpPool = {
@@ -36,6 +37,7 @@ const fraxCurveFraxBpMetaVault: CurveFraxBpPool = {
     symbol: "mvFRAXFraxBp-CX1",
     decimals: FRAX.decimals,
     slippageData,
+    assetToBurn: simpleToExactAmount(10, FRAX.decimals),
 }
 
 /* *****************************************
@@ -62,6 +64,7 @@ const pusdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 const lusdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor
@@ -83,6 +86,7 @@ const lusdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 const alusdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor
@@ -104,6 +108,7 @@ const alusdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 const busdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor
@@ -125,6 +130,7 @@ const busdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 const tusdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor
@@ -146,6 +152,7 @@ const tusdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 const susdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor
@@ -167,6 +174,7 @@ const susdConvexFraxBpPool: ConvexFraxBpPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
 }
 
 export const config = {
@@ -192,6 +200,7 @@ export const config = {
             singleSourceVaultIndex: 0,
         },
         assetPerShareUpdateThreshold: simpleToExactAmount(1000000), //1M
+        assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
     },
     curveFraxBpMetaVault: { usdc: usdcCurveFraxBpMetaVault, frax: fraxCurveFraxBpMetaVault },
 }
