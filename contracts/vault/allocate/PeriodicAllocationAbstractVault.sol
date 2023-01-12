@@ -127,6 +127,7 @@ abstract contract PeriodicAllocationAbstractVault is
         returns (uint256 assets)
     {
         assets = _previewMint(shares);
+
         if (_checkAndUpdateAssetPerShare(assets)) {
             // if assetsPerShare updated recalculate assets amount
             assets = _previewMint(shares);
@@ -180,6 +181,7 @@ abstract contract PeriodicAllocationAbstractVault is
         address owner
     ) internal virtual override returns (uint256 assets) {
         assets = _previewRedeem(shares);
+
         if (_checkAndUpdateAssetPerShare(assets)) {
             // if assetsPerShare updated recalculate assets amount
             assets = _previewRedeem(shares);

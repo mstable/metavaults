@@ -105,7 +105,7 @@ contract ConvexFraxBpLiquidatorVault is
         // Approve the Curve.fi FRAX/USDC base pool to transfer the FRAX and USDC tokens.
         IERC20(FRAX).safeApprove(address(basePool), type(uint256).max);
         IERC20(USDC).safeApprove(address(basePool), type(uint256).max);
-
+        
         AbstractVault._initialize(_assetToBurn);
     }
 

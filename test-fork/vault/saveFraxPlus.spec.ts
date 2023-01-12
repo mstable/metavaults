@@ -967,6 +967,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                             bVault1: simpleToExactAmount(46, 19),
                         }
                         ctxSa.assetToBurn = ZERO
+                        
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
                         await assertVaultDeposit(

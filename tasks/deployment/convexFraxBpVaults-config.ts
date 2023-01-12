@@ -153,6 +153,7 @@ const tusdConvexFraxBpPool: ConvexFraxBpPool = {
     donationFee: 10000, // 1%
     slippageData,
     assetToBurn: simpleToExactAmount(10, crvFRAX.decimals),
+
 }
 const susdConvexFraxBpPool: ConvexFraxBpPool = {
     // constructor

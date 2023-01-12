@@ -394,7 +394,6 @@ describe("Convex 3Crv Basic Vault", async () => {
                 await setup(15410000)
                 const vault = await deployVault(convexConstructorData, true)
                 await vault.initialize("Vault Convex FRAX/3CRV", "vcvxFRAX3CRV", vaultManagerAddress, config.convex3CrvPools.frax.slippageData, assetToBurn)
-
                 threePool = ICurve3Pool__factory.connect(await vault.basePool(), owner.signer)
                 metapool = ICurveMetapool__factory.connect(await vault.metapool(), owner.signer)
                 baseRewardsPool = IConvexRewardsPool__factory.connect(await vault.baseRewardPool(), owner.signer)

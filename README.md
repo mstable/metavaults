@@ -17,17 +17,17 @@ Meta Vaults combine, compose, and optimise multiple yield sources into standardi
 There are 3 different types of Vault implementations:
 
 -   **Basic Vault:** This is the simplest building block for composable
-    yielding Vaults. It follows the ERC-4626 standard. It can be used to either create a yield strategy or wrap an existing contract to allow for ERC-4626 compatability
+    yielding Vaults. It follows the ERC-4626 standard. It can be used to either create a yield strategy or wrap an existing contract to allow for ERC-4626 compatibility
 -   **Multi Asset Vault:** This is a layer that can aggregate multiple
     yield sources into one. It can use any ERC-4626 compliant contracts, even if they are not using the same asset. This Vault is similar to the ERC-4626 standard but has slight modifications to handle multiple assets.
--   **Meta Vault:** This is the top layer that and is composed of either Basic Vaults, Multi Asset Vaults, other ERC-4626 compliant contracts, or any
-    combination of them. This the Meta Vault is ERC-4626 compliant and therefore
+-   **Meta Vault:** This is the top layer and is composed of either Basic Vaults, Multi Asset Vaults, other ERC-4626 compliant contracts, or any
+    combination of them. The Meta Vault is ERC-4626 compliant and therefore
     offers the users the easiest path to allocate their assets or for protocols to integrate.
 
 The Contracts follow a modular pattern. The Vaults can be enriched with additional functionality:
 
 -   **Allocation Vaults:** Vaults that can manage a multiple underlying Vaults via setting weights or batching.
--   **Cached Vaults:** Adds the capability to caches some of the underlying assets in the vault. Saves gas on small deposits/withdrawals to/from an underlying platform or vault.
+-   **Cached Vaults:** Adds the capability to cache some of the underlying assets in the vault. Saves gas on small deposits/withdrawals to/from an underlying platform or vault.
 -   **Fee Vaults:** Adds the capability to charge a fee, ether performance or transactional.
 -   **Rewards:** Handling rewards donated to the Vault.
 
@@ -191,7 +191,7 @@ yarn docgen
 
 The markdown for the relevant contracts can then be copied into GitBook.
 
-Unfortunately the generated markdown will not include inherited classes. These need to be manually include for now. 
+Unfortunately the generated markdown will not include inherited classes. These need to be manually included for now. 
 
 ## Other mStable Meta Vault repositories
 
@@ -225,7 +225,7 @@ Unfortunately the generated markdown will not include inherited classes. These n
 | Contract                        | Address                                                                                                               | Repo Version|
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |-------| 
 | CowSwapDex    | [0xB305372B12Fd5d736EcB6BF903eaA844f2a23112](https://etherscan.io/address/0xB305372B12Fd5d736EcB6BF903eaA844f2a23112)  | [v0.0.5](https://github.com/mstable/metavaults/releases/tag/v0.0.5)|
-| Liquidator 	| [0xD298291059aed77686037aEfFCf497A321A4569e](https://etherscan.io/address/0xD298291059aed77686037aEfFCf497A321A4569e)  | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
+| Liquidator 	| [0xD298291059aed77686037aEfFCf497A321A4569e](https://etherscan.io/address/0xD298291059aed77686037aEfFCf497A321A4569e)  | [v0.0.7](https://github.com/mstable/metavaults/releases/tag/v0.0.7)|
 | Curve3CrvMetapoolCalculatorLibrary | [0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56](https://etherscan.io/address/0x5de8865522A61FC9bf2A3ca1A7D196A42863Ea56)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
 | Curve3CrvFactoryMetapoolCalculatorLibrary | [0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9](https://etherscan.io/address/0x3206bf36B1e1764B4C40c5A51A8E237DC4cB10a9) | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|
 | Curve3CrvCalculatorLibrary | [0x092C1b41163c85054F008A486BA72347B919aFa7](https://etherscan.io/address/0x092C1b41163c85054F008A486BA72347B919aFa7)    | [v0.0.3](https://github.com/mstable/metavaults/releases/tag/v0.0.3)|

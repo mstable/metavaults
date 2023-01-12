@@ -61,4 +61,8 @@ contract Convex3CrvBasicVault is Convex3CrvAbstractVault, Initializable {
     function _afterSharesMintedHook(uint256, uint256) internal virtual override {
         // do nothing
     }
+
+    function _afterSharesMintedHook(uint256, uint256) internal virtual override {
+        // do nothing
+    }
 }

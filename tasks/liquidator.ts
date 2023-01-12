@@ -61,7 +61,7 @@ export async function deployLiquidator(
 }
 
 subtask("liq-deploy", "Deploys a new Liquidator contract")
-    .addOptionalParam("syncSwapper", "Sync Swapper address override", "1InchSwapDex", types.string)
+    .addOptionalParam("syncSwapper", "Sync Swapper address override", undefined, types.string)
     .addOptionalParam("asyncSwapper", "Async Swapper address override", "CowSwapDex", types.string)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("admin", "Proxy admin name or address override. eg DelayedProxyAdmin", "InstantProxyAdmin", types.string)
@@ -72,7 +72,7 @@ subtask("liq-deploy", "Deploys a new Liquidator contract")
         const chain = getChain(hre)
         const signer = await getSigner(hre, speed)
         const nexusAddress = resolveAddress(nexus, chain)
-        const syncSwapperAddress = resolveAddress(syncSwapper, chain)
+        const syncSwapperAddress = syncSwapper ? resolveAddress(syncSwapper, chain) : ZERO_ADDRESS
         const asyncSwapperAddress = resolveAddress(asyncSwapper, chain)
         const proxyAdminAddress = resolveAddress(admin, chain)
 
@@ -99,7 +99,7 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
 
         const receipt = await tx.wait()
         const events = receipt.events?.find((e) => e.event === "CollectedRewards")
-        const totalRewards = {};
+        const totalRewards = {}
 
         let i = 0
         for (const rewards of events?.args?.rewards) {
@@ -108,7 +108,7 @@ subtask("liq-collect-rewards", "Collect rewards from vaults")
                 const vaultToken = await resolveAssetToken(signer, chain, vaultsAddress[i])
                 const rewardToken = await resolveAssetToken(signer, chain, events?.args?.rewardTokens[i][j])
                 log(`Collected ${formatUnits(reward, rewardToken.decimals)} ${rewardToken.symbol} rewards from vault ${vaultToken.symbol}`)
-                totalRewards[rewardToken.symbol]= totalRewards[rewardToken.symbol] ? totalRewards[rewardToken.symbol].add(reward): reward;
+                totalRewards[rewardToken.symbol] = totalRewards[rewardToken.symbol] ? totalRewards[rewardToken.symbol].add(reward) : reward
                 j++
             }
             i++
@@ -301,7 +301,7 @@ task("liq-donate-tokens").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-subtask("liq-set-async-swapper", "Set a new async swapper on the Liquidator when using forked chains")
+subtask("liq-set-async-swapper", "Governor sets a new async swapper on the Liquidator when using forked chains")
     .addParam("swapper", "Contract address of the new async swapper", undefined, types.string)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
@@ -320,7 +320,7 @@ task("liq-set-async-swapper").setAction(async (_, __, runSuper) => {
     await runSuper()
 })
 
-task("liq-rescue", "Rescues tokens from the Liquidator and sends it to governor")
+task("liq-rescue", "Governor rescues tokens from the Liquidator and sends it to governor")
     .addParam("asset", "Token symbol or address of the asset to retrieve", undefined, types.string)
     .addOptionalParam("amount", "Amount of tokens to rescue. Defaults to all assets.", undefined, types.float)
     .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
@@ -341,4 +341,38 @@ task("liq-rescue", "Rescues tokens from the Liquidator and sends it to governor"
         const rescueAmount = amount ? simpleToExactAmount(amount, await token.decimals()) : actualAssetAmount
 
         await liquidatorContract.rescueToken(token.address, rescueAmount)
+    })
+
+task("liq-approve", "Governor approves the async swapper to transfer tokens from the Liquidator")
+    .addParam("reward", "Token symbol or address of the reward token being approved", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { reward, liquidator, speed } = taskArgs
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const rewardAddress = resolveAddress(reward, chain)
+
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+
+        await liquidatorContract.approveAsyncSwapper(rewardAddress)
+    })
+
+task("liq-revoke", "Governor revokes the async swapper to transfer tokens from the Liquidator")
+    .addParam("reward", "Token symbol or address of the reward token being approved", undefined, types.string)
+    .addOptionalParam("liquidator", "Liquidator address override", "LiquidatorV2", types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { reward, liquidator, speed } = taskArgs
+        const chain = getChain(hre)
+        const signer = await getSigner(hre, speed)
+
+        const rewardAddress = resolveAddress(reward, chain)
+
+        const liquidatorAddress = resolveAddress(liquidator, chain)
+        const liquidatorContract = Liquidator__factory.connect(liquidatorAddress, signer)
+
+        await liquidatorContract.revokeAsyncSwapper(rewardAddress)
     })

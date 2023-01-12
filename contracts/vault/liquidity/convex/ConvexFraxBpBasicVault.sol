@@ -58,7 +58,6 @@ contract ConvexFraxBpBasicVault is ConvexFraxBpAbstractVault, Initializable {
         // Set the vault's decimals to the same as the metapool's LP token, eg BUSDFRAXBP3CRV-f
         uint8 decimals_ = InitializableToken(address(metapoolToken)).decimals();
         InitializableToken._initialize(_name, _symbol, decimals_);
-        
         AbstractVault._initialize(_assetToBurn);
     }
 
