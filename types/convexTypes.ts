@@ -78,39 +78,6 @@ export interface Convex3CrvPool {
 }
 
 /**
- * Meta vault parameters for  Convex Pools
- *
- * @export
- * @interface ConvexFraxBpPool
- */
- export interface ConvexFraxBpPool {
-    /** Curve Metapool */
-    curveMetapool: string // dif
-    metapoolDepositZap?: string
-    isFactory: boolean
-    /** Curve Metapool Token*/
-    curveMetapoolToken: string // dif
-    convexPoolId: number // dif
-    convexRewardPool: string
-    name: string
-    symbol: string
-    decimals: number
-    asset: string
-    // liquidator settings
-    streamDuration?: BigNumberish
-    rewardTokens?: string[]
-    donateToken?: string
-    feeReceiver?: string
-    donationFee?: number
-    slippageData: {
-        redeem: number
-        deposit: number
-        withdraw: number
-        mint: number
-    }
-}
-
-/**
  * Convex 3Crv constructor struct
  * Convex3CrvBasicVault.Convex3CrvAbstractVault.ConstructorDataStructOutput
  * @see "/contracts/vault/liquidity/convex/Convex3CrvAbstractVault.sol"
@@ -201,25 +168,4 @@ export interface Curve3CrvPool {
         mint: number
     },
     assetToBurn: BN
-}
-
-/**
- * Meta vault parameters for  Curve Pools
- *
- * @export
- * @interface ConvexFraxBpPool
- */
- export interface CurveFraxBpPool {
-    metaVault?: string
-    name: string
-    symbol: string
-    decimals: number
-    asset: string
-    // TODO - review if it can be removed from here
-    slippageData: {
-        redeem: number
-        deposit: number
-        withdraw: number
-        mint: number
-    }
 }
