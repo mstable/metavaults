@@ -5,7 +5,7 @@ import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
-import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
+import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK, ZERO } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -235,7 +235,6 @@ const assertVaultRedeem = async (
     log(
         `assertVaultRedeem  redeemAmount ${redeemAmount.toString()} assetsBefore ${assetsBefore.toString()}, assetsRedeemed ${assetsRedeemed.toString()}, assetsAfter ${assetsAfter.toString()}`,
     )
-    assertBNClose(assetsRedeemed, assetsPreviewed, variance, "expected assets redeemed")
     expect(assetsAfter, `staker ${await asset.symbol()} assets after`).gt(assetsBefore)
     expect(sharesAfter, `staker ${await vault.symbol()} shares after`).eq(sharesBefore.sub(redeemAmount))
     expect(await vault.totalSupply(), "vault supply after").eq(totalSharesBefore.sub(redeemAmount))
@@ -524,6 +523,13 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
         fraxWhale = await impersonateAccount(fraxWhaleAddress)
         busdWhale = await impersonateAccount(busdWhaleAddress)
 
+        crvFraxToken = IERC20Metadata__factory.connect(crvFRAX.address, crvFraxWhale1.signer)
+        cvxToken = IERC20Metadata__factory.connect(CVX.address, rewardsWhale.signer)
+        crvToken = IERC20Metadata__factory.connect(CRV.address, rewardsWhale.signer)
+        fraxToken = IERC20Metadata__factory.connect(FRAX.address, fraxWhale.signer)
+        usdcToken = IERC20Metadata__factory.connect(USDC.address, usdcWhale.signer)
+        busdToken = IERC20Metadata__factory.connect(BUSD.address, busdWhale.signer)
+
         const nexusAddress = resolveAddress("Nexus")
         nexus = Nexus__factory.connect(nexusAddress, governor.signer)
         const proxyAdminAddress = resolveAddress("InstantProxyAdmin")
@@ -543,12 +549,18 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
 
         //await proposeAcceptNexusModule(nexus, governor, "LiquidatorV2", liquidator.address)
 
+        // Make sure that deployer has > `assetToBurn` amount of `assets` for each respective vault
+        await usdcToken.connect(usdcWhale.signer).transfer(keeper.address, simpleToExactAmount(10000, USDC.decimals))
+        await fraxToken.connect(fraxWhale.signer).transfer(keeper.address, simpleToExactAmount(10000, FRAX.decimals))
+        await crvFraxToken.connect(crvFraxWhale1.signer).transfer(keeper.address, simpleToExactAmount(10000, crvFRAX.decimals))
+
+
         //  1 - deployConvexFraxBpLiquidatorVault,  2 - deployPeriodicAllocationPerfFeeMetaVaults,  3 - deployCurveFraxBpMetaVault
         const {
             convexFraxBpVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curveFraxBpMetaVaults,
-        } = await deployFraxBpMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address)
+        } = await deployFraxBpMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address, keeper.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         busdConvexVault = ConvexFraxBpLiquidatorVault__factory.connect(convexFraxBpVaults.busd.proxy.address, deployer)
@@ -567,13 +579,6 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
 
         // Deploy mocked contracts
         dataEmitter = await new DataEmitter__factory(deployer).deploy()
-
-        crvFraxToken = IERC20Metadata__factory.connect(crvFRAX.address, crvFraxWhale1.signer)
-        cvxToken = IERC20Metadata__factory.connect(CVX.address, rewardsWhale.signer)
-        crvToken = IERC20Metadata__factory.connect(CRV.address, rewardsWhale.signer)
-        fraxToken = IERC20Metadata__factory.connect(FRAX.address, fraxWhale.signer)
-        usdcToken = IERC20Metadata__factory.connect(USDC.address, usdcWhale.signer)
-        busdToken = IERC20Metadata__factory.connect(BUSD.address, busdWhale.signer)
 
         // Mock balances on swappers to simulate swaps
         await cvxToken.transfer(syncSwapper.address, simpleToExactAmount(10000))
@@ -946,7 +951,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
 
                         //add a dummy vault and make it singleSourceVaultIndex so that the behavior can freely remove vaults
                         let dummyVault = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, crvFraxToken.address)
-                        await dummyVault.initialize(`bv1${await crvFraxToken.name()}`, `bv1${await crvFraxToken.symbol()}`, sa.vaultManager.address)
+                        await dummyVault.initialize(`bv1${await crvFraxToken.name()}`, `bv1${await crvFraxToken.symbol()}`, sa.vaultManager.address, 0)
                         await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).addVault(dummyVault.address)
                         await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
 
@@ -961,6 +966,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                             bVault0: simpleToExactAmount(2, 20),
                             bVault1: simpleToExactAmount(46, 19),
                         }
+                        ctxSa.assetToBurn = ZERO
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
                         await assertVaultDeposit(
@@ -1047,10 +1053,9 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     curveFraxBpBasicMetaVaults,
                     crvFraxWhale1,
                 )
-                // Expect all liquidity to be removed
+                // Expect all liquidity to be removed except locked shares
                 expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.users.user1Balance, "user balance").to.be.eq(0)
-                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets, "meta vault total assets").to.be.eq(0)
+                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.gt(0)
             })
         })
         describe("full flow with settlement", () => {
@@ -1062,17 +1067,6 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                         periodicAllocationPerfFeeMetaVault,
                         simpleToExactAmount(50000, crvFRAX.decimals),
                     )
-
-                    // Expect underlying vaults with 0 balance until settlement
-                    const vaultsDataAfter = await snapshotVaults(
-                        convexFraxBpLiquidatorVaults,
-                        periodicAllocationPerfFeeMetaVault,
-                        curveFraxBpBasicMetaVaults,
-                        crvFraxWhale1,
-                    )
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.busd.totalSupply, "musd vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.susd.totalSupply, "frax vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.alusd.totalSupply, "busd vault totalSupply").to.be.eq(0)
                 })
                 it("mint shares", async () => {
                     await assertVaultMint(
@@ -1082,16 +1076,6 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                         dataEmitter,
                         simpleToExactAmount(70000, crvFRAX.decimals),
                     )
-                    // Expect underlying vaults with 0 balance until settlement
-                    const vaultsDataAfter = await snapshotVaults(
-                        convexFraxBpLiquidatorVaults,
-                        periodicAllocationPerfFeeMetaVault,
-                        curveFraxBpBasicMetaVaults,
-                        crvFraxWhale1,
-                    )
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.busd.totalSupply, "musd vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.susd.totalSupply, "frax vault totalSupply").to.be.eq(0)
-                    expect(vaultsDataAfter.convexFraxBpLiquidatorVaults.alusd.totalSupply, "busd vault totalSupply").to.be.eq(0)
                 })
                 it("settles to underlying vaults", async () => {
                     const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
@@ -1259,13 +1243,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
                     )
 
                     expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.users.user1Balance, "user balance").to.be.eq(0)
-                    expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                    assertBNClose(
-                        vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets,
-                        BN.from(0),
-                        simpleToExactAmount(12),
-                        "meta vault total assets",
-                    )
+                    expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.gt(0)
                 })
             })
         })
@@ -1325,7 +1303,7 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
         describe("basic flow", () => {
             it("deposit erc20Token", async () => {
                 // Given the periodicAllocationPerfFeeMetaVault total supply is 0
-                expect(vaultsDataBefore.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "metavault supply").to.be.eq(0)
+                expect(vaultsDataBefore.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "metavault supply").to.be.gt(0)
 
                 // When deposit via 4626MetaVault
                 await assertVaultDeposit(usdcWhale, usdcToken, usdcMetaVault, simpleToExactAmount(50000, USDC.decimals))
@@ -1426,21 +1404,13 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
 
                 // 4626
                 expect(await fraxMetaVault.balanceOf(fraxWhale.address), "frax vault user balance").to.be.eq(0)
-                expect(await fraxMetaVault.totalSupply(), "frax vault total supply").to.be.eq(0)
-                expect(await fraxMetaVault.totalAssets(), "frax vault total assets").to.be.eq(0)
+                expect(await fraxMetaVault.totalSupply(), "frax vault total supply").to.be.gt(0)
 
                 expect(await usdcMetaVault.balanceOf(usdcWhale.address), "usdc vault user balance").to.be.eq(0)
-                expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.eq(0)
-                expect(await usdcMetaVault.totalAssets(), "usdc vault total assets").to.be.eq(0)
+                expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.gt(0)
 
                 // metavault
-                expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.eq(0)
-                assertBNClose(
-                    await periodicAllocationPerfFeeMetaVault.totalAssets(),
-                    BN.from(0),
-                    simpleToExactAmount(12),
-                    "meta vault total assets",
-                )
+                expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.gt(0)
             })
         })
         describe("full flow with settlement", () => {
@@ -1488,21 +1458,13 @@ describe("SaveFrax+ Basic and Meta Vaults", async () => {
 
                     // 4626
                     expect(await fraxMetaVault.balanceOf(fraxWhale.address), "frax vault user balance").to.be.eq(0)
-                    expect(await fraxMetaVault.totalSupply(), "frax vault total supply").to.be.eq(0)
-                    expect(await fraxMetaVault.totalAssets(), "frax vault total assets").to.be.eq(0)
+                    expect(await fraxMetaVault.totalSupply(), "frax vault total supply").to.be.gt(0)
 
                     expect(await usdcMetaVault.balanceOf(usdcWhale.address), "usdc vault user balance").to.be.eq(0)
-                    expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.eq(0)
-                    expect(await usdcMetaVault.totalAssets(), "usdc vault total assets").to.be.eq(0)
+                    expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.gt(0)
 
                     // metavault
-                    expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.eq(0)
-                    assertBNClose(
-                        await periodicAllocationPerfFeeMetaVault.totalAssets(),
-                        BN.from(0),
-                        simpleToExactAmount(40),
-                        "meta vault total assets",
-                    )
+                    expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.gt(0)
                 })
             })
         })
