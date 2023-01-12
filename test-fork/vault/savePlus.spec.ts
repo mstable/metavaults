@@ -1564,7 +1564,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
             })
         })
     })
-    xcontext("Convex3CrvLiquidatorVault", async () => {
+    context("Convex3CrvLiquidatorVault", async () => {
         before("reset block number", async () => {
             await loadOrExecFixture(setup)
         })
