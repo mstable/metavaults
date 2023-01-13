@@ -47,14 +47,14 @@ contract CurveFraxBpBasicMetaVault is CurveFraxBpAbstractMetaVault, Initializabl
         VaultManagerRole._initialize(_vaultManager);
         AbstractSlippage._initialize(_slippageData);
         CurveFraxBpAbstractMetaVault._initialize();
-        _burnOnCreate(_assetToBurn);
+        _initialize(_assetToBurn);
     }
 
     /**
      * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
      * @dev This is to prevent against loss of precision and frontrunning the user deposits by sandwitch attack. Should be a non-trivial amount.
      */
-    function _burnOnCreate(uint256 _assetToBurn) internal virtual override {
+    function _initialize(uint256 _assetToBurn) internal virtual override {
         if (_assetToBurn > 0) {
             // deposit the assets and transfer shares to the vault to lock permanently
             _depositInternal(_assetToBurn, address(this), depositSlippage);

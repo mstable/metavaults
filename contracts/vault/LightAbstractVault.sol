@@ -27,7 +27,7 @@ import { InitializableToken } from "../tokens/InitializableToken.sol";
  * - InitializableToken._initialize(_name, _symbol, decimals)
  * - VaultManagerRole._initialize(_vaultManager)
  * 
- * Implementing contracts must implement `_burnOnCreate` and call it in their `initialize` function
+ * Implementing contracts must implement `_initialize` and call it in their `initialize` function
  */
 abstract contract LightAbstractVault is IERC4626Vault, InitializableToken, VaultManagerRole {
     /// @notice Address of the vault's underlying asset token.
@@ -45,7 +45,7 @@ abstract contract LightAbstractVault is IERC4626Vault, InitializableToken, Vault
      * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
      * @dev This is to prevent against loss of precision and frontrunning the user deposits by sandwitch attack. Should be a non-trivial amount.
      */
-    function _burnOnCreate(uint256 _assetToBurn) internal virtual;
+    function _initialize(uint256 _assetToBurn) internal virtual;
 
     /// @return assetTokenAddress The address of the underlying token used for the Vault uses for accounting, depositing, and withdrawing
     function asset() external view virtual override returns (address assetTokenAddress) {
