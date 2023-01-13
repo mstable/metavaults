@@ -21,6 +21,7 @@ import { IERC4626Vault } from "../../interfaces/IERC4626Vault.sol";
  * - InitializableToken._initialize(_name, _symbol, decimals)
  * - VaultManagerRole._initialize(_vaultManager)
  * - SameAssetUnderlyingsAbstractVault._initialize(_underlyingVaults)
+ * - AbstractVault._initialize(_assetToBurn)
  */
 abstract contract SameAssetUnderlyingsAbstractVault is AbstractVault {
     using SafeERC20 for IERC20;

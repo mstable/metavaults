@@ -1,6 +1,6 @@
 import { ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
-import { simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount, BN } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
@@ -15,12 +15,15 @@ import type { BaseVaultBehaviourContext } from "../shared/BaseVault.behaviour"
 
 export type BaseVault = LightBasicVault | BasicVault
 
+const defaultAssetToBurn = simpleToExactAmount(0)
+
 const testVault = async <F extends ContractFactory, V extends BaseVault>(factory: { new (signer: Signer): F }) => {
     describe(factory.name, () => {
         /* -- Declare shared variables -- */
         let sa: StandardAccounts
         let mocks: ContractMocks
         let nexus: MockNexus
+        let assetToBurn: BN
 
         // Testing contract
         let vault: BaseVault
@@ -30,14 +33,16 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
         const setup = async () => {
             const accounts = await ethers.getSigners()
             sa = await new StandardAccounts().initAccounts(accounts)
+            assetToBurn = assetToBurn ?? defaultAssetToBurn
 
             mocks = await new ContractMocks().init(sa)
             nexus = mocks.nexus
             asset = mocks.erc20
             // Deploy test contract.
             vault = (await new factory(sa.default.signer).deploy(nexus.address, asset.address)) as V
+            await asset.connect(sa.default.signer).approve(vault.address, ethers.constants.MaxUint256)
             // Initialize test contract.
-            await vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address)
+            await vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address, assetToBurn)
             // set balance or users for the test.
             const assetBalance = await asset.balanceOf(sa.default.address)
             asset.transfer(sa.alice.address, assetBalance.div(2))
@@ -77,15 +82,27 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
         })
 
         describe("calling initialize", async () => {
+            before(async () => {
+                assetToBurn = simpleToExactAmount(10 , await asset.decimals())
+                await setup()
+            })
+            after(async () => {
+                assetToBurn = defaultAssetToBurn
+            })
             it("should default initializable values ", async () => {
+                expect(assetToBurn, "assetToBurn").to.gt(0)
+
                 expect(await vault.name(), "name").to.eq(`v${await asset.name()}`)
                 expect(await vault.symbol(), "symbol").to.eq(`v${await asset.symbol()}`)
                 expect(await vault.decimals(), "decimals").to.eq(await asset.decimals())
                 expect(await vault.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
+
+                //locked shares
+                expect((await vault.balanceOf(vault.address)), "locked shares").to.eq(assetToBurn)
             })
             it("fails if initialize is called more than once", async () => {
                 await expect(
-                    vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address),
+                    vault.initialize(`v${await asset.name()}`, `v${await asset.symbol()}`, sa.vaultManager.address, assetToBurn),
                     "init call twice",
                 ).to.be.revertedWith("Initializable: contract is already initialized")
             })

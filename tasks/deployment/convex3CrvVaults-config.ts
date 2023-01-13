@@ -26,6 +26,7 @@ const daiCurve3CrvMetaVault: Curve3CrvPool = {
     symbol: "mvDAI-CX1",
     decimals: DAI.decimals,
     slippageData,
+    assetToBurn: simpleToExactAmount(10, DAI.decimals),
 }
 const usdcCurve3CrvMetaVault: Curve3CrvPool = {
     // constructor
@@ -35,6 +36,7 @@ const usdcCurve3CrvMetaVault: Curve3CrvPool = {
     symbol: "mvUSDC-CX1",
     decimals: USDC.decimals,
     slippageData,
+    assetToBurn: simpleToExactAmount(10, USDC.decimals),
 }
 
 const usdtCurve3CrvMetaVault: Curve3CrvPool = {
@@ -45,6 +47,7 @@ const usdtCurve3CrvMetaVault: Curve3CrvPool = {
     symbol: "mvUSDT-CX1",
     decimals: USDT.decimals,
     slippageData,
+    assetToBurn: simpleToExactAmount(10, USDT.decimals),
 }
 
 /* *****************************************
@@ -72,6 +75,7 @@ const musdConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const pwrdConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0xbcb91E689114B9Cc865AD7871845C95241Df4105", // Curve.fi Factory USD Metapool: PWR... (PWRD3CRV-f)
@@ -91,6 +95,7 @@ const pwrdConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const usdpConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0x42d7025938bEc20B69cBae5A77421082407f053A",
@@ -110,6 +115,7 @@ const usdpConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const mimConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0x5a6A4D54456819380173272A5E8E9B9904BdF41B",
@@ -129,6 +135,7 @@ const mimConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const fraxConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B",
@@ -147,6 +154,7 @@ const fraxConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const busdConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0x4807862AA8b2bF68830e4C8dc86D0e9A998e085a",
@@ -165,6 +173,7 @@ const busdConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 const lusdConvex3CrvPool: Convex3CrvPool = {
     curveMetapool: "0xEd279fDD11cA84bEef15AF5D39BB4d4bEE23F0cA",
@@ -183,6 +192,7 @@ const lusdConvex3CrvPool: Convex3CrvPool = {
     feeReceiver,
     donationFee: 10000, // 1%
     slippageData,
+    assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
 }
 
 export const config = {
@@ -209,6 +219,7 @@ export const config = {
             singleSourceVaultIndex: 0,
         },
         assetPerShareUpdateThreshold: simpleToExactAmount(1000000), //1M
+        assetToBurn: simpleToExactAmount(10, ThreeCRV.decimals),
     },
     curve3CrvMetaVault: { dai: daiCurve3CrvMetaVault, usdc: usdcCurve3CrvMetaVault, usdt: usdtCurve3CrvMetaVault },
 }

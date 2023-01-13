@@ -46,6 +46,7 @@ const ERROR = {
     DONATE_WRONG_TOKEN: "Donated token not asset",
     REENTRY_GARD: "ReentrancyGuard: reentrant call",
 }
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Liquidator", async () => {
     let sa: StandardAccounts
@@ -58,6 +59,7 @@ describe("Liquidator", async () => {
     let vault1: LiquidatorBasicVault
     let vault2: LiquidatorBasicVault
     let vault3: LiquidatorBasicVault
+    let assetToBurn: BN
     let syncSwapper: BasicDexSwap
     let liquidator: Liquidator
     // async conf
@@ -127,9 +129,12 @@ describe("Liquidator", async () => {
         syncSwapperMalicious = await new MockMaliciousDexSwap__factory(sa.default.signer).deploy(nexus.address)
         await syncSwapperMalicious.initialize(exchanges)
     }
+
     const setup = async () => {
         nexus = await new MockNexus__factory(sa.default.signer).deploy(sa.governor.address)
         await nexus.setKeeper(sa.keeper.address)
+
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
 
         // Deploy mock assets
         await deployMocks()
@@ -146,13 +151,16 @@ describe("Liquidator", async () => {
         // Deploy mock vaults
         // Vault 1 has all rewards and asset 1
         vault1 = await new LiquidatorBasicVault__factory(sa.default.signer).deploy(nexus.address, asset1.address)
-        await vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address])
+        await asset1.connect(sa.default.signer).approve(vault1.address, ethers.constants.MaxUint256)
+        await vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address], assetToBurn)
         // Vault 2 has all rewards and asset 2
         vault2 = await new LiquidatorBasicVault__factory(sa.default.signer).deploy(nexus.address, asset2.address)
-        await vault2.initialize("Vault 2", "V2", sa.default.address, [rewards1.address, rewards2.address, rewards3.address])
+        await asset2.connect(sa.default.signer).approve(vault2.address, ethers.constants.MaxUint256)
+        await vault2.initialize("Vault 2", "V2", sa.default.address, [rewards1.address, rewards2.address, rewards3.address], assetToBurn)
         // Vault 3 has reward 1 and asset 1
         vault3 = await new LiquidatorBasicVault__factory(sa.default.signer).deploy(nexus.address, asset1.address)
-        await vault3.initialize("Vault 3", "V3", sa.default.address, [rewards1.address])
+        await asset1.connect(sa.default.signer).approve(vault3.address, ethers.constants.MaxUint256)
+        await vault3.initialize("Vault 3", "V3", sa.default.address, [rewards1.address], assetToBurn)
 
         vaultMalicious = await new MockLiquidatorMaliciousVault__factory(sa.default.signer).deploy(nexus.address, asset1.address)
         await vaultMalicious.initialize("Vault R", "VR", sa.default.address, [rewards1.address])
@@ -286,7 +294,7 @@ describe("Liquidator", async () => {
         })
         it("fails if underlying vaults initialize is called more than once", async () => {
             await expect(
-                vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address]),
+                vault1.initialize("Vault 1", "V1", sa.default.address, [rewards1.address, rewards2.address, rewards3.address], assetToBurn),
                 "init call twice",
             ).to.be.revertedWith(ERROR.ALREADY_INITIALIZED)
         })

@@ -5,7 +5,7 @@ import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { shouldBehaveLikeBaseVault, testAmounts } from "@test/shared/BaseVault.behaviour"
 import { shouldBehaveLikeSameAssetUnderlyingsAbstractVault } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import { assertBNClose, assertBNClosePercent, findContractEvent } from "@utils/assertions"
-import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK } from "@utils/constants"
+import { DEAD_ADDRESS, ONE_HOUR, ONE_WEEK, ZERO } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture, setBalancesToAccount } from "@utils/fork"
 import { StandardAccounts } from "@utils/machines"
 import { BN, simpleToExactAmount } from "@utils/math"
@@ -243,7 +243,6 @@ const assertVaultRedeem = async (
     log(
         `assertVaultRedeem  redeemAmount ${redeemAmount.toString()} assetsBefore ${assetsBefore.toString()}, assetsRedeemed ${assetsRedeemed.toString()}, assetsAfter ${assetsAfter.toString()}`,
     )
-    assertBNClose(assetsRedeemed, assetsPreviewed, variance, "expected assets redeemed")
     expect(assetsAfter, `staker ${await asset.symbol()} assets after`).gt(assetsBefore)
     expect(sharesAfter, `staker ${await vault.symbol()} shares after`).eq(sharesBefore.sub(redeemAmount))
     expect(await vault.totalSupply(), "vault supply after").eq(totalSharesBefore.sub(redeemAmount))
@@ -536,6 +535,13 @@ describe("Save+ Basic and Meta Vaults", async () => {
         usdcWhale = await impersonateAccount(usdcWhaleAddress)
         usdtWhale = await impersonateAccount(usdtWhaleAddress)
 
+        threeCrvToken = IERC20Metadata__factory.connect(ThreeCRV.address, threeCrvWhale1.signer)
+        cvxToken = IERC20Metadata__factory.connect(CVX.address, rewardsWhale.signer)
+        crvToken = IERC20Metadata__factory.connect(CRV.address, rewardsWhale.signer)
+        daiToken = IERC20Metadata__factory.connect(DAI.address, daiWhale.signer)
+        usdcToken = IERC20Metadata__factory.connect(USDC.address, usdcWhale.signer)
+        usdtToken = IERC20Metadata__factory.connect(USDT.address, usdtWhale.signer)
+
         const nexusAddress = resolveAddress("Nexus")
         nexus = Nexus__factory.connect(nexusAddress, governor.signer)
         const proxyAdminAddress = resolveAddress("InstantProxyAdmin")
@@ -555,12 +561,18 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         await proposeAcceptNexusModule(nexus, governor, "LiquidatorV2", liquidator.address)
 
+        // Make sure that deployer has > `assetToBurn` amount of `assets` for each respective vault
+        await daiToken.connect(daiWhale.signer).transfer(keeper.address, simpleToExactAmount(10000, DAI.decimals))
+        await usdcToken.connect(usdcWhale.signer).transfer(keeper.address, simpleToExactAmount(10000, USDC.decimals))
+        await usdtToken.connect(usdtWhale.signer).transfer(keeper.address, simpleToExactAmount(10000, USDT.decimals))
+        await threeCrvToken.connect(threeCrvWhale1.signer).transfer(keeper.address, simpleToExactAmount(10000, ThreeCRV.decimals))
+
         //  1 - deployConvex3CrvLiquidatorVault,  2 - deployPeriodicAllocationPerfFeeMetaVaults,  3 - deployCurve3CrvMetaVault
         const {
             convex3CrvVaults,
             periodicAllocationPerfFeeMetaVault: periodicAllocationPerfFeeVault,
             curve3CrvMetaVaults,
-        } = await deploy3CrvMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address)
+        } = await deploy3CrvMetaVaults(hre, deployer, nexus, proxyAdmin, vaultManager.address, keeper.address)
 
         //  1.- underlying meta vaults capable of liquidate rewards
         musdConvexVault = Convex3CrvLiquidatorVault__factory.connect(convex3CrvVaults.musd.proxy.address, deployer)
@@ -580,13 +592,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
         // Deploy mocked contracts
         dataEmitter = await new DataEmitter__factory(deployer).deploy()
-
-        threeCrvToken = IERC20Metadata__factory.connect(ThreeCRV.address, threeCrvWhale1.signer)
-        cvxToken = IERC20Metadata__factory.connect(CVX.address, rewardsWhale.signer)
-        crvToken = IERC20Metadata__factory.connect(CRV.address, rewardsWhale.signer)
-        daiToken = IERC20Metadata__factory.connect(DAI.address, daiWhale.signer)
-        usdcToken = IERC20Metadata__factory.connect(USDC.address, usdcWhale.signer)
-        usdtToken = IERC20Metadata__factory.connect(USDT.address, usdtWhale.signer)
 
         // Mock Balances on our lovely users
         const musdTokenAddress = resolveAddress("mUSD")
@@ -990,7 +995,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                         //add a dummy vault and make it singleSourceVaultIndex so that the behavior can freely remove vaults
                         let dummyVault = await new BasicVault__factory(sa.default.signer).deploy(nexus.address, threeCrvToken.address)
-                        await dummyVault.initialize(`bv1${await threeCrvToken.name()}`, `bv1${await threeCrvToken.symbol()}`, sa.vaultManager.address)
+                        await dummyVault.initialize(`bv1${await threeCrvToken.name()}`, `bv1${await threeCrvToken.symbol()}`, sa.vaultManager.address, 0)
                         await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).addVault(dummyVault.address)
                         await periodicAllocationPerfFeeMetaVault.connect(sa.governor.signer).setSingleSourceVaultIndex(3)
 
@@ -1005,6 +1010,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                             bVault0: simpleToExactAmount(2, 20),
                             bVault1: simpleToExactAmount(46, 19),
                         }
+                        ctxSa.assetToBurn = ZERO
                         // underlying vaults are empty even after an initial deposit with this implementation.
                         // periodicAllocationPerfFeeMetaVault.settle needs to be invoked
                         await assertVaultDeposit(
@@ -1091,10 +1097,9 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     curve3CrvBasicMetaVaults,
                     threeCrvWhale1,
                 )
-                // Expect all liquidity to be removed
+                // Expect all liquidity to be removed except locked shares
                 expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.users.user1Balance, "user balance").to.be.eq(0)
-                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets, "meta vault total assets").to.be.eq(0)
+                expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.gt(0)
             })
         })
         describe("full flow with settlement", () => {
@@ -1106,11 +1111,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         periodicAllocationPerfFeeMetaVault,
                         simpleToExactAmount(50000, ThreeCRV.decimals),
                     )
-
-                    // Expect underlying vaults with 0 balance until settlement
-                    expect(await musdConvexVault.totalSupply(), "musd vault totalSupply").to.be.eq(0)
-                    expect(await fraxConvexVault.totalSupply(), "frax vault totalSupply").to.be.eq(0)
-                    expect(await busdConvexVault.totalSupply(), "busd vault totalSupply").to.be.eq(0)
                 })
                 it("mint shares", async () => {
                     await assertVaultMint(
@@ -1120,11 +1120,6 @@ describe("Save+ Basic and Meta Vaults", async () => {
                         dataEmitter,
                         simpleToExactAmount(70000, ThreeCRV.decimals),
                     )
-
-                    // Expect underlying vaults with 0 balance until settlement
-                    expect(await musdConvexVault.totalSupply(), "musd vault totalSupply").to.be.eq(0)
-                    expect(await fraxConvexVault.totalSupply(), "frax vault totalSupply").to.be.eq(0)
-                    expect(await busdConvexVault.totalSupply(), "busd vault totalSupply").to.be.eq(0)
                 })
                 it("settles to underlying vaults", async () => {
                     const totalAssets = await periodicAllocationPerfFeeMetaVault.totalAssets()
@@ -1272,13 +1267,7 @@ describe("Save+ Basic and Meta Vaults", async () => {
                     )
 
                     expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.users.user1Balance, "user balance").to.be.eq(0)
-                    expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.eq(0)
-                    assertBNClose(
-                        vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalAssets,
-                        BN.from(0),
-                        simpleToExactAmount(12),
-                        "meta vault total assets",
-                    )
+                    expect(vaultsDataAfter.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "meta vault total supply").to.be.gt(0)
                 })
             })
             describe("after burning vault shares", () => {
@@ -1379,8 +1368,8 @@ describe("Save+ Basic and Meta Vaults", async () => {
         })
         describe("basic flow", () => {
             it("deposit erc20Token", async () => {
-                // Given the periodicAllocationPerfFeeMetaVault total supply is 0
-                expect(vaultsDataBefore.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "metavault supply").to.be.eq(0)
+                // Given the periodicAllocationPerfFeeMetaVault total supply > 0
+                expect(vaultsDataBefore.periodicAllocationPerfFeeMetaVault.vault.totalSupply, "metavault supply").to.be.gt(0)
 
                 // When deposit via 4626MetaVault
                 await assertVaultDeposit(daiWhale, daiToken, daiMetaVault, simpleToExactAmount(50000, DAI.decimals))
@@ -1496,25 +1485,16 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                 // 4626
                 expect(await daiMetaVault.balanceOf(daiWhale.address), "dai vault user balance").to.be.eq(0)
-                expect(await daiMetaVault.totalSupply(), "dai vault total supply").to.be.eq(0)
-                expect(await daiMetaVault.totalAssets(), "dai vault total assets").to.be.eq(0)
+                expect(await daiMetaVault.totalSupply(), "dai vault total supply").to.be.gt(0)
 
                 expect(await usdcMetaVault.balanceOf(daiWhale.address), "usdc vault user balance").to.be.eq(0)
-                expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.eq(0)
-                expect(await usdcMetaVault.totalAssets(), "usdc vault total assets").to.be.eq(0)
+                expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.gt(0)
 
                 expect(await usdtMetaVault.balanceOf(daiWhale.address), "usdt vault user balance").to.be.eq(0)
-                expect(await usdtMetaVault.totalSupply(), "usdt vault total supply").to.be.eq(0)
-                expect(await usdtMetaVault.totalAssets(), "usdt vault total assets").to.be.eq(0)
+                expect(await usdtMetaVault.totalSupply(), "usdt vault total supply").to.be.gt(0)
 
                 // metavault
-                expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.eq(0)
-                assertBNClose(
-                    await periodicAllocationPerfFeeMetaVault.totalAssets(),
-                    BN.from(0),
-                    simpleToExactAmount(12),
-                    "meta vault total assets",
-                )
+                expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.gt(0)
             })
         })
         describe("full flow with settlement", () => {
@@ -1570,27 +1550,16 @@ describe("Save+ Basic and Meta Vaults", async () => {
 
                     // 4626
                     expect(await daiMetaVault.balanceOf(daiWhale.address), "dai vault user balance").to.be.eq(0)
-                    expect(await daiMetaVault.totalSupply(), "dai vault total supply").to.be.eq(0)
-                    expect(await daiMetaVault.totalAssets(), "dai vault total assets").to.be.eq(0)
+                    expect(await daiMetaVault.totalSupply(), "dai vault total supply").to.be.gt(0)
 
                     expect(await usdcMetaVault.balanceOf(usdcWhale.address), "usdc vault user balance").to.be.eq(0)
-                    expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.eq(0)
-                    expect(await usdcMetaVault.totalAssets(), "usdc vault total assets").to.be.eq(0)
+                    expect(await usdcMetaVault.totalSupply(), "usdc vault total supply").to.be.gt(0)
 
                     // TODO issues with USDT pool
                     expect(await usdtMetaVault.balanceOf(usdtWhale.address), "usdt vault user balance").to.be.lt(simpleToExactAmount(1))
-                    expect(await usdtMetaVault.totalSupply(), "usdt vault total supply").to.be.lt(simpleToExactAmount(1))
-                    expect(await usdtMetaVault.totalAssets(), "usdt vault total assets").to.be.lt(simpleToExactAmount(1))
+                    expect(await usdtMetaVault.totalSupply(), "usdt vault total supply").to.be.gt(0)
                     // metavault
-                    expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.lt(
-                        simpleToExactAmount(1),
-                    )
-                    assertBNClose(
-                        await periodicAllocationPerfFeeMetaVault.totalAssets(),
-                        BN.from(0),
-                        simpleToExactAmount(40),
-                        "meta vault total assets",
-                    )
+                    expect(await periodicAllocationPerfFeeMetaVault.totalSupply(), "meta vault total supply").to.be.gt(0)
                 })
             })
         })

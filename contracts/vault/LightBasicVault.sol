@@ -33,12 +33,25 @@ contract LightBasicVault is LightAbstractVault, Initializable {
     function initialize(
         string calldata _nameArg,
         string calldata _symbolArg,
-        address _vaultManager
+        address _vaultManager,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
         InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
         VaultManagerRole._initialize(_vaultManager);
+        _initialize(_assetToBurn);
+    }
+
+    /**
+     * @param _assetToBurn amount of assets that will be deposited and corresponding shares locked permanently
+     * @dev This is to prevent against loss of precision and frontrunning the user deposits by sandwitch attack. Should be a non-trivial amount.
+     */
+    function _initialize(uint256 _assetToBurn) internal virtual override {
+        if (_assetToBurn > 0) {
+            // deposit the assets and transfer shares to the vault to lock permanently
+            _deposit(_assetToBurn, address(this));
+        }
     }
 
     /*///////////////////////////////////////////////////////////////

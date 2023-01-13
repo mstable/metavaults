@@ -7,6 +7,7 @@ import {
     ConvexFraxBpBasicVault__factory,
     ConvexFraxBpLiquidatorVault__factory,
     CurveFraxBpMetapoolCalculatorLibrary__factory,
+    IERC20Metadata__factory,
 } from "types/generated"
 
 import { config } from "./deployment/convexFraxBpVaults-config"
@@ -46,6 +47,7 @@ interface ConvexFraxBpBasicVaultParams {
     donateToken: string
     donationFee: number
     feeReceiver: string
+    assetToBurn: BN
 }
 
 interface ConvexFraxBpLiquidatorVaultParams extends ConvexFraxBpBasicVaultParams {
@@ -70,8 +72,8 @@ const getMetapoolLinkAddresses = (calculatorLibrary: string) => ({
     "contracts/peripheral/Curve/CurveFraxBpMetapoolCalculatorLibrary.sol:CurveFraxBpMetapoolCalculatorLibrary": calculatorLibrary,
 })
 
-export async function deployConvexFraxBpBasicVault(hre: HardhatRuntimeEnvironment, signer: Signer, params: ConvexFraxBpBasicVaultParams) {
-    const { calculatorLibrary, nexus, asset, constructorData, slippageData, name, symbol, vaultManager, proxyAdmin } = params
+export async function deployConvexFraxBpBasicVault(hre: HardhatRuntimeEnvironment, signer: Signer, params: ConvexFraxBpBasicVaultParams, deployerAddress: string) {
+    const { calculatorLibrary, nexus, asset, constructorData, slippageData, name, symbol, vaultManager, proxyAdmin, assetToBurn } = params
 
     const curveFraxBpMetapoolCalculatorLibraryLinkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
     // Vault
@@ -88,8 +90,20 @@ export async function deployConvexFraxBpBasicVault(hre: HardhatRuntimeEnvironmen
         contract: "contracts/vault/liquidity/convex/ConvexFraxBpBasicVault.sol:ConvexFraxBpBasicVault",
         constructorArguments: constructorArguments,
     })
+
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     // Proxy
-    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData])
+    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData, assetToBurn])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
@@ -104,6 +118,7 @@ export async function deployConvexFraxBpBasicVault(hre: HardhatRuntimeEnvironmen
 export async function deployConvexFraxBpLiquidatorVault(
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
+    deployerAddress: string,
     params: ConvexFraxBpLiquidatorVaultParams,
 ) {
     const {
@@ -121,6 +136,7 @@ export async function deployConvexFraxBpLiquidatorVault(
         donateToken,
         donationFee,
         feeReceiver,
+        assetToBurn
     } = params
 
     const linkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
@@ -149,7 +165,20 @@ export async function deployConvexFraxBpLiquidatorVault(
         donateToken,
         feeReceiver,
         donationFee,
+        assetToBurn
     ])
+
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
@@ -173,6 +202,7 @@ subtask("convex-FraxBp-vault-deploy", "Deploys Convex FraxBp Liquidator Vault")
     .addParam("name", "Vault name", undefined, types.string)
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("pool", "Symbol of the Convex pool. eg TUSD, BUSD", undefined, types.string)
+    .addParam("assetToBurn", "Amount of assets to deposit and corresponding shares locked", undefined , types.int)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "FraxBp", types.string)
     .addOptionalParam("stream", "Number of days the stream takes.", 7, types.int)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
@@ -203,6 +233,7 @@ subtask("convex-FraxBp-vault-deploy", "Deploys Convex FraxBp Liquidator Vault")
             feeReceiver,
             vaultManager,
             speed,
+            assetToBurn,
         } = taskArgs
 
         const signer = await getSigner(hre, speed)
@@ -213,6 +244,7 @@ subtask("convex-FraxBp-vault-deploy", "Deploys Convex FraxBp Liquidator Vault")
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const convexBoosterAddress = resolveAddress("ConvexBooster", chain)
+        const deployerAddress = resolveAddress("OperationsSigner", chain)
 
         const convexFraxBpPool = config.convexFraxBpPools[pool.toLowerCase()]
         let calculatorLibraryAddress
@@ -231,7 +263,7 @@ subtask("convex-FraxBp-vault-deploy", "Deploys Convex FraxBp Liquidator Vault")
         const rewardTokens = [CRV.address, CVX.address]
 
         // Vault library
-        const { proxy, impl } = await deployConvexFraxBpLiquidatorVault(hre, signer, {
+        const { proxy, impl } = await deployConvexFraxBpLiquidatorVault(hre, signer, deployerAddress, {
             calculatorLibrary: calculatorLibraryAddress,
             nexus: nexusAddress,
             asset: assetAddress,
@@ -246,6 +278,7 @@ subtask("convex-FraxBp-vault-deploy", "Deploys Convex FraxBp Liquidator Vault")
             rewardTokens,
             donationFee: fee,
             feeReceiver: feeReceiverAddress,
+            assetToBurn
         })
 
         return { proxy, impl }

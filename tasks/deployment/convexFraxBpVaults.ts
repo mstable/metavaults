@@ -90,7 +90,7 @@ export const setBalancesToAccounts = async (hre) => {
     await setBalancesToAccountForFraxBp(sa.dummy2, [crvFraxToken], tokensToMockBalance)
 }
 const deployerConvexFraxBpVault =
-    (hre: HardhatRuntimeEnvironment, signer: Signer, nexus: string, vaultManager: string, proxyAdmin: string) =>
+    (hre: HardhatRuntimeEnvironment, signer: Signer, nexus: string, vaultManager: string, proxyAdmin: string, deployerAddress: string) =>
     async (pool: string, calculatorLibrary: string) => {
         const convexFraxBpPool: ConvexFraxBpPool = config.convexFraxBpPools[pool]
         const constructorData = {
@@ -99,7 +99,7 @@ const deployerConvexFraxBpVault =
             booster: resolveAddress("ConvexBooster"),
         }
 
-        return deployConvexFraxBpLiquidatorVault(hre, signer, {
+        return deployConvexFraxBpLiquidatorVault(hre, signer, deployerAddress, {
             name: convexFraxBpPool.name,
             symbol: convexFraxBpPool.symbol,
             constructorData,
@@ -114,6 +114,7 @@ const deployerConvexFraxBpVault =
             rewardTokens: [CRV.address, CVX.address],
             feeReceiver: resolveAddress("mStableDAO"),
             donationFee: 10000,
+            assetToBurn: convexFraxBpPool.assetToBurn
         })
     }
 export async function deployConvexFraxBpVaults(
@@ -122,8 +123,9 @@ export async function deployConvexFraxBpVaults(
     nexus: string,
     vaultManager: string,
     proxyAdmin: string,
+    deployerAddress: string
 ) {
-    const fnDeployConvexFraxBpVault = deployerConvexFraxBpVault(hre, signer, nexus, vaultManager, proxyAdmin)
+    const fnDeployConvexFraxBpVault = deployerConvexFraxBpVault(hre, signer, nexus, vaultManager, proxyAdmin, deployerAddress)
     const convexFraxBpVaults: ConvexFraxBpVaultsDeployed = {}
     const pools: string[] = ["busd", "susd", "alusd"]
     const curveFraxBpMetapoolCalculatorLibrary: CurveFraxBpMetapoolCalculatorLibrary = await deployCurveFraxBpMetapoolCalculatorLibrary(
@@ -180,6 +182,7 @@ export const deployFraxBpMetaVaults = async (
     nexus: Nexus,
     proxyAdmin: DelayedProxyAdmin | InstantProxyAdmin,
     vaultManager: string,
+    deployerAddress: string,
 ): Promise<Phase3Deployed> => {
     // 1 - deployConvexFraxBpLiquidatorVault
     const { convexFraxBpVaults, curveFraxBpMetapoolCalculatorLibrary } = await deployConvexFraxBpVaults(
@@ -188,6 +191,7 @@ export const deployFraxBpMetaVaults = async (
         nexus.address,
         vaultManager,
         proxyAdmin.address,
+        deployerAddress
     )
     // 2 - deployPeriodicAllocationPerfFeeMetaVaults
     const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVaults(
@@ -197,6 +201,7 @@ export const deployFraxBpMetaVaults = async (
         vaultManager,
         proxyAdmin.address,
         convexFraxBpVaults,
+        deployerAddress
     )
     // 3 - deployCurveFraxBpMetaVault
     const { curveFraxBpMetaVaults, curveFraxBpCalculatorLibrary } = await deployCurveFraxBpMetaVaults(
@@ -206,6 +211,7 @@ export const deployFraxBpMetaVaults = async (
         vaultManager,
         proxyAdmin.address,
         periodicAllocationPerfFeeMetaVault.proxy.address,
+        deployerAddress
     )
 
     return {

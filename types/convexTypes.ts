@@ -1,3 +1,4 @@
+import { BN } from "@utils/math"
 import type { BigNumberish } from "ethers"
 
 import type { Convex3CrvBasicVault, Convex3CrvLiquidatorVault, ConvexFraxBpBasicVault, ConvexFraxBpLiquidatorVault } from "./generated"
@@ -39,6 +40,7 @@ export interface Convex3CrvPool {
         withdraw: number
         mint: number
     }
+    assetToBurn: BN
 }
 
 /**
@@ -72,6 +74,7 @@ export interface Convex3CrvPool {
         withdraw: number
         mint: number
     }
+    assetToBurn: BN
 }
 
 /**
@@ -141,7 +144,8 @@ export interface Curve3CrvPool {
         deposit: number
         withdraw: number
         mint: number
-    }
+    },
+    assetToBurn: BN
 }
 
 /**
@@ -162,5 +166,6 @@ export interface Curve3CrvPool {
         deposit: number
         withdraw: number
         mint: number
-    }
+    },
+    assetToBurn: BN
 }

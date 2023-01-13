@@ -34,6 +34,7 @@ import type {
 } from "types/generated"
 
 const defaultDonationFee = 10000 // 1%
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Streamed Liquidator Fee Vault", async () => {
     let sa: StandardAccounts
@@ -45,6 +46,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
     let swapper: BasicDexSwap
     let liquidator: Liquidator
     let vault: LiquidatorStreamFeeBasicVault
+    let assetToBurn: BN
 
     const assertStreamedShares = async (
         tx: TransactionResponse,
@@ -184,8 +186,12 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
     const setup = async (decimals = 18): Promise<LiquidatorStreamFeeBasicVault> => {
         dataEmitter = await new DataEmitter__factory(sa.default.signer).deploy()
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
         await deployFeeVaultDependencies(decimals)
         vault = await new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
+        
+        // Approve vault to transfer assets from default signer
+        await asset.approve(vault.address, ethers.constants.MaxUint256)
 
         await vault.initialize(
             "feeVault",
@@ -194,9 +200,9 @@ describe("Streamed Liquidator Fee Vault", async () => {
             [rewards1.address, rewards2.address],
             sa.feeReceiver.address,
             defaultDonationFee,
+            assetToBurn
         )
-        // Approve vault to transfer assets from default signer
-        await asset.approve(vault.address, ethers.constants.MaxUint256)
+        
         // set balance or users for the test.
         const assetBalance = await asset.balanceOf(sa.default.address)
         asset.transfer(sa.alice.address, assetBalance.div(2))
@@ -256,7 +262,13 @@ describe("Streamed Liquidator Fee Vault", async () => {
     describe("calling initialize", async () => {
         before(async () => {
             await deployFeeVaultDependencies(12)
+            assetToBurn = simpleToExactAmount(10 , await asset.decimals())
+
             vault = await new LiquidatorStreamFeeBasicVault__factory(sa.default.signer).deploy(nexus.address, asset.address, ONE_DAY)
+            
+            // Approve vault to transfer assets from default signer
+            await asset.approve(vault.address, ethers.constants.MaxUint256)
+            
             await vault.initialize(
                 "feeVault",
                 "fv",
@@ -264,9 +276,15 @@ describe("Streamed Liquidator Fee Vault", async () => {
                 [rewards1.address, rewards2.address],
                 sa.feeReceiver.address,
                 defaultDonationFee,
+                assetToBurn
             )
         })
+        after(async () => {
+            assetToBurn = defaultAssetToBurn
+        })
         it("should properly store valid arguments", async () => {
+            expect(assetToBurn, "assetToBurn").to.gt(0)
+
             const stream = await vault.shareStream()
             expect(stream.last, "stream last").to.eq(0)
             expect(stream.end, "stream end").to.eq(0)
@@ -284,8 +302,11 @@ describe("Streamed Liquidator Fee Vault", async () => {
 
             expect(await vault.vaultManager(), "vaultManager").to.eq(sa.vaultManager.address)
 
-            expect(await vault.totalSupply(), "total shares").to.eq(0)
-            expect(await vault.totalAssets(), "total assets").to.eq(0)
+            expect(await vault.totalSupply(), "total shares").to.eq(assetToBurn)
+            expect(await vault.totalAssets(), "total assets").to.eq(assetToBurn)
+
+            //locked shares
+            expect((await vault.balanceOf(vault.address)), "locked shares").to.eq(assetToBurn)
         })
         it("fails if initialize is called more than once", async () => {
             await expect(
@@ -296,6 +317,7 @@ describe("Streamed Liquidator Fee Vault", async () => {
                     [rewards1.address, rewards2.address],
                     sa.feeReceiver.address,
                     defaultDonationFee,
+                    assetToBurn
                 ),
             ).to.be.revertedWith("Initializable: contract is already initialized")
         })

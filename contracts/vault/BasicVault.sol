@@ -17,12 +17,14 @@ contract BasicVault is AbstractVault, Initializable {
     function initialize(
         string calldata _nameArg,
         string calldata _symbolArg,
-        address _vaultManager
+        address _vaultManager,
+        uint256 _assetToBurn
     ) external initializer {
         // Set the vault's decimals to the same as the reference asset.
         uint8 _decimals = InitializableToken(address(_asset)).decimals();
         InitializableToken._initialize(_nameArg, _symbolArg, _decimals);
         VaultManagerRole._initialize(_vaultManager);
+        AbstractVault._initialize(_assetToBurn);
     }
 
     function totalAssets() public view override returns (uint256 totalManagedAssets) {

@@ -38,12 +38,14 @@ contract Convex3CrvBasicVault is Convex3CrvAbstractVault, Initializable {
      * @param _symbol         Symbol of vault.
      * @param _vaultManager   Trusted account that can perform vault operations. eg rebalance.
      * @param _slippageData   Initial slippage limits.
+     * @param _assetToBurn    Amount of assets that will be deposited and corresponding shares locked permanently
      */
     function initialize(
         string calldata _name,
         string calldata _symbol,
         address _vaultManager,
-        SlippageData memory _slippageData
+        SlippageData memory _slippageData,
+        uint256 _assetToBurn
     ) external initializer {
         // Vault initialization
         VaultManagerRole._initialize(_vaultManager);
@@ -53,6 +55,7 @@ contract Convex3CrvBasicVault is Convex3CrvAbstractVault, Initializable {
         // Set the vault's decimals to the same as the metapool's LP token, eg musd3CRV
         uint8 decimals_ = InitializableToken(address(metapoolToken)).decimals();
         InitializableToken._initialize(_name, _symbol, decimals_);
+        AbstractVault._initialize(_assetToBurn);
     }
 
     function _afterSharesMintedHook(uint256, uint256) internal virtual override {

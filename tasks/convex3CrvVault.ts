@@ -8,6 +8,7 @@ import {
     Convex3CrvLiquidatorVault__factory,
     Curve3CrvFactoryMetapoolCalculatorLibrary__factory,
     Curve3CrvMetapoolCalculatorLibrary__factory,
+    IERC20Metadata__factory,
 } from "types/generated"
 
 import { config } from "./deployment/convex3CrvVaults-config"
@@ -49,6 +50,7 @@ interface Convex3CrvBasicVaultParams {
     donateToken: string
     donationFee: number
     feeReceiver: string
+    assetToBurn: BN
 }
 
 interface Convex3CrvLiquidatorVaultParams extends Convex3CrvBasicVaultParams {
@@ -91,8 +93,8 @@ const getFactoryMetapoolLinkAddresses = (calculatorLibrary: string) => ({
     "contracts/peripheral/Curve/Curve3CrvFactoryMetapoolCalculatorLibrary.sol:Curve3CrvFactoryMetapoolCalculatorLibrary": calculatorLibrary,
 })
 
-export async function deployConvex3CrvBasicVault(hre: HardhatRuntimeEnvironment, signer: Signer, params: Convex3CrvBasicVaultParams) {
-    const { calculatorLibrary, nexus, asset, constructorData, slippageData, name, symbol, vaultManager, proxyAdmin } = params
+export async function deployConvex3CrvBasicVault(hre: HardhatRuntimeEnvironment, signer: Signer, params: Convex3CrvBasicVaultParams, deployerAddress: string) {
+    const { calculatorLibrary, nexus, asset, constructorData, slippageData, name, symbol, vaultManager, proxyAdmin, assetToBurn } = params
 
     const curve3CrvMetapoolCalculatorLibraryLinkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
     // Vault
@@ -109,8 +111,20 @@ export async function deployConvex3CrvBasicVault(hre: HardhatRuntimeEnvironment,
         contract: "contracts/vault/liquidity/convex/Convex3CrvBasicVault.sol:Convex3CrvBasicVault",
         constructorArguments: constructorArguments,
     })
+
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     // Proxy
-    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData])
+    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData, assetToBurn])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
@@ -125,6 +139,7 @@ export async function deployConvex3CrvBasicVault(hre: HardhatRuntimeEnvironment,
 export async function deployConvex3CrvLiquidatorVault(
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
+    deployerAddress: string,
     params: Convex3CrvLiquidatorVaultParams,
 ) {
     const {
@@ -143,6 +158,7 @@ export async function deployConvex3CrvLiquidatorVault(
         donationFee,
         feeReceiver,
         proxy,
+        assetToBurn
     } = params
 
     const linkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
@@ -165,6 +181,8 @@ export async function deployConvex3CrvLiquidatorVault(
     if (!proxy) {
         return { proxy: undefined, impl: vaultImpl }
     }
+
+    // Initialize
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -174,7 +192,20 @@ export async function deployConvex3CrvLiquidatorVault(
         donateToken,
         feeReceiver,
         donationFee,
+        assetToBurn
     ])
+
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
@@ -201,6 +232,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
     .addParam("name", "Vault name", undefined, types.string)
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("pool", "Symbol of the Convex pool. eg mUSD, FRAX, MIM, LUSD, BUSD", undefined, types.string)
+    .addParam("assetToBurn", "Amount of assets to deposit and corresponding shares locked", undefined , types.int)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
     .addOptionalParam("stream", "Number of days the stream takes.", 7, types.int)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
@@ -233,6 +265,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             vaultManager,
             proxy,
             speed,
+            assetToBurn,
         } = taskArgs
 
         const signer = await getSigner(hre, speed)
@@ -243,6 +276,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const convexBoosterAddress = resolveAddress("ConvexBooster", chain)
+        const deployerAddress = resolveAddress("OperationsSigner", chain)
 
         const convex3CrvPool = config.convex3CrvPools[pool.toLowerCase()]
         let calculatorLibraryAddress
@@ -263,7 +297,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
         const rewardTokens = [CRV.address, CVX.address]
 
         // Vault library
-        const { proxy: proxyContract, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, {
+        const { proxy: proxyContract, impl } = await deployConvex3CrvLiquidatorVault(hre, signer, deployerAddress, {
             calculatorLibrary: calculatorLibraryAddress,
             nexus: nexusAddress,
             asset: assetAddress,
@@ -280,6 +314,7 @@ subtask("convex-3crv-vault-deploy", "Deploys Convex 3Crv Liquidator Vault")
             donationFee: fee,
             feeReceiver: feeReceiverAddress,
             proxy,
+            assetToBurn
         })
 
         return { proxyContract, impl }

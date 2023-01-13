@@ -3,9 +3,10 @@ import { resolveAddress } from "@tasks/utils/networkAddressFactory"
 import { CRV, CVX, crvFRAX, USDC, FRAX } from "@tasks/utils/tokens"
 import { ONE_DAY, ONE_WEEK, SAFE_INFINITY } from "@utils/constants"
 import { impersonateAccount, loadOrExecFixture } from "@utils/fork"
-import { simpleToExactAmount } from "@utils/math"
+import { simpleToExactAmount, BN } from "@utils/math"
 import { increaseTime } from "@utils/time"
 import { expect } from "chai"
+import { ethers } from "ethers"
 import { keccak256, toUtf8Bytes } from "ethers/lib/utils"
 import * as hre from "hardhat"
 import {
@@ -40,6 +41,7 @@ const staker1Address = "0x8c21E8034a67eC06D874DB5e845569FB3f6D3355"
 const staker2Address = "0x664d8F8F2417F52CbbF5Bd82Ba82EEfc58a87f07"
 const mockLiquidatorAddress = "0x28c6c06298d514db089934071355e5743bf21d60" // Binance 14
 const normalBlock = 15931174
+const defaultAssetToBurn = simpleToExactAmount(0)
 
 describe("Convex FraxBp Liquidator Vault", async () => {
     let keeper: Account
@@ -57,6 +59,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
     let baseRewardsPool: IConvexRewardsPool
     let dataEmitter: DataEmitter
     let convexFraxBpCalculatorLibrary: ConvexFraxBpCalculatorLibrary
+    let assetToBurn: BN
     const { network } = hre
 
     const donationFee = 10000 // 1%
@@ -89,6 +92,8 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         staker2 = await impersonateAccount(staker2Address)
         mockLiquidator = await impersonateAccount(mockLiquidatorAddress)
 
+        assetToBurn = assetToBurn ?? defaultAssetToBurn
+
         crvFraxToken = IERC20__factory.connect(crvFRAX.address, staker1.signer)
         crvToken = IERC20__factory.connect(CRV.address, staker1.signer)
         cvxToken = IERC20__factory.connect(CVX.address, staker1.signer)
@@ -98,6 +103,8 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         baseRewardsPool = IConvexRewardsPool__factory.connect(ConvexBUSDFraxBpRewardsPoolAddress, staker1.signer)
 
         dataEmitter = await new DataEmitter__factory(staker1.signer).deploy()
+
+        await crvFraxToken.connect(staker1.signer).transfer(keeperAddress, simpleToExactAmount(100000))
 
         // Mock the Liquidator
         const nexus = Nexus__factory.connect(resolveAddress("Nexus"), governor.signer)
@@ -120,6 +127,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             busdConvexConstructorData,
             ONE_DAY.mul(6),
         )
+        await crvFraxToken.connect(keeper.signer).approve(busdFraxConvexVault.address, ethers.constants.MaxUint256)
         await busdFraxConvexVault.initialize(
             "Vault Convex mUSD/crvFrax",
             "vcvxmusdCrvFrax",
@@ -129,6 +137,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             USDC.address,
             feeReceiver,
             donationFee,
+            assetToBurn
         )
     }
 
@@ -159,6 +168,8 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         expect(await busdFraxConvexVault.convexPoolId(), "convex Pool Id").to.equal(config.convexFraxBpPools.busd.convexPoolId)
         expect(await busdFraxConvexVault.baseRewardPool(), "convex reward pool").to.equal(ConvexBUSDFraxBpRewardsPoolAddress)
 
+        await crvFraxToken.connect(keeper.signer).approve(busdFraxConvexVault.address, ethers.constants.MaxUint256)
+        assetToBurn = simpleToExactAmount(10)
         await busdFraxConvexVault.initialize(
             "Vault Convex mUSD/crvFrax",
             "vcvxmusdCrvFrax",
@@ -168,6 +179,7 @@ describe("Convex FraxBp Liquidator Vault", async () => {
             USDC.address,
             feeReceiver,
             donationFee,
+            assetToBurn
         )
 
         const data = await snapVault(busdFraxConvexVault, crvFraxToken, staker1Address, simpleToExactAmount(1), simpleToExactAmount(1))
@@ -204,6 +216,12 @@ describe("Convex FraxBp Liquidator Vault", async () => {
         expect(await busdFraxConvexVault.feeReceiver(), "fee receiver").to.eq(feeReceiver)
         expect(await busdFraxConvexVault.donationFee(), "donation fee").to.eq(donationFee)
         expect(await busdFraxConvexVault.STREAM_DURATION(), "stream duration").to.eq(ONE_DAY.mul(6))
+
+        //locked shares
+        expect((await busdFraxConvexVault.balanceOf(busdFraxConvexVault.address)), "locked shares").to.gt(0)
+
+        // reset
+        assetToBurn = defaultAssetToBurn
     })
     describe("behave like Convex FraxBp Vault", () => {
         let ctx: ConvexFraxBpContext

@@ -1,7 +1,7 @@
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, IERC20__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
+import { AssetProxy__factory, IERC20Metadata__factory, IERC20__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
 
 import { config } from "./deployment/convexFraxBpVaults-config"
 import { usdFormatter } from "./utils"
@@ -36,6 +36,7 @@ interface PeriodicAllocationPerfFeeMetaVaultParams {
     underlyingVaults: Array<string>
     sourceParams: AssetSourcingParams
     assetPerShareUpdateThreshold: BN
+    assetToBurn: BN
 }
 
 export async function deployPeriodicAllocationPerfFeeMetaVaults(
@@ -45,10 +46,11 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
     vaultManager: string,
     proxyAdmin: string,
     convexFraxBpVaults: ConvexFraxBpVaultsDeployed,
+    deployerAddress: string,
 ) {
     const { periodicAllocationPerfFeeMetaVault: PeriodicAllocationPerfFeeMetaVaultConf } = config
     const underlyingVaults = [convexFraxBpVaults.busd.proxy.address, convexFraxBpVaults.susd.proxy.address, convexFraxBpVaults.alusd.proxy.address]
-    const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+    const periodicAllocationPerfFeeMetaVault = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, deployerAddress, {
         nexus,
         asset: PeriodicAllocationPerfFeeMetaVaultConf.asset,
         name: PeriodicAllocationPerfFeeMetaVaultConf.name,
@@ -60,6 +62,7 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
         sourceParams: PeriodicAllocationPerfFeeMetaVaultConf.sourceParams,
         assetPerShareUpdateThreshold: PeriodicAllocationPerfFeeMetaVaultConf.assetPerShareUpdateThreshold,
         underlyingVaults,
+        assetToBurn: PeriodicAllocationPerfFeeMetaVaultConf.assetToBurn,
     })
     return periodicAllocationPerfFeeMetaVault
 }
@@ -67,6 +70,7 @@ export async function deployPeriodicAllocationPerfFeeMetaVaults(
 export const deployPeriodicAllocationPerfFeeMetaVault = async (
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
+    deployerAddress: string,
     params: PeriodicAllocationPerfFeeMetaVaultParams,
 ) => {
     const {
@@ -81,6 +85,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
         underlyingVaults,
         sourceParams,
         assetPerShareUpdateThreshold,
+        assetToBurn,
     } = params
     const constructorArguments = [nexus, asset]
     const vaultImpl = await deployContract<PeriodicAllocationPerfFeeMetaVault>(
@@ -95,6 +100,17 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
         constructorArguments: constructorArguments,
     })
 
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     // Proxy
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
@@ -105,6 +121,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
         underlyingVaults,
         sourceParams,
         assetPerShareUpdateThreshold,
+        assetToBurn,
     ])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
@@ -120,6 +137,7 @@ subtask("convex-FraxBp-mv-deploy", "Deploys Convex FraxBp Meta Vault")
         undefined,
         types.string,
     )
+    .addParam("assetToBurn", "Amount of assets to deposit and corresponding shares locked", undefined , types.int)
     .addOptionalParam("name", "Vault name", "FraxBp Convex Meta Vault", types.string)
     .addOptionalParam("symbol", "Vault symbol", "mvFraxBp-CVX", types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "crvFrax", types.string)
@@ -149,6 +167,7 @@ subtask("convex-FraxBp-mv-deploy", "Deploys Convex FraxBp Meta Vault")
             updateThreshold,
             vaultManager,
             speed,
+            assetToBurn,
         } = taskArgs
 
         const signer = await getSigner(hre, speed)
@@ -158,6 +177,7 @@ subtask("convex-FraxBp-mv-deploy", "Deploys Convex FraxBp Meta Vault")
         const assetToken = await resolveAssetToken(signer, chain, asset)
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
+        const deployerAddress = resolveAddress("OperationsSigner", chain)
 
         const underlyings = vaults.split(",")
         const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
@@ -166,7 +186,7 @@ subtask("convex-FraxBp-mv-deploy", "Deploys Convex FraxBp Meta Vault")
 
         const feeReceiverAddress = resolveAddress(feeReceiver, chain)
 
-        const { proxy, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+        const { proxy, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, deployerAddress, {
             nexus: nexusAddress,
             asset: assetToken.address,
             name,
@@ -181,6 +201,7 @@ subtask("convex-FraxBp-mv-deploy", "Deploys Convex FraxBp Meta Vault")
                 singleSourceVaultIndex,
             },
             assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
+            assetToBurn,
         })
 
         return { proxy, impl }

@@ -1,5 +1,5 @@
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, CurveFraxBpBasicMetaVault__factory, CurveFraxBpCalculatorLibrary__factory } from "types"
+import { AssetProxy__factory, CurveFraxBpBasicMetaVault__factory, CurveFraxBpCalculatorLibrary__factory, IERC20Metadata__factory } from "types"
 
 import { config } from "./deployment/convexFraxBpVaults-config"
 import { deployContract } from "./utils/deploy-utils"
@@ -10,6 +10,7 @@ import { getSigner } from "./utils/signerFactory"
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { AssetProxy, CurveFraxBpBasicMetaVault, CurveFraxBpCalculatorLibrary, CurveFraxBpPool } from "types"
+import { BN } from "@utils/math"
 
 // deployCurveFraxBpMetaVault
 type SlippageData = {
@@ -28,6 +29,7 @@ interface CurveFraxBpBasicMetaVaultParams {
     symbol: string
     vaultManager: string
     proxyAdmin: string
+    assetToBurn: BN
 }
 interface CurveFraxBpMetaVaultDeployed {
     proxy: AssetProxy
@@ -56,9 +58,10 @@ export async function deployCurveFraxBpCalculatorLibrary(hre: HardhatRuntimeEnvi
 export const deployCurveFraxBpMetaVault = async (
     hre: HardhatRuntimeEnvironment,
     signer: Signer,
+    deployerAddress: string,
     params: CurveFraxBpBasicMetaVaultParams,
 ) => {
-    const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin } = params
+    const { calculatorLibrary, nexus, asset, metaVault, slippageData, name, symbol, vaultManager, proxyAdmin, assetToBurn } = params
 
     const libraryAddresses = {
         "contracts/peripheral/Curve/CurveFraxBpCalculatorLibrary.sol:CurveFraxBpCalculatorLibrary": calculatorLibrary,
@@ -77,8 +80,19 @@ export const deployCurveFraxBpMetaVault = async (
         constructorArguments: constructorArguments,
     })
 
+    // Pre-calculate proxyAddress for approval
+    const nonce = await hre.ethers.provider.getTransactionCount(deployerAddress)
+    const proxyAddress = hre.ethers.utils.getContractAddress({
+      from: deployerAddress,
+      nonce: nonce + 1, // Increment 1 to account for approval tx
+    });
+
+    // Approve allowance for assetToBurn
+    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    await assetContract.approve(proxyAddress, assetToBurn)
+
     // Proxy
-    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData])
+    const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManager, slippageData, assetToBurn])
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
     const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
@@ -92,6 +106,7 @@ export async function deployCurveFraxBpMetaVaults(
     vaultManager: string,
     proxyAdmin: string,
     metaVault: string,
+    deployerAddress: string
 ) {
     const curveFraxBpMetaVaults: CurveFraxBpMetaVaultsDeployed = {}
 
@@ -102,7 +117,7 @@ export async function deployCurveFraxBpMetaVaults(
     for (let i = 0; i < pools.length; i++) {
         const pool = pools[i]
         const curveFraxBpPool: CurveFraxBpPool = curveFraxBpMetaVault[pool]
-        const curveFraxBpMetaVaultDeployed: CurveFraxBpMetaVaultDeployed = await deployCurveFraxBpMetaVault(hre, signer, {
+        const curveFraxBpMetaVaultDeployed: CurveFraxBpMetaVaultDeployed = await deployCurveFraxBpMetaVault(hre, signer, deployerAddress, {
             calculatorLibrary: curveFraxBpCalculatorLibrary.address,
             nexus,
             asset: curveFraxBpPool.asset,
@@ -113,6 +128,7 @@ export async function deployCurveFraxBpMetaVaults(
             symbol: curveFraxBpPool.symbol,
             vaultManager,
             proxyAdmin,
+            assetToBurn: curveFraxBpPool.assetToBurn
         })
         curveFraxBpMetaVaults[pool] = curveFraxBpMetaVaultDeployed
     }
@@ -135,6 +151,7 @@ task("curve-FraxBp-lib-deploy").setAction(async (_, __, runSuper) => {
 subtask("curve-FraxBp-meta-vault-deploy", "Deploys Curve FraxBp Meta Vault")
     .addParam("name", "Meta Vault name", undefined, types.string)
     .addParam("symbol", "Meta Vault symbol", undefined, types.string)
+    .addParam("assetToBurn", "Amount of assets to deposit and corresponding shares locked", undefined , types.int)
     .addParam("asset", "Token address or symbol of the vault's asset. eg FRAX or USDC", undefined, types.string)
     .addOptionalParam("metaVault", "Underlying Meta Vault override", "mvFraxBp-CVX", types.string)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
@@ -143,7 +160,7 @@ subtask("curve-FraxBp-meta-vault-deploy", "Deploys Curve FraxBp Meta Vault")
     .addOptionalParam("vaultManager", "Name or address to override the Vault Manager", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, vaultManager, speed } = taskArgs
+        const { metaVault, name, symbol, asset, calculatorLibrary, slippage, admin, vaultManager, speed, assetToBurn } = taskArgs
 
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
@@ -154,8 +171,9 @@ subtask("curve-FraxBp-meta-vault-deploy", "Deploys Curve FraxBp Meta Vault")
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
         const metaVaultAddress = resolveAddress(metaVault, chain)
         const calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
+        const deployerAddress = resolveAddress("OperationsSigner", chain)
 
-        const { proxy, impl } = await deployCurveFraxBpMetaVault(hre, signer, {
+        const { proxy, impl } = await deployCurveFraxBpMetaVault(hre, signer, deployerAddress, {
             nexus: nexusAddress,
             asset: assetToken.address,
             name,
@@ -165,6 +183,7 @@ subtask("curve-FraxBp-meta-vault-deploy", "Deploys Curve FraxBp Meta Vault")
             proxyAdmin: proxyAdminAddress,
             slippageData: { mint: slippage, deposit: slippage, redeem: slippage, withdraw: slippage },
             calculatorLibrary: calculatorLibraryAddress,
+            assetToBurn
         })
 
         return { proxy, impl }

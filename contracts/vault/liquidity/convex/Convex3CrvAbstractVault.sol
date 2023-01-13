@@ -36,6 +36,7 @@ import { Curve3CrvMetapoolCalculatorLibrary } from "../../../peripheral/Curve/Cu
  * The `initialize` function of implementing contracts need to call the following:
  * - InitializableToken._initialize(_name, _symbol, decimals)
  * - VaultManagerRole._initialize(_vaultManager)
+ * - AbstractVault._initialize(_assetToBurn)
  * - Convex3CrvAbstractVault._initialize()
  */
 abstract contract Convex3CrvAbstractVault is AbstractSlippage, AbstractVault {
