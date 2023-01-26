@@ -6,7 +6,7 @@ import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
 import { CowSwapDex__factory, IERC20Metadata__factory, OneInchDexSwap__factory } from "types/generated"
 
-import { getFeeAndQuote, getOrder, getQuote, postSellOrder } from "./peripheral/cowswapApi"
+import { getFeeAndQuote, getOrder, getOwnerOrders, getQuote, postSellOrder } from "./peripheral/cowswapApi"
 import { OneInchRouter } from "./peripheral/oneInchApi"
 import { verifyEtherscan } from "./utils/etherscan"
 import { logger } from "./utils/logger"
@@ -121,6 +121,37 @@ task("cowswap-status", "Get CoW Swap order status")
         log(`fee        : ${formatUnits(response.feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
         log(`buy amount : ${formatUnits(response.buyAmount, buyToken.decimals)} ${buyToken.symbol}`)
         log(`rate       : ${formatUnits(response.buyAmount.mul(10000).div(fromAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
+    })
+task("cowswap-orders", "Get CoW Swap orders from liquidator")
+    .addParam("maxOrders", "The amount of orders to retrieve from the API, default 3", 3, types.int)
+    .addOptionalParam("owner", "CoW Swap order owner, default value mStable CowSwapDex", undefined, types.string)
+    .setAction(async (taskArgs, hre) => {
+        const chain = getChain(hre)
+        const signer = await getSigner(hre)
+        const ownerAddress = resolveAddress(taskArgs.owner ?? "CowSwapDex", chain)
+
+        const orders = (await getOwnerOrders(chain, ownerAddress))
+            .filter((order) => order.status !== "expired ")
+            .sort(
+                // sort desc
+                (a, b) => b.creationDate.getTime() - a.creationDate.getTime(),
+            )
+
+        for (let i = 0; i < Math.min(taskArgs.maxOrders, orders.length); i++) {
+            const order = orders[i]
+
+            const sellToken = await resolveAssetToken(signer, chain, order.sellToken)
+            const buyToken = await resolveAssetToken(signer, chain, order.buyToken)
+            const fromAmount = order.sellAmount.add(order.feeAmount)
+
+            log(`CoW Swap order uid ${order.uid}`)
+            log(`status     : ${order.status} ${order.creationDate.toString()}`)
+            log(`from amount: ${formatUnits(fromAmount, sellToken.decimals)} ${sellToken.symbol}`)
+            log(`sell amount: ${formatUnits(order.sellAmount, sellToken.decimals)} ${sellToken.symbol}`)
+            log(`fee        : ${formatUnits(order.feeAmount, sellToken.decimals)}  ${sellToken.symbol}`)
+            log(`buy amount : ${formatUnits(order.buyAmount, buyToken.decimals)} ${buyToken.symbol}`)
+            log(`rate       : ${formatUnits(order.buyAmount.mul(10000).div(fromAmount), 4)}  ${sellToken.symbol}/${buyToken.symbol}`)
+        }
     })
 
 task("cowswap-cancel", "Get CoW Swap order status")
