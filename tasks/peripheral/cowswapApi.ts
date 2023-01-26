@@ -69,7 +69,20 @@ export interface Order {
     partiallyFillable: boolean
     status: string
 }
-
+export interface CreatedOrder {
+    sellToken: string
+    buyToken: string
+    receiver?: string
+    sellAmount: BN
+    buyAmount: BN
+    validTo: BN
+    feeAmount: BN
+    kind: string
+    partiallyFillable: boolean
+    status: string
+    uid: string
+    creationDate: Date
+}
 export interface TradeMetaData {
     blockNumber: number
     logIndex: number
@@ -132,6 +145,14 @@ const getFeeAndQuoteURL = (chainId: Chain) => {
  * @return {string}  The endpoint.
  */
 const getOrdersURL = (chainId: Chain) => `${getGnosisProtocolUrl(false)[chainId]}/v1/orders`
+
+/**
+ * Gets the URL of the quote API depending of the chain id.
+ * @param {Chain} chainId
+ * @return {string}  The endpoint.
+ */
+const getOwnerOrdersURL = (chainId: Chain, owner: String) => `${getGnosisProtocolUrl(false)[chainId]}/v1/account/${owner}/orders`
+
 /**
  * Gets the URL of the trades API depending of the chain id.
  * @param {Chain} chainId
@@ -231,6 +252,23 @@ export const getOrder = async (chainId: Chain, uid: string): Promise<Order> => {
         order.feeAmount = BN.from(order.feeAmount)
 
         return order
+    } catch (err) {
+        throw Error(`Failed to get order from CoW Swap`, { cause: err })
+    }
+}
+export const getOwnerOrders = async (chainId: Chain, owner: string): Promise<Array<CreatedOrder>> => {
+    const url = getOwnerOrdersURL(chainId, owner)
+
+    try {
+        const response = await axios.get(url)
+        const orders = response.data
+        return orders.map((order) => ({
+            ...order,
+            sellAmount: BN.from(order.sellAmount),
+            buyAmount: BN.from(order.buyAmount),
+            feeAmount: BN.from(order.feeAmount),
+            creationDate: new Date(order.creationDate),
+        }))
     } catch (err) {
         throw Error(`Failed to get order from CoW Swap`, { cause: err })
     }
