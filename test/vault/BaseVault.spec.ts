@@ -1,6 +1,6 @@
 import { ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
-import { simpleToExactAmount, BN } from "@utils/math"
+import {simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
@@ -8,6 +8,7 @@ import { BasicVault__factory, LightBasicVault__factory } from "types/generated"
 import { shouldBehaveLikeBaseVault, testAmounts } from "../shared/BaseVault.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "../shared/VaultManagerRole.behaviour"
 
+import type { BN} from "@utils/math";
 import type { ContractFactory, Signer } from "ethers/lib/ethers"
 import type { BasicVault, LightBasicVault, MockERC20, MockNexus, VaultManagerRole } from "types/generated"
 
@@ -137,7 +138,7 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
                 await asset.connect(sa.alice.signer).approve(vault.address, ethers.constants.MaxUint256)
             })
             it("minting shares should round up", async () => {
-                let user = sa.alice
+                const user = sa.alice
                 // vault asset/share ratio is 11:10 after the following 2 transactions
                 await vault.connect(user.signer).deposit(10, user.address)
                 await asset.transfer(vault.address, 1)
@@ -150,7 +151,7 @@ const testVault = async <F extends ContractFactory, V extends BaseVault>(factory
                 expect(userAssetsAfter).to.be.eq(userAssetsBefore.sub(4))
             })
             it("withdrawing assets should round up", async () => {
-                let user = sa.alice
+                const user = sa.alice
                 // vault asset/share ratio is 11:10 after the following 2 transactions
                 await vault.connect(user.signer).deposit(10, user.address)
                 await asset.transfer(vault.address, 1)

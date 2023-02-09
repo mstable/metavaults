@@ -1,7 +1,7 @@
 import { simpleToExactAmount } from "@utils/math"
 import { formatUnits } from "ethers/lib/utils"
 import { subtask, task, types } from "hardhat/config"
-import { AssetProxy__factory, IERC20Metadata__factory, IERC20__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
+import { AssetProxy__factory, IERC20__factory, IERC20Metadata__factory, IERC4626Vault__factory, PeriodicAllocationPerfFeeMetaVault__factory } from "types/generated"
 
 import { config } from "./deployment/convexFraxBpVaults-config"
 import { usdFormatter } from "./utils"
@@ -108,7 +108,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     // Proxy

@@ -99,7 +99,7 @@ export async function deployConvexFraxBpBasicVault(hre: HardhatRuntimeEnvironmen
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     // Proxy
@@ -176,7 +176,7 @@ export async function deployConvexFraxBpLiquidatorVault(
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]

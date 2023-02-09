@@ -221,7 +221,7 @@ describe("Curve FraxBp Basic Vault", async () => {
                 await commonSetup(normalBlock)
                 owner = await impersonateAccount(usdcUserAddress)
                 asset = IERC20__factory.connect(USDC.address, owner.signer)
-                vault = await deployVault(asset, owner, USDC.decimals)p
+                vault = await deployVault(asset, owner, USDC.decimals)
             })
             it("withdrawing assets should round up", async () => {
                 // vault asset/share ratio is 11:10 after the following 2 transactions

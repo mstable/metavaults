@@ -1,4 +1,4 @@
-import { BN } from "@utils/math"
+import type { BN } from "@utils/math"
 import type { BigNumberish } from "ethers"
 
 import type { Convex3CrvBasicVault, Convex3CrvLiquidatorVault, ConvexFraxBpBasicVault, ConvexFraxBpLiquidatorVault } from "./generated"

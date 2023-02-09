@@ -151,7 +151,7 @@ const getOrdersURL = (chainId: Chain) => `${getGnosisProtocolUrl(false)[chainId]
  * @param {Chain} chainId
  * @return {string}  The endpoint.
  */
-const getOwnerOrdersURL = (chainId: Chain, owner: String) => `${getGnosisProtocolUrl(false)[chainId]}/v1/account/${owner}/orders`
+const getOwnerOrdersURL = (chainId: Chain, owner: string) => `${getGnosisProtocolUrl(false)[chainId]}/v1/account/${owner}/orders`
 
 /**
  * Gets the URL of the trades API depending of the chain id.

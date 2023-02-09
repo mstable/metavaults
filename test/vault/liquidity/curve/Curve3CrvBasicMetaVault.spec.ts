@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { ethers } from "hardhat"
 import { Curve3CrvBasicMetaVault__factory, Curve3PoolCalculatorLibrary__factory } from "types/generated"
 
-import type { Curve3CrvBasicMetaVault, MockERC20, MockNexus } from "types/generated"
+import type { MockNexus } from "types/generated"
 import type { Curve3CrvBasicMetaVaultLibraryAddresses } from "types/generated/factories/contracts/vault/liquidity/curve/Curve3CrvBasicMetaVault__factory"
 
 describe("Curve3CrvBasicMetaVault", () => {

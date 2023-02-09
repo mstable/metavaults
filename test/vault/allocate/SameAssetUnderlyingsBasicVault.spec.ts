@@ -5,7 +5,7 @@ import { shouldBehaveLikeToken } from "@test/shared/Token.behaviour"
 import { shouldBehaveLikeVaultManagerRole } from "@test/shared/VaultManagerRole.behaviour"
 import { MAX_UINT256, ZERO_ADDRESS } from "@utils/constants"
 import { ContractMocks, StandardAccounts } from "@utils/machines"
-import { simpleToExactAmount, BN } from "@utils/math"
+import {simpleToExactAmount } from "@utils/math"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "types/generated"
@@ -13,6 +13,7 @@ import { BasicVault__factory, SameAssetUnderlyingsBasicVault__factory } from "ty
 import type { BaseVaultBehaviourContext } from "@test/shared/BaseVault.behaviour"
 import type { SameAssetUnderlyingsAbstractVaultBehaviourContext } from "@test/shared/SameAssetUnderlyingsAbstractVault.behaviour"
 import type { TokenContext, TokenERC20 } from "@test/shared/Token.behaviour"
+import type { BN} from "@utils/math";
 import type { Account } from "types"
 import type {
     AbstractVault,
