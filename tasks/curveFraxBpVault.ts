@@ -7,10 +7,10 @@ import { verifyEtherscan } from "./utils/etherscan"
 import { getChain, resolveAddress, resolveAssetToken } from "./utils/networkAddressFactory"
 import { getSigner } from "./utils/signerFactory"
 
+import type { BN } from "@utils/math"
 import type { Signer } from "ethers"
 import type { HardhatRuntimeEnvironment } from "hardhat/types"
 import type { AssetProxy, CurveFraxBpBasicMetaVault, CurveFraxBpCalculatorLibrary, CurveFraxBpPool } from "types"
-import { BN } from "@utils/math"
 
 // deployCurveFraxBpMetaVault
 type SlippageData = {
@@ -88,7 +88,7 @@ export const deployCurveFraxBpMetaVault = async (
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     // Proxy

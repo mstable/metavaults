@@ -64,7 +64,7 @@ describe("Performance Fees", async () => {
     const calculateFeeShares = (data: CheckData, assetsPerShareAfter: BN): BN => {
         checkAndSetDefaultAssetPerShare(data)
         const assetPerShareDiff = assetsPerShareAfter.sub(data.perfFeesAssetsPerShare)
-        let currentPerformanceFee = data.performanceFee ?? performanceFee
+        const currentPerformanceFee = data.performanceFee ?? performanceFee
         return assetPerShareDiff.gt(0)
             ? assetPerShareDiff.mul(data.totalShares).mul(currentPerformanceFee).div(feeScale.mul(data.perfFeesAssetsPerShare))
             : BN.from(0)

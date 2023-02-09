@@ -322,12 +322,13 @@ subtask("vault-deploy", "Deploys a basic vault for testing")
     .addParam("name", "Vault name", undefined, types.string)
     .addParam("symbol", "Vault symbol", undefined, types.string)
     .addParam("asset", "Token symbol or address of the vault's asset", undefined, types.string)
+    .addParam("assetToBurn", "Amount of assets to burn during initialization", 1, types.int)
     .addOptionalParam("nexus", "Nexus address override", "Nexus", types.string)
     .addOptionalParam("admin", "ProxyAdmin address, overrides lookup", "InstantProxyAdmin", types.string)
     .addOptionalParam("vaultManager", "VaultManager address, overrides lookup", "VaultManager", types.string)
     .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
     .setAction(async (taskArgs, hre) => {
-        const { speed, name, symbol, asset, nexus, admin, vaultManager } = taskArgs
+        const { speed, name, symbol, asset, nexus, admin, vaultManager, assetToBurn } = taskArgs
         const signer = await getSigner(hre, speed)
         const chain = getChain(hre)
 
@@ -351,7 +352,7 @@ subtask("vault-deploy", "Deploys a basic vault for testing")
         })
 
         // Proxy
-        const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManagerAddress])
+        const data = vaultImpl.interface.encodeFunctionData("initialize", [name, symbol, vaultManagerAddress, assetToBurn])
         const proxyConstructorArguments = [vaultImpl.address, proxyAdminAddress, data]
         const proxy = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 

@@ -120,7 +120,7 @@ export async function deployConvex3CrvBasicVault(hre: HardhatRuntimeEnvironment,
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     // Proxy
@@ -203,7 +203,7 @@ export async function deployConvex3CrvLiquidatorVault(
     });
 
     // Approve allowance for assetToBurn
-    let assetContract = IERC20Metadata__factory.connect(asset, signer)
+    const assetContract = IERC20Metadata__factory.connect(asset, signer)
     await assetContract.approve(proxyAddress, assetToBurn)
 
     const proxyConstructorArguments = [vaultImpl.address, proxyAdmin, data]
