@@ -31,8 +31,8 @@ const usdcCurve3CrvMetaVault: Curve3CrvPool = {
     // constructor
     asset: USDC.address,
     // initialize
-    name: "USDC Convex Meta Vault",
-    symbol: "mvUSDC-CX1",
+    name: "USDC 3Pool Convex Meta Vault",
+    symbol: "mvUSDC-3PCV",
     decimals: USDC.decimals,
     slippageData,
 }
@@ -198,17 +198,16 @@ export const config = {
 
     periodicAllocationPerfFeeMetaVault: {
         asset: ThreeCRV.address,
-        name: "Convex 3CRV Meta Vault",
-        symbol: "m3CRV-CX1",
-        performanceFee: 50000, //5
+        name: "3CRV Convex Meta Vault",
+        symbol: "mv3CRV-CVX",
+        performanceFee: 40000, //5
         feeReceiver,
-        // underlyingVaults: Array<string> after deployment,
         sourceParams: {
             // TODO - TBD
             singleVaultSharesThreshold: 1000, // 10%
             singleSourceVaultIndex: 0,
         },
-        assetPerShareUpdateThreshold: simpleToExactAmount(1000000), //1M
+        assetPerShareUpdateThreshold: simpleToExactAmount(100000),
     },
     curve3CrvMetaVault: { dai: daiCurve3CrvMetaVault, usdc: usdcCurve3CrvMetaVault, usdt: usdtCurve3CrvMetaVault },
 }

@@ -51,10 +51,21 @@ interface Convex3CrvBasicVaultParams {
     feeReceiver: string
 }
 
-interface Convex3CrvLiquidatorVaultParams extends Convex3CrvBasicVaultParams {
+interface Convex3CrvLiquidatorVaultUpgrade {
+    calculatorLibrary: string
+    nexus: string
+    asset: string
+    constructorData: Convex3CrvConstructorData
+    name: string
+    symbol: string
     streamDuration: number
     proxy: boolean
 }
+interface Convex3CrvLiquidatorVaultDeploy extends Convex3CrvBasicVaultParams {
+    streamDuration: number
+    proxy: boolean
+}
+type Convex3CrvLiquidatorVaultParams = Convex3CrvLiquidatorVaultUpgrade | Convex3CrvLiquidatorVaultDeploy
 
 export async function deployCurve3CrvMetapoolCalculatorLibrary(hre: HardhatRuntimeEnvironment, signer: Signer) {
     const calculatorLibrary = await deployContract<Curve3CrvMetapoolCalculatorLibrary>(
@@ -127,23 +138,7 @@ export async function deployConvex3CrvLiquidatorVault(
     signer: Signer,
     params: Convex3CrvLiquidatorVaultParams,
 ) {
-    const {
-        calculatorLibrary,
-        nexus,
-        asset,
-        constructorData,
-        slippageData,
-        streamDuration,
-        name,
-        symbol,
-        vaultManager,
-        proxyAdmin,
-        rewardTokens,
-        donateToken,
-        donationFee,
-        feeReceiver,
-        proxy,
-    } = params
+    const { calculatorLibrary, nexus, asset, constructorData, name, symbol, streamDuration, proxy } = params
 
     const linkAddresses = getMetapoolLinkAddresses(calculatorLibrary)
 
@@ -165,6 +160,8 @@ export async function deployConvex3CrvLiquidatorVault(
     if (!proxy) {
         return { proxy: undefined, impl: vaultImpl }
     }
+    const { slippageData, vaultManager, proxyAdmin, rewardTokens, donateToken, donationFee, feeReceiver } =
+        params as Convex3CrvLiquidatorVaultDeploy
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,

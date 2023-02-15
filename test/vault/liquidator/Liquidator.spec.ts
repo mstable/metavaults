@@ -11,11 +11,9 @@ import {
     Liquidator__factory,
     LiquidatorBasicVault__factory,
     MockERC20__factory,
-    MockNexus__factory,
     MockLiquidatorMaliciousVault__factory,
-    MockLiquidatorMaliciousVault,
     MockMaliciousDexSwap__factory,
-    MockMaliciousDexSwap,
+    MockNexus__factory,
 } from "types/generated"
 
 import { buildDonateTokensInput } from "../../../tasks/utils/liquidatorUtil"
@@ -31,6 +29,7 @@ import type {
     MockGPv2VaultRelayer,
     MockNexus,
 } from "types"
+import type { MockLiquidatorMaliciousVault, MockMaliciousDexSwap } from "types/generated"
 
 const ERROR = {
     ALREADY_INITIALIZED: "Initializable: contract is already initialized",

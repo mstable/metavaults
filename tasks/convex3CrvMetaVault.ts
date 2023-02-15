@@ -24,7 +24,12 @@ interface AssetSourcingParams {
     singleSourceVaultIndex: number
 }
 
-interface PeriodicAllocationPerfFeeMetaVaultParams {
+interface PeriodicAllocationPerfFeeMetaVaultUpgrade {
+    nexus: string
+    asset: string
+    proxy: boolean
+}
+interface PeriodicAllocationPerfFeeMetaVaultDeploy {
     nexus: string
     asset: string
     name: string
@@ -38,6 +43,7 @@ interface PeriodicAllocationPerfFeeMetaVaultParams {
     assetPerShareUpdateThreshold: BN
     proxy: boolean
 }
+type PeriodicAllocationPerfFeeMetaVaultParams = PeriodicAllocationPerfFeeMetaVaultDeploy | PeriodicAllocationPerfFeeMetaVaultUpgrade
 
 export async function deployPeriodicAllocationPerfFeeMetaVaults(
     hre: HardhatRuntimeEnvironment,
@@ -71,20 +77,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     signer: Signer,
     params: PeriodicAllocationPerfFeeMetaVaultParams,
 ) => {
-    const {
-        nexus,
-        asset,
-        name,
-        symbol,
-        vaultManager,
-        proxyAdmin,
-        performanceFee,
-        feeReceiver,
-        underlyingVaults,
-        sourceParams,
-        assetPerShareUpdateThreshold,
-        proxy,
-    } = params
+    const { nexus, asset, proxy } = params
     const constructorArguments = [nexus, asset]
     const vaultImpl = await deployContract<PeriodicAllocationPerfFeeMetaVault>(
         new PeriodicAllocationPerfFeeMetaVault__factory(signer),
@@ -102,6 +95,18 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     if (!proxy) {
         return { proxy: undefined, impl: vaultImpl }
     }
+    const {
+        name,
+        symbol,
+        vaultManager,
+        proxyAdmin,
+        performanceFee,
+        feeReceiver,
+        underlyingVaults,
+        sourceParams,
+        assetPerShareUpdateThreshold,
+    } = params as PeriodicAllocationPerfFeeMetaVaultDeploy
+
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -126,7 +131,7 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
         undefined,
         types.string,
     )
-    .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
+    .addOptionalParam("name", "Vault name", "Convex 3CRV Meta Vault", types.string)
     .addOptionalParam("symbol", "Vault symbol", "mv3CRV-CVX", types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
