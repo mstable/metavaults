@@ -45,9 +45,9 @@ export const getSigner = async (hre: HardhatRuntime = {}, speed: Speed = "fast",
         if (!pk.match(privateKey)) {
             throw Error(`Invalid format of private key`)
         }
-        const wallet = new Wallet(pk, hre.ethers.provider)
-        log(`Using signer ${await wallet.getAddress()} from private key`)
-        return wallet
+        const signerInstance = new Wallet(pk, hre.ethers.provider)
+        log(`Using signer ${await signerInstance.getAddress()} from private key`)
+        return signerInstance
     }
 
     // If connecting to a forked chain
