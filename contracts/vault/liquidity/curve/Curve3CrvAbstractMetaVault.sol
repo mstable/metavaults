@@ -90,7 +90,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
      * Meta Vault shares -> Meta Vault assets (3Crv) -> vault assets (DAI, USDC or USDT)
      * @return totalManagedAssets Amount of assets managed by the vault.
      */
-    function totalAssets() public view override returns (uint256 totalManagedAssets) {
+    function totalAssets() public view virtual override returns (uint256 totalManagedAssets) {
         // Get the amount of underying meta vault shares held by this vault.
         uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
         if (totalMetaVaultShares > 0) {
@@ -191,6 +191,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         override
         returns (uint256 shares)
     {
+        shares = _previewDeposit(assets);
+    }
+
+    function _previewDeposit(uint256 assets) internal view virtual returns (uint256 shares) {
         if (assets > 0) {
             // Calculate Meta Vault assets (3Crv) for this vault's asset (DAI, USDC, USDT)
             (uint256 threeCrvTokens, , ) = Curve3PoolCalculatorLibrary.calcDeposit(
@@ -232,6 +236,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         whenNotPaused
         returns (uint256 assets)
     {
+        assets = _mint(shares, receiver);
+    }
+
+    function _mint(uint256 shares, address receiver) internal virtual returns (uint256 assets) {
         // Get the total underlying Meta Vault shares held by this vault.
         uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
         // Convert this vault's required shares to required underlying meta vault shares.
@@ -282,6 +290,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
      * @dev Vault shares -> Meta Vault shares -> Meta Vault assets (3Crv) -> vault assets (eg DAI)
      */
     function previewMint(uint256 shares) external view virtual override returns (uint256 assets) {
+        assets = _previewMint(shares);
+    }
+
+    function _previewMint(uint256 shares) internal view virtual returns (uint256 assets) {
         if (shares > 0) {
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
@@ -321,6 +333,14 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         address receiver,
         address owner
     ) external virtual override whenNotPaused returns (uint256 shares) {
+        shares = _withdraw(assets, receiver, owner);
+    }
+
+    function _withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) internal virtual returns (uint256 shares) {
         if (assets > 0) {
             // Get the total underlying Meta Vault shares held by this vault.
             uint256 totalMetaVaultSharesBefore = metaVault.balanceOf(address(this));
@@ -399,6 +419,10 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
         override
         returns (uint256 shares)
     {
+        shares = _previewWithdraw(assets);
+    }
+
+    function _previewWithdraw(uint256 assets) internal view virtual returns (uint256 shares) {
         if (assets > 0) {
             // Calculate 3Pool LP tokens (3Crv) for this vault's asset (DAI, USDC or USDT).
             (uint256 threeCrvTokens, , ) = Curve3PoolCalculatorLibrary.calcWithdraw(
@@ -742,14 +766,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
     /***************************************
                     Emergency Functions
     ****************************************/
-
-    /**
-     * @notice Governor liquidates all the vault's assets and send to the governor.
-     * Only to be used in an emergency. eg whitehat protection against a hack.
-     * @param minAssets Minimum amount of asset tokens to receive from removing liquidity from the Curve 3Pool.
-     * This provides sandwich attack protection.
-     */
-    function liquidateVault(uint256 minAssets) external onlyGovernor {
+    function _liquidateVault(uint256 minAssets, bool transferToGovernor) internal {
         uint256 totalMetaVaultShares = metaVault.balanceOf(address(this));
 
         metaVault.redeem(totalMetaVaultShares, address(this), address(this));
@@ -759,8 +776,19 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
             int128(uint128(assetPoolIndex)),
             minAssets
         );
+        if (transferToGovernor) {
+            _asset.safeTransfer(_governor(), _asset.balanceOf(address(this)));
+        }
+    }
 
-        _asset.safeTransfer(_governor(), _asset.balanceOf(address(this)));
+    /**
+     * @notice Governor liquidates all the vault's assets and send to the governor.
+     * Only to be used in an emergency. eg whitehat protection against a hack.
+     * @param minAssets Minimum amount of asset tokens to receive from removing liquidity from the Curve 3Pool.
+     * This provides sandwich attack protection.
+     */
+    function liquidateVault(uint256 minAssets) external virtual onlyGovernor {
+        _liquidateVault(minAssets, true);
     }
 
     /***************************************
@@ -769,7 +797,7 @@ abstract contract Curve3CrvAbstractMetaVault is AbstractSlippage, LightAbstractV
 
     /// @notice Approves Curve's 3Pool contract to transfer assets (DAI, USDC or USDT) from this vault.
     /// Also approves the underlying Meta Vault to transfer 3Crv from this vault.
-    function resetAllowances() external onlyGovernor {
+    function resetAllowances() external virtual onlyGovernor {
         _resetAllowances();
     }
 

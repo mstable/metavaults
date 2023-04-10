@@ -74,13 +74,18 @@ contract PeriodicAllocationPerfFeeMetaVault is
     //////////////////////////////////////////////////////////////*/
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
-    function _deposit(uint256 assets, address receiver)
+    function _deposit(
+        uint256, /** assets */
+        address /** receiver */
+    )
         internal
         virtual
         override(AbstractVault, PeriodicAllocationAbstractVault)
-        returns (uint256 shares)
+        returns (
+            uint256 /** shares */
+        )
     {
-        return PeriodicAllocationAbstractVault._deposit(assets, receiver);
+        revert("Vault shutdown");
     }
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
@@ -91,17 +96,28 @@ contract PeriodicAllocationPerfFeeMetaVault is
         override(AbstractVault, PeriodicAllocationAbstractVault)
         returns (uint256 shares)
     {
-        return PeriodicAllocationAbstractVault._previewDeposit(assets);
+        // return 0
+    }
+
+    function _maxDeposit(
+        address /** caller */
+    ) internal view virtual override returns (uint256 maxAssets) {
+        // return 0
     }
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
-    function _mint(uint256 shares, address receiver)
+    function _mint(
+        uint256, /** shares */
+        address /** receiver */
+    )
         internal
         virtual
         override(AbstractVault, PeriodicAllocationAbstractVault)
-        returns (uint256 assets)
+        returns (
+            uint256 /** assets*/
+        )
     {
-        return PeriodicAllocationAbstractVault._mint(shares, receiver);
+        revert("Vault shutdown");
     }
 
     /// @dev use PeriodicAllocationAbstractVault implementation.
@@ -112,7 +128,13 @@ contract PeriodicAllocationPerfFeeMetaVault is
         override(AbstractVault, PeriodicAllocationAbstractVault)
         returns (uint256 assets)
     {
-        return PeriodicAllocationAbstractVault._previewMint(shares);
+        // return 0
+    }
+
+    function _maxMint(
+        address /** caller */
+    ) internal view virtual override returns (uint256 maxShares) {
+        // return 0
     }
 
     /*///////////////////////////////////////////////////////////////

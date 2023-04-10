@@ -18,13 +18,17 @@ import type { AssetProxy, PeriodicAllocationPerfFeeMetaVault } from "types/gener
 
 import type { Convex3CrvVaultsDeployed } from "./deployment/convex3CrvVaults"
 
-// deployPeriodicAllocationPerfFeeMetaVault
 interface AssetSourcingParams {
     singleVaultSharesThreshold: number
     singleSourceVaultIndex: number
 }
 
-interface PeriodicAllocationPerfFeeMetaVaultParams {
+interface PeriodicAllocationPerfFeeMetaVaultUpgrade {
+    nexus: string
+    asset: string
+    proxy: boolean
+}
+interface PeriodicAllocationPerfFeeMetaVaultDeploy {
     nexus: string
     asset: string
     name: string
@@ -38,6 +42,7 @@ interface PeriodicAllocationPerfFeeMetaVaultParams {
     assetPerShareUpdateThreshold: BN
     proxy: boolean
 }
+type PeriodicAllocationPerfFeeMetaVaultParams = PeriodicAllocationPerfFeeMetaVaultDeploy | PeriodicAllocationPerfFeeMetaVaultUpgrade
 
 export async function deployPeriodicAllocationPerfFeeMetaVaults(
     hre: HardhatRuntimeEnvironment,
@@ -71,20 +76,7 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     signer: Signer,
     params: PeriodicAllocationPerfFeeMetaVaultParams,
 ) => {
-    const {
-        nexus,
-        asset,
-        name,
-        symbol,
-        vaultManager,
-        proxyAdmin,
-        performanceFee,
-        feeReceiver,
-        underlyingVaults,
-        sourceParams,
-        assetPerShareUpdateThreshold,
-        proxy,
-    } = params
+    const { nexus, asset, proxy } = params
     const constructorArguments = [nexus, asset]
     const vaultImpl = await deployContract<PeriodicAllocationPerfFeeMetaVault>(
         new PeriodicAllocationPerfFeeMetaVault__factory(signer),
@@ -102,6 +94,18 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
     if (!proxy) {
         return { proxy: undefined, impl: vaultImpl }
     }
+    const {
+        name,
+        symbol,
+        vaultManager,
+        proxyAdmin,
+        performanceFee,
+        feeReceiver,
+        underlyingVaults,
+        sourceParams,
+        assetPerShareUpdateThreshold,
+    } = params as PeriodicAllocationPerfFeeMetaVaultDeploy
+
     const data = vaultImpl.interface.encodeFunctionData("initialize", [
         name,
         symbol,
@@ -119,14 +123,14 @@ export const deployPeriodicAllocationPerfFeeMetaVault = async (
 }
 
 subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
-    .addParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
-    .addParam(
+    .addOptionalParam("vaults", "Comma separated symbols or addresses of the underlying convex vaults", undefined, types.string)
+    .addOptionalParam(
         "singleSource",
         "Token symbol or address of the vault that smaller withdraws should be sourced from.",
         undefined,
         types.string,
     )
-    .addOptionalParam("name", "Vault name", "3CRV Convex Meta Vault", types.string)
+    .addOptionalParam("name", "Vault name", "Convex 3CRV Meta Vault", types.string)
     .addOptionalParam("symbol", "Vault symbol", "mv3CRV-CVX", types.string)
     .addOptionalParam("asset", "Token address or symbol of the vault's asset", "3Crv", types.string)
     .addOptionalParam("admin", "Instant or delayed proxy admin: InstantProxyAdmin | DelayedProxyAdmin", "InstantProxyAdmin", types.string)
@@ -167,32 +171,43 @@ subtask("convex-3crv-mv-deploy", "Deploys Convex 3Crv Meta Vault")
         const proxyAdminAddress = resolveAddress(admin, chain)
         const vaultManagerAddress = resolveAddress(vaultManager, chain)
 
-        const underlyings = vaults.split(",")
-        const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
-        const singleSourceAddress = resolveAddress(singleSource, chain)
-        const singleSourceVaultIndex = underlyingAddresses.indexOf(singleSourceAddress)
+        if (proxy) {
+            const underlyings = vaults.split(",")
+            const underlyingAddresses = underlyings.map((underlying) => resolveAddress(underlying, chain))
+            const singleSourceAddress = resolveAddress(singleSource, chain)
+            const singleSourceVaultIndex = underlyingAddresses.indexOf(singleSourceAddress)
 
-        const feeReceiverAddress = resolveAddress(feeReceiver, chain)
+            const feeReceiverAddress = resolveAddress(feeReceiver, chain)
 
-        const { proxy: proxyContract, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
-            nexus: nexusAddress,
-            asset: assetToken.address,
-            name,
-            symbol,
-            vaultManager: vaultManagerAddress,
-            proxyAdmin: proxyAdminAddress,
-            feeReceiver: feeReceiverAddress,
-            performanceFee: fee,
-            underlyingVaults: underlyingAddresses,
-            sourceParams: {
-                singleVaultSharesThreshold: singleThreshold,
-                singleSourceVaultIndex,
-            },
-            assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
-            proxy,
-        })
+            const { proxy: proxyContract, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+                nexus: nexusAddress,
+                asset: assetToken.address,
+                name,
+                symbol,
+                vaultManager: vaultManagerAddress,
+                proxyAdmin: proxyAdminAddress,
+                feeReceiver: feeReceiverAddress,
+                performanceFee: fee,
+                underlyingVaults: underlyingAddresses,
+                sourceParams: {
+                    singleVaultSharesThreshold: singleThreshold,
+                    singleSourceVaultIndex,
+                },
+                assetPerShareUpdateThreshold: simpleToExactAmount(updateThreshold, assetToken.decimals),
+                proxy,
+            })
 
-        return { proxy: proxyContract, impl }
+            return { proxy: proxyContract, impl }
+        } else {
+            const { proxy: proxyContract, impl } = await deployPeriodicAllocationPerfFeeMetaVault(hre, signer, {
+                nexus: nexusAddress,
+                asset: assetToken.address,
+                proxy,
+            })
+            console.log(`New ${asset} vault implementation deployed at ${impl.address}`)
+
+            return { proxy: proxyContract, impl }
+        }
     })
 task("convex-3crv-mv-deploy").setAction(async (_, __, runSuper) => {
     return runSuper()

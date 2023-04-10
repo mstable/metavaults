@@ -191,7 +191,10 @@ contract Convex3CrvLiquidatorVault is
         // Get vault's asset (3Crv) balance after adding token to Curve's 3Pool.
         assets_ = _asset.balanceOf(address(this));
         // Add asset (3Crv) to metapool with slippage protection.
-        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity([0, assets_], minMetapoolTokens);
+        uint256 metapoolTokens = ICurveMetapool(metapool).add_liquidity(
+            [0, assets_],
+            minMetapoolTokens
+        );
 
         // Calculate share value of the new assets before depositing the metapool tokens to the Convex pool.
         shares_ = _getSharesFromMetapoolTokens(
@@ -304,7 +307,7 @@ contract Convex3CrvLiquidatorVault is
         override(AbstractVault, Convex3CrvAbstractVault)
         returns (uint256 shares)
     {
-        shares = Convex3CrvAbstractVault._previewDeposit(assets);
+        // return 0
     }
 
     /// @dev use Convex3CrvAbstractVault implementation.
@@ -315,7 +318,7 @@ contract Convex3CrvLiquidatorVault is
         override(AbstractVault, Convex3CrvAbstractVault)
         returns (uint256 assets)
     {
-        assets = Convex3CrvAbstractVault._previewMint(shares);
+        // return 0
     }
 
     /// @dev use Convex3CrvAbstractVault implementation.
@@ -345,23 +348,45 @@ contract Convex3CrvLiquidatorVault is
     ****************************************/
 
     /// @dev use Convex3CrvAbstractVault implementation.
-    function _deposit(uint256 assets, address receiver)
+    function _deposit(
+        uint256, /** assets */
+        address /** receiver */
+    )
         internal
         virtual
         override(AbstractVault, Convex3CrvAbstractVault)
-        returns (uint256 shares)
+        returns (
+            uint256 /** shares */
+        )
     {
-        shares = Convex3CrvAbstractVault._deposit(assets, receiver);
+        revert("Vault shutdown");
+    }
+
+    function _maxDeposit(
+        address /** caller */
+    ) internal view virtual override returns (uint256 maxAssets) {
+        // return 0
     }
 
     /// @dev use Convex3CrvAbstractVault implementation.
-    function _mint(uint256 shares, address receiver)
+    function _mint(
+        uint256, /** shares */
+        address /** receiver */
+    )
         internal
         virtual
         override(AbstractVault, Convex3CrvAbstractVault)
-        returns (uint256 assets)
+        returns (
+            uint256 /** assets*/
+        )
     {
-        assets = Convex3CrvAbstractVault._mint(shares, receiver);
+        revert("Vault shutdown");
+    }
+
+    function _maxMint(
+        address /** caller */
+    ) internal view virtual override returns (uint256 maxShares) {
+        // return 0
     }
 
     /// @dev use Convex3CrvAbstractVault implementation.
