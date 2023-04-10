@@ -154,6 +154,7 @@ export async function deployConvex3CrvLiquidatorVault(
         address: vaultImpl.address,
         contract: "contracts/vault/liquidity/convex/Convex3CrvLiquidatorVault.sol:Convex3CrvLiquidatorVault",
         constructorArguments: constructorArguments,
+        libraries: linkAddresses,
     })
 
     // Proxy
@@ -176,6 +177,28 @@ export async function deployConvex3CrvLiquidatorVault(
     const proxyContract = await deployContract<AssetProxy>(new AssetProxy__factory(signer), "AssetProxy", proxyConstructorArguments)
 
     return { proxy: proxyContract, impl: vaultImpl }
+}
+
+export async function deployConvex3CrvLiquidatorVaultCopy(
+    hre: HardhatRuntimeEnvironment,
+    signer: Signer,
+    reference: Convex3CrvLiquidatorVault,
+    calculatorLibrary: string,
+) {
+    return deployConvex3CrvLiquidatorVault(hre, signer, {
+        calculatorLibrary,
+        nexus: await reference.nexus(),
+        asset: await reference.asset(),
+        constructorData: {
+            metapool: await reference.metapool(),
+            booster: await reference.booster(),
+            convexPoolId: await reference.convexPoolId(),
+        },
+        name: await reference.name(),
+        symbol: await reference.symbol(),
+        streamDuration: (await reference.STREAM_DURATION()).toNumber(),
+        proxy: false,
+    })
 }
 
 subtask("convex-3crv-lib-deploy", "Deploys a Curve Metapool calculator library")
@@ -382,5 +405,28 @@ subtask("convex-3crv-snap", "Logs Convex 3Crv Vault details")
     })
 
 task("convex-3crv-snap").setAction(async (_, __, runSuper) => {
+    return runSuper()
+})
+
+subtask("convex-3crv-vault-deploy-copy", "Deploys a new Convex 3Crv Liquidator Vault ")
+    .addParam("vault", "Vault symbol or address", undefined, types.string)
+    .addParam("calculatorLibrary", "Name or address of the Curve calculator library", undefined, types.string)
+    .addOptionalParam("speed", "Defender Relayer speed param: 'safeLow' | 'average' | 'fast' | 'fastest'", "fast", types.string)
+    .setAction(async (taskArgs, hre) => {
+        const { calculatorLibrary, vault, speed } = taskArgs
+
+        const signer = await getSigner(hre, speed)
+        const chain = getChain(hre)
+
+        const calculatorLibraryAddress = resolveAddress(calculatorLibrary, chain)
+        const vaultToken = await resolveAssetToken(signer, chain, vault)
+        const vaultContract = Convex3CrvLiquidatorVault__factory.connect(vaultToken.address, signer)
+
+        const result = await deployConvex3CrvLiquidatorVaultCopy(hre, signer, vaultContract, calculatorLibraryAddress)
+        console.log(`New ${vault} implementation deployed at ${result.impl.address}`)
+
+        return result
+    })
+task("convex-3crv-vault-deploy-copy").setAction(async (_, __, runSuper) => {
     return runSuper()
 })
